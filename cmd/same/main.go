@@ -28,6 +28,52 @@ func main() {
 
 	printVersion()
 
+	// Here's all the steps we need to build
+
+	// Parse the command line flags
+
+	// If 'create':
+	// 		If a file is provided for a SAME - process it
+	// 		-- will start with just a yaml that describes a bunch of sub steps
+
+	// 		Connect to Kubernetes
+	// 		-- elegant fail if not
+
+	// 		Check the status of the cluster - are there enough machines of the type we need?
+
+	// 				-- 	Provision machines in a new node pool if not
+
+	// 		Deploy via Porter any step named "Kubeflow"
+
+	// 				-- Only support specific versions for now
+	// 				-- What kind of support can we have for specific services (e.g. the TF CRD? what version is it? )
+
+	// 		Get the credentials for KF for the SDK
+
+	// 		See if the pipeline named in the SAME config.yaml is deployed (with the same version)
+	// 				-- If not, deploy it
+	// 				-- Should be available locally in a .tgz to start?
+
+	// If 'run':
+
+	// 		See if the pipeline named is deployed (with the same version)
+	//		If not, fail elegantly
+
+	//		If deployed, run with the correct parameters.
+	//		-- Check to see if resources have gone away?
+	//		Say it's deployed -- give a URL to the dashboard
+
+	//		Do something when it's done? probably not.
+
+	// If 'export':
+
+	//		EASIER: Grab all yaml/etc necessary to create the pipeline? Argo?
+	//		HARD: Grab KF configuration necessary to run?
+	//		HARDER: Grab HW requirements
+	//		HARDEST: Grab metadata information
+
+	// 		Create a Yaml/package out of it all.
+
 	// namespace, err := k8sutil.GetWatchNamespace()
 	// if err != nil {
 	// 	log.Errorf("Failed to get watch namespace. Error %v.", err)
