@@ -6,6 +6,7 @@
 
     # Need to manually pick your subscrption and enter it below.
     export SAME_SUBSCRIPTION_ID='XXXXXXXXXXXXXXXXX'
+    az account set --subscription $SAME_SUBSCRIPTION_ID
 ```
 
 - Have a Kubernetes cluster hosted on AKS (there's nothing SPECIFIC about SAME for Azure only, but we're just getting started)
@@ -13,6 +14,7 @@
 az aks list --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.[] | "\(.name) : \(.resourceGroup)"'
 export CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
 export CLUSTER_RESOURCE_GROUP='XXXXXXXXXXXXXXXXX'
+export CLUSTER_VERSION=`az aks show -n $CLUSTER_NAME -o json | jq -r '.kubernetesVersion'`
 ```
 - Make sure you have local credentials for a Kubernetes cluster
 - Install go
@@ -38,16 +40,26 @@ sudo mv ./clusterctl /usr/local/bin/clusterctl
     export SAME_SP_NAME="same_service_principal_$(whoami)"
     export SAME_SP_JSON=`az ad sp create-for-rbac --scope "/subscriptions/$SAME_SUBSCRIPTION_ID/resourceGroups/$CLUSTER_RESOURCE_GROUP" --role Contributor --sdk-auth`
 
-    export AZURE_TENANT_ID_B64="`az account show --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.tenantId' | base64`"
-    export AZURE_CLIENT_ID=`echo $SAME_SP_JSON | jq '.clientId'`
-    export AZURE_CLIENT_ID_B64="`echo $AZURE_CLIENT_ID | base64`"
-    export AZURE_CLIENT_SECRET=`echo $SAME_SP_JSON | jq '.clientId'`
-    export AZURE_CLIENT_SECRET_B64="`echo $AZURE_CLIENT_SECRET | base64`"
-    export AZURE_SUBSCRIPTION_ID_B64="`echo $SAME_SUBSCRIPTION_ID | base64`"
+    export AZURE_ENVIRONMENT="AzurePublicCloud"
+
+    export AZURE_TENANT_ID_B64="`az account show --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.tenantId' | base64` | tr -d '\n'"
+    export AZURE_CLIENT_ID=`echo $SAME_SP_JSON | jq -r '.clientId'`
+    export AZURE_CLIENT_ID_B64="`echo $AZURE_CLIENT_ID | base64` | tr -d '\n'"
+    export AZURE_CLIENT_SECRET=`echo $SAME_SP_JSON | jq -r '.clientId'`
+    export AZURE_CLIENT_SECRET_B64="`echo $AZURE_CLIENT_SECRET | base64 | tr -d '\n'`"
+    export AZURE_SUBSCRIPTION_ID="`echo $SAME_SUBSCRIPTION_ID | base64 | tr -d '\n'`"
+    export AZURE_SUBSCRIPTION_ID_B64="`echo $SAME_SUBSCRIPTION_ID | base64 | tr -d '\n'`"
  ```
 
 - Init clusterctl
 ```
     clusterctl init --infrastructure=azure
+
+    # Name of the Azure datacenter location.
+    export AZURE_LOCATION="centralus"
+
+    # Select VM types.
+    export AZURE_CONTROL_PLANE_MACHINE_TYPE="Standard_D2s_v3"
+    export AZURE_NODE_MACHINE_TYPE="Standard_D2s_v3"
 ```
 - 
