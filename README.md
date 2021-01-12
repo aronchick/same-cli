@@ -9,23 +9,6 @@
     az account set --subscription $SAME_SUBSCRIPTION_ID
 ```
 
-- Have a Kubernetes cluster hosted on AKS (there's nothing SPECIFIC about SAME for Azure only, but we're just getting started)
-```
-<<<<<<< HEAD
-az aks list --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.[] | "- Cluster Name: \t\(.name) \n  Resource Group: \t\(.resourceGroup)"'
-export CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
-export CLUSTER_RESOURCE_GROUP='XXXXXXXXXXXXXXXXX'
-export CLUSTER_VERSION=`az aks show -n $CLUSTER_NAME -o json | jq -r '.kubernetesVersion'`
-=======
-az aks list --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.[] | "\(.name) : \(.resourceGroup)"'
-export SAME_CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
-export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
-export SAME_CLUSTER_VERSION=`az aks show -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG -o json | jq -r '.kubernetesVersion'`
-
-az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
->>>>>>> 0124c3d430e9bae9ccf89c4e0c3087fecc6156d7
-```
-- Make sure you have local credentials for a Kubernetecluster
 - Install go
 - Install kubectl
 ```
@@ -33,6 +16,28 @@ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s ht
 chmod +x ./kubectl
 sudo mv ./kubectl /usr/local/bin/kubectl
 ```
+
+- EITHER: Create an AKS Cluster
+```
+    az aks create --resource-group $SAME_CLUSTER_RG --name myAKSCluster --node-count 0 --enable-addons monitoring --generate-ssh-keys
+```
+- OR: Use an existing cluster
+```
+az aks list --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.[] | "- Cluster Name: \t\(.name) \n  Resource Group: \t\(.resourceGroup)"'
+```
+
+- Set Environment Variables for your cluster
+```
+export SAME_CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
+export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
+export SAME_CLUSTER_VERSION=`az aks show -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG -o json | jq -r '.kubernetesVersion'`
+```
+
+- Get your credentials:
+```
+az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
+```
+
 - Install clusterctl
 ```
 curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.12/clusterctl-$GOOS-$GOARCH -o clusterctl
@@ -61,7 +66,7 @@ sudo mv ./clusterctl /usr/local/bin/clusterctl
     export AZURE_SUBSCRIPTION_ID_B64=$(echo -n $SAME_SUBSCRIPTION_ID | base64 | tr -d '\n')
  ```
 
-- Init clusterctl
+- OPTIONAL: Init clusterctl
 ```
     clusterctl init --infrastructure=azure
 
@@ -72,4 +77,3 @@ sudo mv ./clusterctl /usr/local/bin/clusterctl
     export AZURE_CONTROL_PLANE_MACHINE_TYPE="Standard_D2s_v3"
     export AZURE_NODE_MACHINE_TYPE="Standard_D2s_v3"
 ```
-- 
