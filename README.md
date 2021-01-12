@@ -1,3 +1,26 @@
+# User experience
+
+Our goal is to have a user experience that looks like this:
+```
+```
+
+Assuming you having a vanilla Kubernetes cluster and local credentials, this will:
+- Deploy a node pool specific to your SAME description
+- Create a namespace for your KF experiment
+- Provision Kubeflow to it
+- Create data buckets (if necessary) 
+- Copy the data into the bucket (if necessary)
+- Provision a PV in the namespace and point it at the data
+- Push a Kubeflow Pipeline to the Kubeflow
+- Allow you to run the pipeline (from either the CLI or the UI)
+
+
+# How to build
+Just run `make build`
+
+Then run `bin/same`
+
+
 # Getting started
 - Find your subscription
 ```
@@ -38,6 +61,12 @@ export SAME_CLUSTER_VERSION=`az aks show -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_
 az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
 ```
 
+# Using SAME
+- Be in the same directory as same.yaml
+- 
+
+
+- OPTIONAL: Init clusterctl
 - Install clusterctl
 ```
 curl -L https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.3.12/clusterctl-$GOOS-$GOARCH -o clusterctl
@@ -66,7 +95,7 @@ sudo mv ./clusterctl /usr/local/bin/clusterctl
     export AZURE_SUBSCRIPTION_ID_B64=$(echo -n $SAME_SUBSCRIPTION_ID | base64 | tr -d '\n')
  ```
 
-- OPTIONAL: Init clusterctl
+- Init ClusterCTL
 ```
     clusterctl init --infrastructure=azure
 
