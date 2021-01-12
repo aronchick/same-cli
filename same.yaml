@@ -1,6 +1,6 @@
 - summary:
-    - name:
-    - sha: 
+    - name: MyFirstSameRun
+    - sha: a90eaf2
 - infrastructure:
     - node_type: "Standard_D2s_v3" # VMs typically have GPU types associated
     - disk_per_node: 100Gi
