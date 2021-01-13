@@ -3,9 +3,9 @@ module github.com/azure-octo/same-cli
 go 1.14
 
 require (
-	github.com/Azure-Samples/azure-sdk-for-go-samples v0.0.0-20201110054206-ffcdafe9818d
 	github.com/Azure/azure-sdk-for-go v50.0.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.15 // indirect
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.5
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
