@@ -1,20 +1,14 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
-- repo: git://github.com/dnephin/pre-commit-golang
-  rev: master
+- repo: git://github.com/Bahjat/pre-commit-golang
+  rev: 85c26d4d1c8a086095a057bbdf8adf56af603ce4
   hooks:
-    - id: go-fmt
-#    - id: go-vet
-#      args: [./cmd/...]
+    - id: go-fmt-import
+    - id: go-vet
     - id: go-lint
-    - id: go-imports
-    - id: go-cyclo
-      args: [-over=15]
-    - id: validate-toml
-    - id: no-go-testing
-    - id: golangci-lint
-    - id: go-critic
     - id: go-unit-tests
-    - id: go-build
-    - id: go-mod-tidy
+    - id: gofumpt # requires github.com/mvdan/gofumpt
+    - id: go-err-check # requires github.com/kisielk/errcheck
+    - id: go-static-check # install https://staticcheck.io/docs/
+    - id: golangci-lint # requires github.com/golangci/golangci-lint
