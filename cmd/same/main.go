@@ -3,9 +3,12 @@ package main
 import (
 	"flag"
 	"runtime"
+	"fmt"
+	"time"
 
-	"github.com/Azure-Samples/azure-sdk-for-go-samples/internal/config"
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
+	subscription "github.com/Azure/azure-sdk-for-go/services/subscription/mgmt/2020-09-01/subscription"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	// az "github.com/Azure/go-autorest/autorest/azure/auth"
@@ -23,10 +26,18 @@ func printVersion() {
 }
 
 func getAKSClient() (containerservice.ManagedClustersClient, error) {
-	aksClient := containerservice.NewManagedClustersClient(config.SubscriptionID())
-	auth, _ := iam.GetResourceManagementAuthorizer()
-	aksClient.Authorizer = auth
-	aksClient.AddToUserAgent(config.UserAgent())
+	aksClient := containerservice.NewManagedClustersClient(SubscriptionID())
+	// aksClient := containerservice.NewManagedClustersClient(config.SubscriptionID())
+
+    authorizer, err := auth.NewAuthorizerFromEnvironment()
+    if err != nil {
+        fmt.Println(err)
+    } else {
+        fmt.Println("Auth: Successful")
+        aksClient.Authorizer = authorizer
+    }
+
+	aksClient.AddToUserAgent(subscription.UserAgent())
 	aksClient.PollingDuration = time.Hour * 1
 	return aksClient, nil
 }
