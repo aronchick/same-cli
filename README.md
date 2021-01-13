@@ -2,6 +2,7 @@
 
 Our goal is to have a user experience that looks like this:
 ```
+$ same create -f https://github.com/contoso/great_nlp_model
 ```
 
 Assuming you having a vanilla Kubernetes cluster and local credentials, this will:
@@ -39,7 +40,14 @@ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s ht
 chmod +x ./kubectl
 sudo mv ./kubectl /usr/local/bin/kubectl
 ```
+- Install python conveniences (poetry & pre-commit.com):
+```
+pip install poetry
+poetry shell
+python -m pip install --upgrade pip
+pip install pre-commit
 
+```
 - EITHER: Create an AKS Cluster
 ```
     az aks create --resource-group $SAME_CLUSTER_RG --name myAKSCluster --node-count 0 --enable-addons monitoring --generate-ssh-keys
