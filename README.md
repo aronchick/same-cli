@@ -23,6 +23,14 @@ Then run `bin/same`
 
 
 # Getting started
+The easiest way to get started is to do the following:
+```
+cp set_env_vars_sample.sh set_env_vars.sh
+```
+Then edit this to have the correct values. (You can find out value do this with many of the commands below).
+
+
+# Manually setting (or finding out) your environment variables
 - Find your subscription
 ```
     # Find your subscription
@@ -46,11 +54,13 @@ pip install poetry
 poetry shell
 python -m pip install --upgrade pip
 pip install pre-commit
-
 ```
+
 - EITHER: Create an AKS Cluster
 ```
-    az aks create --resource-group $SAME_CLUSTER_RG --name myAKSCluster --node-count 0 --enable-addons monitoring --generate-ssh-keys
+# Set your Resource Group
+    export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
+    az aks create --resource-group $SAME_CLUSTER_RG --name same_test_cluster_$(whoami) --node-count 0 --enable-addons monitoring --generate-ssh-keys
 ```
 - OR: Use an existing cluster
 ```
