@@ -4,8 +4,8 @@ import (
 	"flag"
 	"runtime"
 
+	"github.com/Azure-Samples/azure-sdk-for-go-samples/internal/config"
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
-	"github.com/Azure-Samples/azure-sdk-for-go-samples/internal/config" 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	// az "github.com/Azure/go-autorest/autorest/azure/auth"
