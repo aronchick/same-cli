@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
@@ -29,21 +30,25 @@ func getAKSClient() (aksClient containerservice.ManagedClustersClient, err error
 		return aksClient, fmt.Errorf("expected to have an environment variable named: AZURE_SUBSCRIPTION_ID")
 	}
 
+	subscriptionID = "foobaz"
 	aksClient = containerservice.NewManagedClustersClient(subscriptionID)
+
+	if err != nil {
+		fmt.Println(err)
+		return aksClient, fmt.Errorf("authorization failed for unknown reason")
+
+	}
 
 	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	if err != nil {
 		fmt.Println(err)
-
-		// TODO: Is the below return idomatic?
-		return aksClient, fmt.Errorf("authorization failed for unknown reason")
+		return aksClient, fmt.Errorf("authorizer is nil for reasons")
 
 	}
 
 	fmt.Println("Auth: Successful")
 	aksClient.Authorizer = authorizer
 
-	aksClient.AddToUserAgent(subscription.UserAgent())
 	aksClient.PollingDuration = time.Hour * 1
 	return aksClient, nil
 }

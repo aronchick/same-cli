@@ -19,3 +19,6 @@ export AZURE_SUBSCRIPTION_ID_B64=$(echo -n $SAME_SUBSCRIPTION_ID | base64 | tr -
 export AZURE_LOCATION="centralus"
 export AZURE_CONTROL_PLANE_MACHINE_TYPE="Standard_D2s_v3"
 export AZURE_NODE_MACHINE_TYPE="Standard_D2s_v3"
+
+# To write this to your .env file
+# Execute python3 create_env_file.py
