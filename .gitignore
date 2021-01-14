@@ -16,3 +16,4 @@ bin/
 # vendor/
 
 set_env_vars.sh
+.env
