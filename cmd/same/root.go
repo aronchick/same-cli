@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -30,19 +31,13 @@ func getAKSClient() (aksClient containerservice.ManagedClustersClient, err error
 		return aksClient, fmt.Errorf("expected to have an environment variable named: AZURE_SUBSCRIPTION_ID")
 	}
 
-	subscriptionID = "foobaz"
 	aksClient = containerservice.NewManagedClustersClient(subscriptionID)
 
+	//	authorizer, err := auth.NewAuthorizerFromEnvironment()
+	authorizer, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
 		fmt.Println(err)
-		return aksClient, fmt.Errorf("authorization failed for unknown reason")
-
-	}
-
-	authorizer, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		fmt.Println(err)
-		return aksClient, fmt.Errorf("authorizer is nil for reasons")
+		return aksClient, fmt.Errorf("authorizer is nil for an unknown reason")
 
 	}
 
@@ -53,8 +48,25 @@ func getAKSClient() (aksClient containerservice.ManagedClustersClient, err error
 	return aksClient, nil
 }
 
+// GetAKS returns an existing AKS cluster given a resource group name and resource name
+func GetAKS(ctx context.Context, resourceGroupName, resourceName string) (c containerservice.ManagedCluster, err error) {
+	aksClient, err := getAKSClient()
+	if err != nil {
+		return c, fmt.Errorf("cannot get AKS client: %v", err)
+	}
+
+	c, err = aksClient.Get(ctx, resourceGroupName, resourceName)
+	if err != nil {
+		return c, fmt.Errorf("cannot get AKS managed cluster %v from resource group %v: %v", resourceName, resourceGroupName, err)
+	}
+
+	return c, nil
+}
+
 // Execute executes a specific version of the command
 func Execute(version string) {
+	ctx := context.Background()
+
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -63,13 +75,25 @@ func Execute(version string) {
 
 	printVersion()
 
-	client, err := getAKSClient()
+	resourceGroupName := os.Getenv("SAME_CLUSTER_RG")
+	if len(resourceGroupName) == 0 {
+		fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_RG")
+		os.Exit(0)
+	}
+
+	clusterName := os.Getenv("SAME_CLUSTER_NAME")
+	if len(resourceGroupName) == 0 {
+		fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_NAME")
+		os.Exit(0)
+	}
+
+	aksCluster, err := GetAKS(ctx, resourceGroupName, clusterName)
 
 	if err != nil {
 		fmt.Print(err.Error())
 	}
 
-	_ = client
+	_ = aksCluster
 	// Here's all the steps we need to build
 
 	// Parse the command line flags
