@@ -5,11 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/go-autorest/autorest/to"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
@@ -19,21 +21,24 @@ var (
 	Version string = "0.0.1"
 )
 
+func cleanString(sourceString string) (returnString string) {
+	// Make a Regex to say we only want letters and numbers
+	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return reg.ReplaceAllString(sourceString, "")
+}
+
 func printVersion() {
 	log.Infof("Go Version: %s", runtime.Version())
 	log.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
 	log.Infof("same version: %v", Version)
 }
 
-func getAKSClient() (aksClient containerservice.ManagedClustersClient, err error) {
-	subscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
-	if len(subscriptionID) == 0 {
-		return aksClient, fmt.Errorf("expected to have an environment variable named: AZURE_SUBSCRIPTION_ID")
-	}
-
+func getAKSClient(subscriptionID string) (aksClient containerservice.ManagedClustersClient, err error) {
 	aksClient = containerservice.NewManagedClustersClient(subscriptionID)
 
-	//	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	authorizer, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
 		fmt.Println(err)
@@ -48,9 +53,27 @@ func getAKSClient() (aksClient containerservice.ManagedClustersClient, err error
 	return aksClient, nil
 }
 
+func getAgentPoolClient(subscriptionID string) (agentPoolClient containerservice.AgentPoolsClient, err error) {
+	agentPoolClient = containerservice.NewAgentPoolsClient(subscriptionID)
+
+	authorizer, err := auth.NewAuthorizerFromCLI()
+	if err != nil {
+		fmt.Println(err)
+		return agentPoolClient, fmt.Errorf("authorizer is nil for an unknown reason")
+
+	}
+
+	fmt.Println("Agent Pool Client Authorizer Assigned: Successful")
+	agentPoolClient.Authorizer = authorizer
+
+	agentPoolClient.PollingDuration = time.Hour * 1
+	return agentPoolClient, nil
+
+}
+
 // GetAKS returns an existing AKS cluster given a resource group name and resource name
 func GetAKS(ctx context.Context, resourceGroupName, resourceName string) (c containerservice.ManagedCluster, err error) {
-	aksClient, err := getAKSClient()
+	aksClient, err := getAKSClient(getSubscriptionID())
 	if err != nil {
 		return c, fmt.Errorf("cannot get AKS client: %v", err)
 	}
@@ -61,6 +84,77 @@ func GetAKS(ctx context.Context, resourceGroupName, resourceName string) (c cont
 	}
 
 	return c, nil
+}
+
+// GetAgentPool creates or gets and returns a client for a specific agent pool
+func GetAgentPool(ctx context.Context, resourceGroupName, resourceName string, agentPoolNamePrefix string) (agentPool containerservice.AgentPool, err error) {
+	experimentSHA := "a9eou0aue"
+	agentPoolProperties := containerservice.ManagedClusterAgentPoolProfileProperties{}
+	agentPoolProperties.Count = to.Int32Ptr(5)
+	agentPoolProperties.VMSize = containerservice.StandardDS3V2
+	agentPoolProperties.OsDiskSizeGB = to.Int32Ptr(30)
+	agentPoolProperties.OsDiskType = containerservice.OSDiskType("Ephemeral")
+
+	tags := make(map[string]*string)
+
+	// Just creating the below tag for future use. Will also be useful for bulk deleting if things get stuck around.
+	tags["same_created_agent_pool_tag"] = to.StringPtr(fmt.Sprintf("%v", experimentSHA))
+	agentPoolProperties.Tags = tags
+
+	// Same with labels
+	labels := make(map[string]*string)
+	labels["same_created_agent_pool_label"] = to.StringPtr(fmt.Sprintf("%v", experimentSHA))
+	agentPoolProperties.NodeLabels = labels
+
+	// // When we are ready to enable scaling - TODO: Just starting with 5 for now
+	// agentPoolProfile.MaxCount = Int32(1)
+	// agentPoolProfile.MinCount = Int32(1)
+	// agentPoolProfile.EnableAutoScaling = Bool(true)
+
+	// Could also enable scaling into spot
+	// 	// SpotMaxPrice - SpotMaxPrice to be used to specify the maximum price you are willing to pay in US Dollars. Possible values are any decimal value greater than zero or -1 which indicates default price to be up-to on-demand.
+	// 	SpotMaxPrice *float64 `json:"spotMaxPrice,omitempty"`
+
+	agentPoolClient, err := getAgentPoolClient(getSubscriptionID())
+	agentPoolName := to.StringPtr(cleanString(fmt.Sprintf("%v_%v", agentPoolNamePrefix, experimentSHA)[:12]))
+
+	if err != nil {
+		return agentPool, fmt.Errorf("cannot provision agentPool named '%v' on cluster '%v': %v", agentPoolName, resourceName, err)
+	}
+
+	agentPool = containerservice.AgentPool{}
+	agentPool.Name = agentPoolName
+
+	// agentPool.Tags = tags
+	// agentPool.NodeLabels = labels
+	agentPool.ManagedClusterAgentPoolProfileProperties = &agentPoolProperties
+
+	future, err := agentPoolClient.CreateOrUpdate(ctx, resourceGroupName, resourceName, *agentPoolName, agentPool)
+
+	if err != nil {
+		return agentPool, fmt.Errorf("cannot update create or update agentpool: %v", err)
+	}
+
+	err = future.WaitForCompletionRef(ctx, agentPoolClient.Client)
+	if err != nil {
+		fmt.Print(err.Error())
+		return agentPool, fmt.Errorf("cannot update create or update agentpool future response: %v", err)
+	}
+
+	// Should watch --
+	// 	// ProvisioningState - READ-ONLY; The current deployment or provisioning state, which only appears in the response.
+	// 	ProvisioningState *string `json:"provisioningState,omitempty"`
+
+	return future.Result(agentPoolClient)
+}
+
+func getSubscriptionID() string {
+	subscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
+	if len(subscriptionID) == 0 {
+		fmt.Printf("expected to have an environment variable named: AZURE_SUBSCRIPTION_ID")
+		os.Exit(1)
+	}
+	return subscriptionID
 }
 
 // Execute executes a specific version of the command
@@ -78,13 +172,13 @@ func Execute(version string) {
 	resourceGroupName := os.Getenv("SAME_CLUSTER_RG")
 	if len(resourceGroupName) == 0 {
 		fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_RG")
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	clusterName := os.Getenv("SAME_CLUSTER_NAME")
 	if len(resourceGroupName) == 0 {
 		fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_NAME")
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	aksCluster, err := GetAKS(ctx, resourceGroupName, clusterName)
@@ -93,13 +187,19 @@ func Execute(version string) {
 		fmt.Print(err.Error())
 	}
 
+	agentPool, err := GetAgentPool(ctx, resourceGroupName, clusterName, "ap")
+
+	log.Debug(err)
+	if err != nil {
+		fmt.Printf("Error creating agent pool: %v", err.Error())
+	}
+
 	_ = aksCluster
+	_ = agentPool
+
 	// Here's all the steps we need to build
 
 	// Parse the command line flags
-
-	// // create a VirtualNetworks client
-	// vnetClient := network.NewVirtualNetworksClient("<subscriptionID>")
 
 	// // create an authorizer from env vars or Azure Managed Service Idenity
 	// authorizer, err := auth.NewAuthorizerFromEnvironment()
