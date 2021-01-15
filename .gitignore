@@ -17,3 +17,4 @@ bin/*
 
 set_env_vars.sh
 .env
+raw_logs.txt

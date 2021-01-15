@@ -10,6 +10,10 @@
             "mode": "debug",
             "program": "${workspaceRoot}/cmd/main.go",
             "envFile": "${workspaceRoot}/.env",
-            "args": []}
+            "args": [],
+            "showLog": true,
+            "trace": "log",
+            "logOutput": "rpc"
+        }
     ]
 }
