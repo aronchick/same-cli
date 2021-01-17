@@ -1,18 +1,86 @@
-- summary:
-    - name: MyFirstSameRun
-    - sha: a90eaf2
-- infrastructure:
-    - vmSize: "Standard_D2s_v3" # VMs typically have GPU types associated
-    - osDiskSizeGB: 64
-    - count: 5
-    - create_new: false
-- kubeflow:
-    - kubeflow_version: 1.2
-    - services:
-        - name: tf_crd
-          version: 1.8
-        - name: pytorch_crd
-          version: 1.2
-- data:
-    - type: hosted
-    - url: "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
+# https://github.com/kubeflow/kfctl/blob/4c159515c4045c8f45667094de313a49b3767dda/pkg/kfapp/kustomize/testdata/kustomizeExample/metadata/expected/kustomization.yaml
+apiVersion: projectsame.io/v1alpha1
+metadata:
+    name: MyFirstSameRun
+    sha: a90eaf2
+    labels:
+        label1: value1
+    version: 1.0.4
+bases:
+    - base
+envs:
+  - params.env
+resources:
+    node_pool_name: sameAgentPool
+    create_new_node_pool: False
+    cores:
+        requested: 20
+        required: 10
+        minimum_per_machine: 4
+    gpus:
+        type: V100
+        per_machine: 1
+    disks:
+        - name: data_disk
+          size: 10Gi
+          volume_mounts:
+          - mount_path: "/mnt/data_disk"
+            name: volume
+        - name: model_disk
+          size: 10Gi
+          volume_mounts:
+          - mount_path: "/mnt/model_disk"
+            name: volume
+kubeflow:
+    kubernetes_api_server: kubeflowpipelines.contoso.com/
+    kubeflow_version: 1.2
+    kubeflow_namespace: kubeflow # Only support Kubeflow namespace
+    services:
+        - tensorflow_crd
+        - pytorch_crd
+    credential_file: porter-kfp
+pipeline:
+    name: "my_great_pipeline"
+    description: "a very good description goes here"
+    package: "/home/bverst/src/work/kubeflow-pipeline-compiled.zip"
+data_sets:
+    - data:
+        type: remote
+        url: "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
+        make_local_copy: true
+run: 
+    name: "My Run"
+    parameters:
+        epochs: 1000
+        batch_size: 100
+
+
+
+
+        
+# To create/autoprovision
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: azurefile
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   storageClassName: azurefile
+#   resources:
+#     requests:
+#       storage: 10Gi
+
+# To use:
+# prometheus:
+#     name: prometheus
+#     server:
+#       configMapOverrideName: prometheus-config
+#          volumeMounts:
+#          - mountPath: "/foo/mount_point"
+#            name: volume
+#          volumes:
+#            - name: volume
+#              persistentVolumeClaim:
+#                claimName: azurefile
+
