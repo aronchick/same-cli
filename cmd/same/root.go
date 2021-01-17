@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
@@ -88,7 +90,7 @@ func GetAKS(ctx context.Context, resourceGroupName, resourceName string) (c cont
 
 // GetAgentPool creates or gets and returns a client for a specific agent pool
 func GetAgentPool(ctx context.Context, resourceGroupName, resourceName string, agentPoolNamePrefix string) (agentPool containerservice.AgentPool, err error) {
-	experimentSHA := "a9eou0aue"
+	experimentSHA := "a9eou0aue___"
 	agentPoolProperties := containerservice.ManagedClusterAgentPoolProfileProperties{}
 	agentPoolProperties.Count = to.Int32Ptr(5)
 	agentPoolProperties.VMSize = containerservice.StandardDS3V2
@@ -169,6 +171,32 @@ func Execute(version string) {
 
 	printVersion()
 
+	// Just making it absolute for now - obviously needs changing for anyone else's machine
+	fileURI, _ := filepath.Abs("/home/daaronch/same-cli/same.yaml")
+	sameConfig, err := ParseConfig(ctx, version, fileURI)
+
+	if err != nil {
+		fmt.Printf("failed to load config: %v", err.Error())
+	}
+
+	_ = sameConfig
+}
+
+// ParseConfig takes a flat string and a version and converts it into a strongly typed struct.
+func ParseConfig(ctx context.Context, version string, fileURI string) (sameConfig *loaders.SameConfig, err error) {
+	// Only works (for right now) against file in the root of the directory
+	sameConfig, err = loaders.LoadConfigFromURI(fileURI)
+
+	if err != nil {
+		fmt.Printf("failed to load config: %v", err.Error())
+	}
+
+	return sameConfig, nil
+}
+
+// Provision takes a same construct and provisions all necessary resources (expected off the 'Resource' attribute)
+func Provision(ctx context.Context, version string, sameConfig loaders.SameConfig) (err error) {
+
 	resourceGroupName := os.Getenv("SAME_CLUSTER_RG")
 	if len(resourceGroupName) == 0 {
 		fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_RG")
@@ -206,6 +234,8 @@ func Execute(version string) {
 	// if err == nil {
 	// 	vnetClient.Authorizer = authorizer
 	// }
+
+	return err
 
 }
 

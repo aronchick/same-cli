@@ -1,10 +1,13 @@
-# cloud.google.com/go v0.45.1
+# cloud.google.com/go v0.46.3
+cloud.google.com/go
 cloud.google.com/go/compute/metadata
 cloud.google.com/go/iam
 cloud.google.com/go/internal
 cloud.google.com/go/internal/optional
 cloud.google.com/go/internal/trace
 cloud.google.com/go/internal/version
+# cloud.google.com/go/storage v1.0.0
+## explicit
 cloud.google.com/go/storage
 # github.com/Azure/azure-sdk-for-go v50.0.0+incompatible
 ## explicit
@@ -35,6 +38,8 @@ github.com/Azure/go-autorest/autorest/validation
 github.com/Azure/go-autorest/logger
 # github.com/Azure/go-autorest/tracing v0.6.0
 github.com/Azure/go-autorest/tracing
+# github.com/BurntSushi/toml v0.3.1
+github.com/BurntSushi/toml
 # github.com/aws/aws-sdk-go v1.15.78
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/awserr
@@ -84,7 +89,9 @@ github.com/go-logr/logr
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/sortkeys
 # github.com/golang/protobuf v1.4.3
+github.com/golang/protobuf/internal/gengogrpc
 github.com/golang/protobuf/proto
+github.com/golang/protobuf/protoc-gen-go
 github.com/golang/protobuf/protoc-gen-go/descriptor
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
@@ -94,7 +101,8 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/google/gofuzz
 # github.com/googleapis/gax-go/v2 v2.0.5
 github.com/googleapis/gax-go/v2
-# github.com/hashicorp/go-cleanhttp v0.5.0
+# github.com/hashicorp/go-cleanhttp v0.5.1
+## explicit
 github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-getter v1.5.2
 ## explicit
@@ -110,6 +118,10 @@ github.com/hashicorp/golang-lru/simplelru
 github.com/jmespath/go-jmespath
 # github.com/json-iterator/go v1.1.10
 github.com/json-iterator/go
+# github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
+github.com/jstemmer/go-junit-report
+github.com/jstemmer/go-junit-report/formatter
+github.com/jstemmer/go-junit-report/parser
 # github.com/klauspost/compress v1.11.2
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
@@ -131,17 +143,12 @@ github.com/modern-go/reflect2
 # github.com/onrik/logrus v0.8.0
 ## explicit
 github.com/onrik/logrus/filename
-# github.com/pkg/errors v0.9.1
-## explicit
-github.com/pkg/errors
 # github.com/sirupsen/logrus v1.7.0
 ## explicit
 github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.6.1
-## explicit
 # github.com/tidwall/gjson v1.6.7
 ## explicit
 # github.com/ulikunitz/xz v0.5.8
@@ -169,6 +176,14 @@ go.opencensus.io/trace/tracestate
 # golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
+# golang.org/x/exp v0.0.0-20191030013958-a1ab85dbe136
+## explicit
+golang.org/x/exp/apidiff
+golang.org/x/exp/cmd/apidiff
+# golang.org/x/lint v0.0.0-20190930215403-16217165b5de
+## explicit
+golang.org/x/lint
+golang.org/x/lint/golint
 # golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -193,12 +208,33 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/api v0.9.0
-google.golang.org/api/gensupport
+# golang.org/x/tools v0.0.0-20191112195655-aa38f8e97acc
+## explicit
+golang.org/x/tools/cmd/goimports
+golang.org/x/tools/go/analysis
+golang.org/x/tools/go/analysis/passes/inspect
+golang.org/x/tools/go/ast/astutil
+golang.org/x/tools/go/ast/inspector
+golang.org/x/tools/go/buildutil
+golang.org/x/tools/go/gcexportdata
+golang.org/x/tools/go/internal/gcimporter
+golang.org/x/tools/go/internal/packagesdriver
+golang.org/x/tools/go/packages
+golang.org/x/tools/go/types/objectpath
+golang.org/x/tools/go/types/typeutil
+golang.org/x/tools/internal/fastwalk
+golang.org/x/tools/internal/gopathwalk
+golang.org/x/tools/internal/imports
+golang.org/x/tools/internal/module
+golang.org/x/tools/internal/semver
+golang.org/x/tools/internal/span
+# google.golang.org/api v0.13.0
+## explicit
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/internal/uritemplates
 google.golang.org/api/googleapi/transport
 google.golang.org/api/internal
+google.golang.org/api/internal/gensupport
 google.golang.org/api/iterator
 google.golang.org/api/option
 google.golang.org/api/storage/v1
@@ -259,6 +295,8 @@ google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
 # google.golang.org/protobuf v1.25.0
+google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
+google.golang.org/protobuf/compiler/protogen
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
 google.golang.org/protobuf/internal/descfmt
@@ -281,6 +319,7 @@ google.golang.org/protobuf/internal/set
 google.golang.org/protobuf/internal/strs
 google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
+google.golang.org/protobuf/reflect/protodesc
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
@@ -289,6 +328,7 @@ google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
+google.golang.org/protobuf/types/pluginpb
 # gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
 ## explicit
 # gopkg.in/inf.v0 v0.9.1
@@ -298,9 +338,32 @@ gopkg.in/inf.v0
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 ## explicit
-# k8s.io/api v0.20.2
-## explicit
-k8s.io/api/core/v1
+# honnef.co/go/tools v0.0.1-2019.2.3
+honnef.co/go/tools/arg
+honnef.co/go/tools/cmd/staticcheck
+honnef.co/go/tools/config
+honnef.co/go/tools/deprecated
+honnef.co/go/tools/facts
+honnef.co/go/tools/functions
+honnef.co/go/tools/go/types/typeutil
+honnef.co/go/tools/internal/cache
+honnef.co/go/tools/internal/passes/buildssa
+honnef.co/go/tools/internal/renameio
+honnef.co/go/tools/internal/sharedcheck
+honnef.co/go/tools/lint
+honnef.co/go/tools/lint/lintdsl
+honnef.co/go/tools/lint/lintutil
+honnef.co/go/tools/lint/lintutil/format
+honnef.co/go/tools/loader
+honnef.co/go/tools/printf
+honnef.co/go/tools/simple
+honnef.co/go/tools/ssa
+honnef.co/go/tools/ssautil
+honnef.co/go/tools/staticcheck
+honnef.co/go/tools/staticcheck/vrp
+honnef.co/go/tools/stylecheck
+honnef.co/go/tools/unused
+honnef.co/go/tools/version
 # k8s.io/apimachinery v0.20.2
 ## explicit
 k8s.io/apimachinery/pkg/api/resource
