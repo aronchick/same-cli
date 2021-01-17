@@ -32,6 +32,16 @@ func (v V1) LoadSameConfig(def interface{}) (sameConfig *SameConfig, err error) 
 	}
 
 	sameConfig.Spec.Metadata = sameConfigFromFile.Metadata
+	sameConfig.Spec.Bases = sameConfigFromFile.Bases
+	sameConfig.Spec.EnvFiles = sameConfigFromFile.EnvFiles
+	sameConfig.Spec.Resources = sameConfigFromFile.Resources
+	sameConfig.Spec.Kubeflow = sameConfigFromFile.Kubeflow
+	sameConfig.Spec.Pipeline = sameConfigFromFile.Pipeline
+	sameConfig.Spec.DataSets = sameConfigFromFile.DataSets
+	sameConfig.Spec.Run = sameConfigFromFile.Run
+
+	// a, _ := yaml.Marshal(sameConfig)
+	// fmt.Println(string(a))
 
 	return sameConfig, nil
 }

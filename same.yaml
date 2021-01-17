@@ -8,11 +8,10 @@ metadata:
     version: 1.0.4
 bases:
     - base
-envs:
-  - params.env
+envfiles:
+    - .env
 resources:
-    node_pool_name: sameAgentPool
-    create_new_node_pool: False
+    nodePoodName: sameAgentPool
     cores:
         requested: 20
         required: 10
@@ -23,64 +22,38 @@ resources:
     disks:
         - name: data_disk
           size: 10Gi
-          volume_mounts:
-          - mount_path: "/mnt/data_disk"
+          volumeMount:
+            mountPath: "/mnt/data_disk"
             name: volume
         - name: model_disk
           size: 10Gi
-          volume_mounts:
-          - mount_path: "/mnt/model_disk"
+          volumeMount:
+            mountPath: "/mnt/model_disk"
             name: volume
 kubeflow:
-    kubernetes_api_server: kubeflowpipelines.contoso.com/
-    kubeflow_version: 1.2
-    kubeflow_namespace: kubeflow # Only support Kubeflow namespace
+    kubernetesAPIServerURI: kubeflowpipelines.contoso.com/
+    kubeflowVersion: 1.2
+    kubeflowNamespace: kubeflow # Only support Kubeflow namespace
     services:
         - tensorflow_crd
         - pytorch_crd
-    credential_file: porter-kfp
+    credentialFile: porter-kfp
 pipeline:
     name: "my_great_pipeline"
     description: "a very good description goes here"
     package: "/home/bverst/src/work/kubeflow-pipeline-compiled.zip"
-data_sets:
-    - data:
-        type: remote
-        url: "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
-        make_local_copy: true
+dataSets:
+    - name: "DS1 name"
+      type: remote
+      url: "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
+      makeLocalCopy: true
+    - name: "DS2 name"
+      type: remote
+      url: "2.csv"
+      makeLocalCopy: false
+
 run: 
     name: "My Run"
     parameters:
         epochs: 1000
         batch_size: 100
-
-
-
-
-        
-# To create/autoprovision
-# apiVersion: v1
-# kind: PersistentVolumeClaim
-# metadata:
-#   name: azurefile
-# spec:
-#   accessModes:
-#     - ReadWriteOnce
-#   storageClassName: azurefile
-#   resources:
-#     requests:
-#       storage: 10Gi
-
-# To use:
-# prometheus:
-#     name: prometheus
-#     server:
-#       configMapOverrideName: prometheus-config
-#          volumeMounts:
-#          - mountPath: "/foo/mount_point"
-#            name: volume
-#          volumes:
-#            - name: volume
-#              persistentVolumeClaim:
-#                claimName: azurefile
-
