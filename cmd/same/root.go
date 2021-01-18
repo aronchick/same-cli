@@ -8,12 +8,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"time"
+	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
@@ -23,140 +19,19 @@ var (
 	Version string = "0.0.1"
 )
 
-func cleanString(sourceString string) (returnString string) {
+func aksNamingString(sourceString string) (returnString string) {
 	// Make a Regex to say we only want letters and numbers
 	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
 	if err != nil {
 		log.Fatal(err)
 	}
-	return reg.ReplaceAllString(sourceString, "")
+	return strings.ToLower(reg.ReplaceAllString(sourceString, ""))
 }
 
 func printVersion() {
 	log.Infof("Go Version: %s", runtime.Version())
 	log.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
 	log.Infof("same version: %v", Version)
-}
-
-func getAKSClient(subscriptionID string) (aksClient containerservice.ManagedClustersClient, err error) {
-	aksClient = containerservice.NewManagedClustersClient(subscriptionID)
-
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		fmt.Println(err)
-		return aksClient, fmt.Errorf("authorizer is nil for an unknown reason")
-
-	}
-
-	fmt.Println("Auth: Successful")
-	aksClient.Authorizer = authorizer
-
-	aksClient.PollingDuration = time.Hour * 1
-	return aksClient, nil
-}
-
-func getAgentPoolClient(subscriptionID string) (agentPoolClient containerservice.AgentPoolsClient, err error) {
-	agentPoolClient = containerservice.NewAgentPoolsClient(subscriptionID)
-
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		fmt.Println(err)
-		return agentPoolClient, fmt.Errorf("authorizer is nil for an unknown reason")
-
-	}
-
-	fmt.Println("Agent Pool Client Authorizer Assigned: Successful")
-	agentPoolClient.Authorizer = authorizer
-
-	agentPoolClient.PollingDuration = time.Hour * 1
-	return agentPoolClient, nil
-
-}
-
-// GetAKS returns an existing AKS cluster given a resource group name and resource name
-func GetAKS(ctx context.Context, resourceGroupName, resourceName string) (c containerservice.ManagedCluster, err error) {
-	aksClient, err := getAKSClient(getSubscriptionID())
-	if err != nil {
-		return c, fmt.Errorf("cannot get AKS client: %v", err)
-	}
-
-	c, err = aksClient.Get(ctx, resourceGroupName, resourceName)
-	if err != nil {
-		return c, fmt.Errorf("cannot get AKS managed cluster %v from resource group %v: %v", resourceName, resourceGroupName, err)
-	}
-
-	return c, nil
-}
-
-// GetAgentPool creates or gets and returns a client for a specific agent pool
-func GetAgentPool(ctx context.Context, resourceGroupName, resourceName string, agentPoolNamePrefix string) (agentPool containerservice.AgentPool, err error) {
-	experimentSHA := "a9eou0aue___"
-	agentPoolProperties := containerservice.ManagedClusterAgentPoolProfileProperties{}
-	agentPoolProperties.Count = to.Int32Ptr(5)
-	agentPoolProperties.VMSize = containerservice.StandardDS3V2
-	agentPoolProperties.OsDiskSizeGB = to.Int32Ptr(30)
-	agentPoolProperties.OsDiskType = containerservice.OSDiskType("Ephemeral")
-
-	tags := make(map[string]*string)
-
-	// Just creating the below tag for future use. Will also be useful for bulk deleting if things get stuck around.
-	tags["same_created_agent_pool_tag"] = to.StringPtr(fmt.Sprintf("%v", experimentSHA))
-	agentPoolProperties.Tags = tags
-
-	// Same with labels
-	labels := make(map[string]*string)
-	labels["same_created_agent_pool_label"] = to.StringPtr(fmt.Sprintf("%v", experimentSHA))
-	agentPoolProperties.NodeLabels = labels
-
-	// // When we are ready to enable scaling - TODO: Just starting with 5 for now
-	// agentPoolProfile.MaxCount = Int32(1)
-	// agentPoolProfile.MinCount = Int32(1)
-	// agentPoolProfile.EnableAutoScaling = Bool(true)
-
-	// Could also enable scaling into spot
-	// 	// SpotMaxPrice - SpotMaxPrice to be used to specify the maximum price you are willing to pay in US Dollars. Possible values are any decimal value greater than zero or -1 which indicates default price to be up-to on-demand.
-	// 	SpotMaxPrice *float64 `json:"spotMaxPrice,omitempty"`
-
-	agentPoolClient, err := getAgentPoolClient(getSubscriptionID())
-	agentPoolName := to.StringPtr(cleanString(fmt.Sprintf("%v_%v", agentPoolNamePrefix, experimentSHA)[:12]))
-
-	if err != nil {
-		return agentPool, fmt.Errorf("cannot provision agentPool named '%v' on cluster '%v': %v", agentPoolName, resourceName, err)
-	}
-
-	agentPool = containerservice.AgentPool{}
-	agentPool.Name = agentPoolName
-
-	// agentPool.Tags = tags
-	// agentPool.NodeLabels = labels
-	agentPool.ManagedClusterAgentPoolProfileProperties = &agentPoolProperties
-
-	future, err := agentPoolClient.CreateOrUpdate(ctx, resourceGroupName, resourceName, *agentPoolName, agentPool)
-
-	if err != nil {
-		return agentPool, fmt.Errorf("cannot update create or update agentpool: %v", err)
-	}
-
-	err = future.WaitForCompletionRef(ctx, agentPoolClient.Client)
-	if err != nil {
-		fmt.Print(err.Error())
-		return agentPool, fmt.Errorf("cannot update create or update agentpool future response: %v", err)
-	}
-
-	// Should watch --
-	// 	// ProvisioningState - READ-ONLY; The current deployment or provisioning state, which only appears in the response.
-	// 	ProvisioningState *string `json:"provisioningState,omitempty"`
-
-	return future.Result(agentPoolClient)
-}
-
-func getSubscriptionID() string {
-	subscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
-	if len(subscriptionID) == 0 {
-		fmt.Printf("expected to have an environment variable named: AZURE_SUBSCRIPTION_ID")
-		os.Exit(1)
-	}
-	return subscriptionID
 }
 
 // Execute executes a specific version of the command
@@ -171,7 +46,7 @@ func Execute(version string) {
 
 	printVersion()
 
-	// Just making it absolute for now - obviously needs changing for anyone else's machine
+	// Get the YAML from disk
 	fileURI, _ := filepath.Abs("/home/daaronch/same-cli/same.yaml")
 	sameConfig, err := ParseConfig(ctx, version, fileURI)
 
@@ -179,24 +54,7 @@ func Execute(version string) {
 		fmt.Printf("failed to load config: %v", err.Error())
 	}
 
-	_ = sameConfig
-}
-
-// ParseConfig takes a flat string and a version and converts it into a strongly typed struct.
-func ParseConfig(ctx context.Context, version string, fileURI string) (sameConfig *loaders.SameConfig, err error) {
-	// Only works (for right now) against file in the root of the directory
-	sameConfig, err = loaders.LoadConfigFromURI(fileURI)
-
-	if err != nil {
-		fmt.Printf("failed to load config: %v", err.Error())
-	}
-
-	return sameConfig, nil
-}
-
-// Provision takes a same construct and provisions all necessary resources (expected off the 'Resource' attribute)
-func Provision(ctx context.Context, version string, sameConfig loaders.SameConfig) (err error) {
-
+	// Connect to AKS
 	resourceGroupName := os.Getenv("SAME_CLUSTER_RG")
 	if len(resourceGroupName) == 0 {
 		fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_RG")
@@ -215,20 +73,35 @@ func Provision(ctx context.Context, version string, sameConfig loaders.SameConfi
 		fmt.Print(err.Error())
 	}
 
-	agentPool, err := GetAgentPool(ctx, resourceGroupName, clusterName, "ap")
+	// Create or get Node Pool
+	nodepool, err := GetAgentPool(ctx, resourceGroupName, *aksCluster.Name, "np", *sameConfig)
 
 	log.Debug(err)
 	if err != nil {
 		fmt.Printf("Error creating agent pool: %v", err.Error())
 	}
 
-	_ = aksCluster
-	_ = agentPool
+	_ = nodepool
 
-	// Parse the command line flags
+	// Create or mount a shared disk Azure Storage Gen2
+	log.Debug(err)
+	if CreateOrAttachDisks(ctx, resourceGroupName, aksCluster, *sameConfig) != nil {
+		fmt.Printf("Error creating disks: %v", err.Error())
+	}
 
-	return err
+	// Deploy Kubeflow to the Kubernetes (via Porter?)
 
+	// Deploy a pipeline to the Kubeflow
+
+	// Run against that specific workload
+
+	// Change the parameters and re-run
+
+	// See what happens when you do that all with systems already in place (e.g. can we check to see if something is already installed)
+
+	// Just making it absolute for now - obviously needs changing for anyone else's machine
+
+	_ = sameConfig
 }
 
 // If 'create':
