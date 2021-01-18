@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
@@ -74,28 +75,53 @@ func Execute(version string) {
 	}
 
 	// Create or get Node Pool
-	nodepool, err := GetAgentPool(ctx, resourceGroupName, *aksCluster.Name, "np", *sameConfig)
+	// Marking false while debugging
+	nodePool := containerservice.AgentPool{}
+	if false {
+		nodePool, err = GetAgentPool(ctx, resourceGroupName, *aksCluster.Name, "np", *sameConfig)
+	}
+
+	_ = nodePool
 
 	log.Debug(err)
 	if err != nil {
-		fmt.Printf("Error creating agent pool: %v", err.Error())
+		fmt.Printf("Error creating agent pool: %v\n", err.Error())
 	}
 
-	_ = nodepool
-
 	// Create or mount a shared disk Azure Storage Gen2
-	log.Debug(err)
-	if CreateOrAttachDisks(ctx, resourceGroupName, aksCluster, *sameConfig) != nil {
-		fmt.Printf("Error creating disks: %v", err.Error())
+	err = CreateOrAttachDisks(ctx, resourceGroupName, aksCluster, *sameConfig)
+	if err != nil {
+		log.Debug(err)
+		fmt.Printf("Error creating disks: %v\n", err.Error())
 	}
 
 	// Deploy Kubeflow to the Kubernetes (via Porter?)
+	err = DeployorUpdateKubeflow(ctx, resourceGroupName, aksCluster, *sameConfig)
+	if err != nil {
+		log.Debug(err)
+		fmt.Printf("Error deploying Kubeflow: %v\n", err.Error())
+	}
 
 	// Deploy a pipeline to the Kubeflow
+	err = DeployOrUpdateAPipeline(ctx, resourceGroupName, aksCluster, *sameConfig)
+	if err != nil {
+		log.Debug(err)
+		fmt.Printf("Error deploying a pipeline: %v\n", err.Error())
+	}
 
 	// Run against that specific workload
+	err = RunAnExperiment(ctx, resourceGroupName, aksCluster, *sameConfig)
+	if err != nil {
+		log.Debug(err)
+		fmt.Printf("Error running against a specific workload: %v\n", err.Error())
+	}
 
 	// Change the parameters and re-run
+	err = RunAnExperiment(ctx, resourceGroupName, aksCluster, *sameConfig)
+	if err != nil {
+		log.Debug(err)
+		fmt.Printf("Error running against a specific workload with new params: %v\n", err.Error())
+	}
 
 	// See what happens when you do that all with systems already in place (e.g. can we check to see if something is already installed)
 
