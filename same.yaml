@@ -11,33 +11,35 @@ bases:
 envfiles:
     - .env
 resources:
-    nodePoodName: sameAgentPool
-    cores:
-        requested: 20
-        required: 10
-        minimum_per_machine: 4
-    gpus:
-        type: V100
-        per_machine: 1
-    disks:
-        - name: data_disk
-          size: 10Gi
-          volumeMount:
-            mountPath: "/mnt/data_disk"
-            name: volume
-        - name: model_disk
-          size: 10Gi
-          volumeMount:
-            mountPath: "/mnt/model_disk"
-            name: volume
-kubeflow:
-    kubernetesAPIServerURI: kubeflowpipelines.contoso.com/
-    kubeflowVersion: 1.2
-    kubeflowNamespace: kubeflow # Only support Kubeflow namespace
-    services:
-        - tensorflow_crd
-        - pytorch_crd
-    credentialFile: porter-kfp
+    cluster_profile: highMem
+    # nodePoodName: sameAgentPool
+    # cores:
+    #     requested: 20
+    #     required: 10
+    #     minimum_per_machine: 4
+    # gpus:
+    #     type: V100
+    #     per_machine: 1
+    # disks:
+    #     - name: data_disk
+    #       size: 10Gi
+    #       volumeMount:
+    #         mountPath: "/mnt/data_disk"
+    #         name: volume
+    #     - name: model_disk
+    #       size: 10Gi
+    #       volumeMount:
+    #         mountPath: "/mnt/model_disk"
+    #         name: volume
+workflow:
+    type: kubeflow
+        kubernetesAPIServerURI: kubeflowpipelines.contoso.com/
+        kubeflowVersion: 1.2
+        kubeflowNamespace: kubeflow # Only support Kubeflow namespace
+        services:
+            - tensorflow_crd
+            - pytorch_crd
+        credentialFile: porter-kfp
 pipeline:
     name: "my_great_pipeline"
     description: "a very good description goes here"

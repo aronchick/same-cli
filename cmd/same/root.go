@@ -77,7 +77,7 @@ func Execute(version string) {
 	// Create or get Node Pool
 	// Marking false while debugging
 	nodePool := containerservice.AgentPool{}
-	if false {
+	if true {
 		nodePool, err = GetAgentPool(ctx, resourceGroupName, *aksCluster.Name, "np", *sameConfig)
 	}
 
