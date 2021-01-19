@@ -23,4 +23,11 @@
     // // This allows VSCode to handle import correctly by adding ./scripts/swagger_update to the 
     // // path searched for local modules
     // "python.envFile": "${workspaceFolder}/scripts/swagger_update/setpythonpath.env"
+   
+    "[terraform]": {
+        "editor.formatOnSave": true
+    },
+    "terraform-ls.experimentalFeatures": {
+        "validateOnSave": true
+    }
 }

@@ -49,21 +49,49 @@ python -m pip install --upgrade pip
 pip install pre-commit
 ```
 
+- Set your subscription ID
+```
+az login
+
+# Set your Resource Group
+az account list -o json | jq '.[] | "\(.name) : \(.id)"'
+export SAME_SUBSCRIPTION_ID='XXXXXXXXXXXXXXXXX'
+az account set --subscription $SAME_SUBSCRIPTION_ID
+
 - EITHER: Create an AKS Cluster
 ```
-# Set your Resource Group
-    export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
-    az aks create --resource-group $SAME_CLUSTER_RG --name same_test_cluster_$(whoami) --node-count 0 --enable-addons monitoring --generate-ssh-keys
+# Select a resource group from the above list
+export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
+export SAME_CLUSTER_NAME="same_test_cluster_$(whoami)"
+az aks create --resource-group $SAME_CLUSTER_RG --name $SAME_CLUSTER_NAME --node-count 0 --enable-addons monitoring --generate-ssh-keys
 ```
 - OR: Use an existing cluster
 ```
+az login
 az aks list --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.[] | "- Cluster Name: \t\(.name) \n  Resource Group: \t\(.resourceGroup)"'
+export SAME_CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
+export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
+```
+
+- INSTALL TERRAFORM:
+```
+curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+sudo apt-get update && sudo apt-get install terraform
+```
+
+- Go into `cmd/infrastructure/azure` and type the following commands:
+```
+export SAME_PREFIX="same"
+export SAME_LOCATION="west europe"
+
+terraform init
+terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
+terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
 ```
 
 - Set Environment Variables for your cluster
 ```
-export SAME_CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
-export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
 export SAME_CLUSTER_VERSION=`az aks show -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG -o json | jq -r '.kubernetesVersion'`
 ```
 

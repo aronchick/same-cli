@@ -33,7 +33,8 @@ resources:
     #         name: volume
 workflow:
     type: kubeflow
-        kubernetesAPIServerURI: kubeflowpipelines.contoso.com/
+    parameters:
+        kubernetesAPIServerURI: "https://kubeflowpipelines.contoso.com/"
         kubeflowVersion: 1.2
         kubeflowNamespace: kubeflow # Only support Kubeflow namespace
         services:
