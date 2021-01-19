@@ -11,7 +11,8 @@ bases:
 envfiles:
     - .env
 resources:
-    cluster_profile: highMem
+    infrastructure_environment: azure
+    cluster_profile: default
     # nodePoodName: sameAgentPool
     # cores:
     #     requested: 20
