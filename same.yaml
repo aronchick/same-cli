@@ -13,25 +13,25 @@ envfiles:
 resources:
     provider: azure
     cluster_profile: default
-    # nodePoodName: sameAgentPool
-    # cores:
-    #     requested: 20
-    #     required: 10
-    #     minimum_per_machine: 4
-    # gpus:
-    #     type: V100
-    #     per_machine: 1
-    # disks:
-    #     - name: data_disk
-    #       size: 10Gi
-    #       volumeMount:
-    #         mountPath: "/mnt/data_disk"
-    #         name: volume
-    #     - name: model_disk
-    #       size: 10Gi
-    #       volumeMount:
-    #         mountPath: "/mnt/model_disk"
-    #         name: volume
+    nodePoodName: sameAgentPool
+    cores:
+        requested: 20
+        required: 10
+        minimum_per_machine: 4
+    gpus:
+        type: V100
+        per_machine: 1
+    disks:
+        - name: data_disk
+          size: 10Gi
+          volumeMount:
+            mountPath: "/mnt/data_disk"
+            name: volume
+        - name: model_disk
+          size: 10Gi
+          volumeMount:
+            mountPath: "/mnt/model_disk"
+            name: volume
 workflow:
     type: kubeflow
     parameters:
