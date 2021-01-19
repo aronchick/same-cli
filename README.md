@@ -17,7 +17,7 @@ Assuming you having a vanilla Kubernetes cluster and local credentials, this wil
 
 # Getting your environment variables set up correctly.
 ```
-cp set_env_vars_sample.sh > set_env_vars.sh
+cp set_env_vars_sample.sh set_env_vars.sh
 ```
 - Replace everything with an "XXXXXX" with the correct value
 - Run the following:
