@@ -25,7 +25,7 @@ type SameSpec struct {
 	Metadata   Metadata  `yaml:"metadata,omitempty"`
 	EnvFiles   []string  `yaml:"envfiles,omitempty"`
 	Resources  Resource  `yaml:"resources,omitempty"`
-	Kubeflow   Kubeflow  `yaml:"kubeflow,omitempty"`
+	Workflow   Workflow  `yaml:"workflow,omitempty"`
 	Pipeline   Pipeline  `yaml:"pipeline,omitempty"`
 	DataSets   []DataSet `yaml:"dataSets,omitempty"`
 	Run        Run       `yaml:"run,omitempty"`
@@ -47,6 +47,8 @@ type Metadata struct {
 
 // Resource (may be poorly named) describes the agent pool to be provisioned in the Kubernetes cluster
 type Resource struct {
+	Provider          string `yaml:"provider,omitempty"`
+	ClusterProfile    string `yaml:"cluster_profile,omitempty"`
 	NodePoolName      string `yaml:"nodePoodName,omitempty"`
 	CreateNewNodePool bool   `yaml:"createNewNodePool,omitempty"`
 	Cores             Cores  `yaml:"cores,omitempty"`
@@ -79,6 +81,13 @@ type Disk struct {
 type VolumeMount struct {
 	MountPath string `yaml:"mountPath,omitempty"`
 	Name      string `yaml:"name,omitempty"`
+}
+
+// Workflow is the workflow executor for SAME
+// TODO: Obviously parameters can't just be a 'Kubeflow' but it's good enough for now
+type Workflow struct {
+	Type       string   `yaml:"mountPath,omitempty"`
+	Parameters Kubeflow `yaml:"parameters,omitempty"`
 }
 
 // Kubeflow specifies the version of the Kubeflow cluster and all associated services to provision. It also names the namespace to deploy to.

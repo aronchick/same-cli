@@ -11,7 +11,7 @@ bases:
 envfiles:
     - .env
 resources:
-    infrastructure_environment: azure
+    provider: azure
     cluster_profile: default
     # nodePoodName: sameAgentPool
     # cores:

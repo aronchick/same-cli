@@ -53,13 +53,13 @@ vet:
 build: build-same
 
 build-same: fmt vet
-	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same cmd/main.go
+	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 	cp bin/$(ARCH)/same bin/same
 
 # Fast rebuilds useful for development.
 # Does not regenerate code; assumes you already ran build-same once.
 build-same-fast: fmt vet
-	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same cmd/main.go
+	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 
 # Release tarballs suitable for upload to GitHub release pages
 build-same-tgz: build-same
