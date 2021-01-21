@@ -52,19 +52,23 @@ pip install pre-commit
 - Set your subscription ID
 ```
 az login
-
+```
 # Set your Resource Group
+```
 az account list -o json | jq '.[] | "\(.name) : \(.id)"'
 export SAME_SUBSCRIPTION_ID='XXXXXXXXXXXXXXXXX'
 az account set --subscription $SAME_SUBSCRIPTION_ID
+```
 
 - EITHER: Create an AKS Cluster
-```
+
 # Select a resource group from the above list
+```
 export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
 export SAME_CLUSTER_NAME="same_test_cluster_$(whoami)"
 az aks create --resource-group $SAME_CLUSTER_RG --name $SAME_CLUSTER_NAME --node-count 0 --enable-addons monitoring --generate-ssh-keys
 ```
+
 - OR: Use an existing cluster
 ```
 az login
@@ -103,6 +107,9 @@ az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
 # Using SAME
 - Be in the same directory as same.yaml
 
+
+# Additional installations you probably need to do.
+
 # Goal vs non-goals.
 
 ```
@@ -117,5 +124,3 @@ Todo:
 Goal of this work to build the Kubernetes command-line tool, SAME CLI, for allowing users reproducing machine learning pipelines for their kubernetes cluster. Kubernetes enable users to achieve great things but the key aspect which is missing is the gap between the installation steps to till your kubernetes cluster is ready for the use case. This tool not only takes those early installation \ set-up process but also build reproducible pipelines for the end user and enable them to focus towards Machine Learning model implementations.
 
 Non-Goals: This tool donot intend replace any of the existing eco-systems, this tool main intent as exaplined above it to focus in making ease of use simpler for monolithic \ repetetive machine learning pipelines simpler.
-
-
