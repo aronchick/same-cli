@@ -12,8 +12,8 @@
             "envFile": "${workspaceRoot}/.env",
             "args": ["test", "DeployorUpdateKubeflow"],
             "showLog": true,
-            "trace": "log",
-            "logOutput": "rpc"
+            // "trace": false,
+            // "logOutput": "rpc"
         }
     ]
 }

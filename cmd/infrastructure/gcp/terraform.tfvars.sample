@@ -1,0 +1,19 @@
+# RENAME THIS TO "terraferm.tfvars" and replace "project", "mysql_developer_password" and "mysql_read_only_user_password"
+project="PROJECT_ID_HERE"
+env_label="same-test"
+cluster_name="same-cluster"
+cluster_region="us-central1"
+cluster_zone="us-central1-c"
+min_master_version="1.17"
+initial_node_count=5
+main_node_pool_min_nodes=3
+main_node_pool_max_nodes=5
+main_node_pool_name="same-node-pool"
+istio_enabled=true
+mysql_developer_password="UNIQUEPASSWORDHERE-t4UoTmCT^jY1"
+mysql_read_only_user_password="UNIQUEPASSWORDHERE-MgAJb@Q91d$V"
+upstream_nameservers=["8.8.8.8", "8.8.4.4"]
+highmem_node_pool_name="same-node-pool-himem"
+gpu_node_pool_name="same-node-pool-gpu"
+subnetwork=""
+network=""

@@ -13,14 +13,18 @@ envfiles:
 resources:
     provider: azure
     cluster_profile: default
-    nodePoodName: sameAgentPool
-    cores:
-        requested: 20
-        required: 10
-        minimum_per_machine: 4
-    gpus:
-        type: V100
-        per_machine: 1
+    cluster_name: foobaz
+    namespace: same_namespace
+    # nodePools:
+    #     gpu_pool: 
+    #         cores: 8
+    #         memory: 16Gi
+    #         GPU: A100
+    #         nodes: 20
+    #     cpu_pool:
+    #         cores: 4
+    #         memory: 16Gi
+    #         nodes: 50
     disks:
         - name: data_disk
           size: 10Gi
@@ -35,7 +39,7 @@ resources:
 workflow:
     type: kubeflow
     parameters:
-        kubernetesAPIServerURI: "https://kubeflowpipelines.contoso.com/"
+        # kubernetesAPIServerURI: "https://kubeflowpipelines.contoso.com/"
         kubeflowVersion: 1.2
         kubeflowNamespace: kubeflow # Only support Kubeflow namespace
         services:
@@ -46,7 +50,7 @@ pipeline:
     name: "my_great_pipeline"
     description: "a very good description goes here"
     package: "/home/bverst/src/work/kubeflow-pipeline-compiled.zip"
-dataSets:
+datasets:
     - name: "DS1 name"
       type: remote
       url: "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
@@ -55,7 +59,6 @@ dataSets:
       type: remote
       url: "2.csv"
       makeLocalCopy: false
-
 run: 
     name: "My Run"
     parameters:

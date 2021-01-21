@@ -20,4 +20,5 @@ set_env_vars.sh
 raw_logs.txt
 
 # Exclude generated terraform files
-cmd/infrastructure/azure/.terraform/*
+.terraform
+terraform.tfvars
