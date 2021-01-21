@@ -103,5 +103,19 @@ az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
 # Using SAME
 - Be in the same directory as same.yaml
 
+# Goal vs non-goals.
+
+```
+Todo: 
+
+* This section could be moved somewhere to the top once Once this section is mature it can sit somewhere at the top of this read-me.
+* This seciton will grow as this CLI will enrich with feature.
+* Key contributors please feel free to add or delete antyhing for this section. (It is created as placeholder to grow)
+
+```
+
+Goal of this work to build the Kubernetes command-line tool, SAME CLI, for allowing users reproducing machine learning pipelines for their kubernetes cluster. Kubernetes enable users to achieve great things but the key aspect which is missing is the gap between the installation steps to till your kubernetes cluster is ready for the use case. This tool not only takes those early installation \ set-up process but also build reproducible pipelines for the end user and enable them to focus towards Machine Learning model implementations.
+
+Non-Goals: This tool donot intend replace any of the existing eco-systems, this tool main intent as exaplined above it to focus in making ease of use simpler for monolithic \ repetetive machine learning pipelines simpler.
 
 
