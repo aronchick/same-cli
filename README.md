@@ -107,9 +107,6 @@ az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
 # Using SAME
 - Be in the same directory as same.yaml
 
-
-# Additional installations you probably need to do.
-
 # Goal vs non-goals.
 
 ```
