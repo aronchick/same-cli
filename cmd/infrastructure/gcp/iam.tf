@@ -22,6 +22,17 @@ resource "google_service_account" "kubeflow_admin" {
   display_name = "Admin account for ${var.cluster_name}"
 }
 
+### Enable the permissions in the shared network project for this to access it:
+# resource "google_project_iam_binding" "compute-networkuser" {
+#   project = var.project
+#   role    = "roles/compute.networkUser"
+  
+#   members = [
+#     "serviceAccount:${format("service-%s@container-engine-robot.iam.gserviceaccount.com", local.project_number)}",
+#     "serviceAccount:${format("%s@cloudservices.gserviceaccount.com", local.project_number)}",
+#   ]
+# }
+
 resource "google_project_iam_member" "kubeflow_admin-source_admin" {
   project = var.project
   role    = "roles/source.admin"

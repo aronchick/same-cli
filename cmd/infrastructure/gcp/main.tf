@@ -10,7 +10,7 @@ resource "google_container_cluster" "kubeflow_cluster" {
     google_service_account.kubeflow_vm,
   ]
 
-  provider = google-beta
+  provider = google
 
   name     = var.cluster_name
   location = var.cluster_zone
@@ -18,7 +18,7 @@ resource "google_container_cluster" "kubeflow_cluster" {
 
   # TPU requires a separate ip range (https://cloud.google.com/tpu/docs/kubernetes-engine-setup)
   # Disable it for now until we figure out how it works with xpn network
-  enable_tpu = false
+  # enable_tpu = false
 
   min_master_version = var.min_master_version
 
@@ -92,14 +92,14 @@ resource "google_container_cluster" "kubeflow_cluster" {
 
   # node auto-provisioning, they screwed up the name of fields here
   # https://github.com/terraform-providers/terraform-provider-google/issues/3303#issuecomment-477251119
-  cluster_autoscaling {
-    enabled = false
-  }
+  # cluster_autoscaling {
+  #   enabled = false
+  # }
 }
 
 resource "google_container_node_pool" "main_pool" {
   # max_pods_per_node is in google-beta as of 2019-07-26
-  provider = google-beta
+  provider = google
 
   cluster  = google_container_cluster.kubeflow_cluster.name
   location = var.cluster_zone
@@ -147,7 +147,7 @@ resource "google_container_node_pool" "main_pool" {
 
 resource "google_container_node_pool" "gpu_pool" {
   # max_pods_per_node is in google-beta as of 2019-07-26
-  provider = google-beta
+  provider = google
 
   cluster  = google_container_cluster.kubeflow_cluster.name
   location = var.cluster_zone
@@ -200,7 +200,7 @@ resource "google_container_node_pool" "gpu_pool" {
 
 resource "google_container_node_pool" "highmem_pool" {
   # max_pods_per_node is using the default value defined in google-beta api
-  provider = google-beta
+  provider = google
 
   cluster  = google_container_cluster.kubeflow_cluster.name
   location = var.cluster_zone
@@ -265,7 +265,7 @@ resource "google_compute_disk" "artifact_store" {
 
 resource "google_compute_resource_policy" "artifact_store-snapshot-schedule" {
   name     = "${google_compute_disk.artifact_store.name}-snapshot-schedule"
-  provider = google-beta
+  provider = google
   project  = var.project
   region   = var.cluster_region
 
@@ -291,3 +291,5 @@ resource "google_compute_resource_policy" "artifact_store-snapshot-schedule" {
     }
   }
 }
+
+
