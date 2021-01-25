@@ -89,7 +89,7 @@ func NewAzureBlobStorageSetup(clientset *kubernetes.Clientset, blobStorageResour
 
 }
 
-func main() {
+func createStorage() {
 
 	// Load kubeconfig
 	var kubeconfig string
