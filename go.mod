@@ -10,7 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/hashicorp/go-getter v1.5.2
-	github.com/kr/text v0.2.0 // indirect
+	github.com/kubeflow/pipelines v0.0.0-20210123000940-f65391309650
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/sirupsen/logrus v1.7.0
@@ -20,5 +20,7 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
+	k8s.io/client-go v0.20.2
 )
