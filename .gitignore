@@ -22,3 +22,6 @@ raw_logs.txt
 # Exclude generated terraform files
 .terraform
 terraform.tfvars
+
+# Exclude VS Code Settings
+.vscode/*
