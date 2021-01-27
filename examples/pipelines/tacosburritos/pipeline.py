@@ -3,8 +3,6 @@ import kfp.dsl as dsl
 import kfp.compiler as compiler
 import kfp.components as components
 
-from kubernetes.client.models.v1_volume import V1Volume
-
 @dsl.pipeline(
   name='Tacos vs. Burritos',
   description='Simple TF CNN'
@@ -67,11 +65,9 @@ def tacosandburritos_train(
       outputs=model_folder,
       dataset=training_dataset
   )
-  operations['training']
   operations['training'].after(operations['preprocess'])
 
   for _, op in operations.items():
-    # op.container.set_image_pull_policy("Always")
     op.add_pvolumes({persistent_volume_path: pipelinepvc })
 
 if __name__ == '__main__':
