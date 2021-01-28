@@ -13,18 +13,10 @@ envfiles:
 resources:
     provider: azure
     cluster_profile: default
+    # cluster_profile: highMem
+    # cluster_profile: GPU
     cluster_name: foobaz
     namespace: same_namespace
-    # nodePools:
-    #     gpu_pool: 
-    #         cores: 8
-    #         memory: 16Gi
-    #         GPU: A100
-    #         nodes: 20
-    #     cpu_pool:
-    #         cores: 4
-    #         memory: 16Gi
-    #         nodes: 50
     disks:
         - name: data_disk
           size: 10Gi
@@ -43,9 +35,13 @@ workflow:
         kubeflowVersion: 1.2
         kubeflowNamespace: kubeflow # Only support Kubeflow namespace
         services:
-            - tensorflow_crd
-            - pytorch_crd
+            - tensorflow_crd:2.1
+            - pytorch_crd:1.8
         credentialFile: porter-kfp
+    # services:
+    #   - tensorflow:2.2
+    #   - katib:3.1
+    #   - feast:1.2 
 pipeline:
     name: "my_great_pipeline"
     description: "a very good description goes here"

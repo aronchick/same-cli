@@ -1,5 +1,6 @@
 {
-    "go.inferGopath": false,
+    "go.inferGopath": true,
+    "go.gopath":"/usr/local/go/bin/go",
     "go.lintTool": "golangci-lint",
     "go.lintFlags": [
     ],
@@ -27,5 +28,12 @@
     },
     "terraform-ls.experimentalFeatures": {
         "validateOnSave": true
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/.hg/store/**": true,
+        "**/vendor/**": true
     }
 }
