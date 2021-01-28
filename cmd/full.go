@@ -151,13 +151,6 @@ func ExecuteFull() {
 		fmt.Printf("Error deploying Kubeflow: %v\n", err.Error())
 	}
 
-	// Deploy a pipeline to the Kubeflow
-	err = DeployOrUpdateAPipeline(ctx, resourceGroupName, aksCluster, *sameConfig)
-	if err != nil {
-		log.Debug(err)
-		fmt.Printf("Error deploying a pipeline: %v\n", err.Error())
-	}
-
 	// Run against that specific workload
 	err = RunAnExperiment(ctx, resourceGroupName, aksCluster, *sameConfig)
 	if err != nil {

@@ -1,13 +1,9 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-12-01/containerservice"
-	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 
 	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
 	experimentmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_model"
@@ -21,19 +17,6 @@ import (
 
 	"github.com/spf13/viper"
 )
-
-// DeployOrUpdateAPipeline takes a sameConfig and communicates with Kubeflow to deploy a piplene
-func DeployOrUpdateAPipeline(ctx context.Context, resourceGroupName string, aksCluster containerservice.ManagedCluster, sameConfig loaders.SameConfig) (err error) {
-	//NYI
-
-	// This needs to first download the KubeConfig using the GO SDK
-
-	// Then from the sameConfig figure out:
-	// * path string of the compile pipeline
-	// * params to use for a pipeline run
-
-	return fmt.Errorf("method 'DeployOrUpdateAPipeline' has not yet been implemented")
-}
 
 // COMPILEDPIPELINE : Temporary placeholder
 var COMPILEDPIPELINE = "pipeline.tar.gz"
@@ -101,7 +84,7 @@ func CreateRunFromCompiledPipeline(filePath string, pipelineName string, pipelin
 func UploadPipeline(filePath string, pipelineName string, pipelineDescription string) *pipelineuploadmodel.APIPipeline {
 	kfpconfig := *NewKFPConfig()
 
-	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, true)
+	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +105,7 @@ func UploadPipeline(filePath string, pipelineName string, pipelineDescription st
 
 func CreateExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {
 	kfpconfig := *NewKFPConfig()
-	experimentclient, err := apiclient.NewExperimentClient(kfpconfig, true)
+	experimentclient, err := apiclient.NewExperimentClient(kfpconfig, false)
 	if err != nil {
 		panic(err)
 	}
@@ -150,7 +133,7 @@ func CreateRun(runName string, pipelineID string, experimentID string, runDescri
 		runParams = append(runParams, &runmodel.APIParameter{Name: name, Value: value})
 	}
 
-	runclient, err := apiclient.NewRunClient(kfpconfig, true)
+	runclient, err := apiclient.NewRunClient(kfpconfig, false)
 	if err != nil {
 		panic(err)
 	}
@@ -182,9 +165,3 @@ func CreateRun(runName string, pipelineID string, experimentID string, runDescri
 
 	return runDetail
 }
-
-// func main() {
-// 	// Consider adding param
-
-// 	CreateRunFromCompiledPipeline(COMPILEDPIPELINE, "", "", "", "", "", "", make(map[string]string))
-// }

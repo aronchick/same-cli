@@ -126,7 +126,7 @@ var runProgramCmd = &cobra.Command{
 		experimentId := CreateExperiment(experimentName, experimentDescription).ID
 		runDetails := CreateRun(runName, pipelineId, experimentId, runDescription, runParams)
 
-		fmt.Printf("Program run created with ID %s. Current status: %s", runDetails.Run.ID, runDetails.Run.Status)
+		fmt.Printf("Program run created with ID %s.", runDetails.Run.ID)
 
 		return nil
 	},

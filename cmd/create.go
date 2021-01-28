@@ -111,39 +111,21 @@ func createAKSwithKubeflow() error {
 	credPORTER := `
 	{
 		"schemaVersion": "1.0.0-DRAFT+b6c701f",
-		"name": "aks-kubeflow",
-		"created": "2021-01-25T22:04:51.022055-08:00",
-		"modified": "2021-01-25T22:04:51.022055-08:00",
+		"name": "aks-kubeflow-msi",
+		"created": "2021-01-28T00:15:33.5682494-08:00",
+		"modified": "2021-01-28T00:15:33.5682494-08:00",
 		"credentials": [
-		{
-			"name": "AZURE_CLIENT_ID",
+		  {
+			"name": "kubeconfig",
 			"source": {
-			"env": "SP_CLIENT_ID"
+			  "path": "$HOME/.kube/config"
 			}
-		},
-		{
-			"name": "AZURE_SP_PASSWORD",
-			"source": {
-			"env": "SP_PASSWORD"
-			}
-		},
-		{
-			"name": "AZURE_SUBSCRIPTION_ID",
-			"source": {
-			"env": "SUBSCRIPTION_ID"
-			}
-		},
-		{
-			"name": "TENANT_ID_OR_DNS",
-			"source": {
-			"env": "SP_TENANT"
-			}
-		}
+		  }
 		]
 	}
 	`
 
-	_, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' > ~/.porter/credentials/aks-kubeflow.json", credPORTER)).Output()
+	_, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' > ~/.porter/credentials/aks-kubeflow-msi.json", credPORTER)).Output()
 	if err != nil {
 		fmt.Println("Porter Setup: Could not create AKS credential mapping for Kubeflow Installer")
 		return err
@@ -159,19 +141,12 @@ func createAKSwithKubeflow() error {
 	echo "Creating Resource group $SAME_RESOURCE_GROUP in $SAME_LOCATION"
 	az group create -n $SAME_RESOURCE_GROUP --location $SAME_LOCATION -onone
 	echo "Creating AKS cluster $SAME_CLUSTER_NAME"
-	az aks create --resource-group $SAME_RESOURCE_GROUP --name $SAME_CLUSTER_NAME --node-count 3 --generate-ssh-keys --node-vm-size Standard_DS4_v2 --location $SAME_LOCATION --only-show-errors
+	az aks create --resource-group $SAME_RESOURCE_GROUP --name $SAME_CLUSTER_NAME --node-count 3 --generate-ssh-keys --node-vm-size Standard_DS4_v2 --location $SAME_LOCATION 1>/dev/null
 	echo "Downloading AKS Kubeconfig credentials"
-	az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP --only-show-errors
+	az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP 1>/dev/null
 	AKS_RESOURCE_ID=$(az aks show -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP --query id -otsv)
-	SP_NAME="SAME-AKS-read-$RANDOM"
-	echo "Creating Service Principal for Kubeflow deploy with ID: http://$SP_NAME"
-	export SP_PASSWORD=$(az ad sp create-for-rbac -n $SP_NAME --role "Azure Kubernetes Service Cluster User Role" --scopes $AKS_RESOURCE_ID --query password -otsv)
-	export SP_TENANT=$(az ad sp show --id http://$SP_NAME --query appOwnerTenantId -otsv)
-	export SP_CLIENT_ID=$(az ad sp show --id http://$SP_NAME --query appId -otsv)
-	export SUBSCRIPTION_ID=$(az account show --query id -otsv)
-	echo "Created Servive Principal http://$SP_NAME with App ID $SP_CLIENT_ID for Subscription $SUBSCRIPTION_ID belonging to Tenant $SP_TENANT"
 	echo "Installing Kubeflow into AKS Cluster via Porter"
-	porter install -c aks-kubeflow --tag ghcr.io/squillace/aks-kubeflow:v0.3.1 --param AZURE_RESOURCE_GROUP=$SAME_RESOURCE_GROUP --param CLUSTER_NAME=$SAME_CLUSTER_NAME 1>/dev/null
+	porter install -c aks-kubeflow-msi --reference ghcr.io/squillace/aks-kubeflow-msi:v0.1.7 1>/dev/null
 	echo "Kubeflow installed."
 	echo "TODO: Set up storage account."
 	`
