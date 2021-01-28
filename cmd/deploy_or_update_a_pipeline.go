@@ -18,6 +18,8 @@ import (
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+
+	"github.com/spf13/viper"
 )
 
 // DeployOrUpdateAPipeline takes a sameConfig and communicates with Kubeflow to deploy a piplene
@@ -47,6 +49,9 @@ func NewKFPConfig() *clientcmd.ClientConfig {
 	}
 
 	kubebytes, err := ioutil.ReadFile(kubeconfig)
+	if err != nil {
+		panic(err)
+	}
 	// uses kubeconfig current context
 	config, err := clientcmd.NewClientConfigFromBytes(kubebytes)
 	if err != nil {
@@ -83,9 +88,9 @@ func CreateRunFromCompiledPipeline(filePath string, pipelineName string, pipelin
 		runDescription = "Description of a new run."
 	}
 
-	uploadedPipeline := uploadPipeline(filePath, pipelineName, pipelineDescription)
-	createdExperiment := createExperiment(experimentName, experimentDescription)
-	runDetails := createRun(runName, uploadedPipeline.ID, createdExperiment.ID, runDescription, runParams)
+	uploadedPipeline := UploadPipeline(filePath, pipelineName, pipelineDescription)
+	createdExperiment := CreateExperiment(experimentName, experimentDescription)
+	runDetails := CreateRun(runName, uploadedPipeline.ID, createdExperiment.ID, runDescription, runParams)
 
 	fmt.Println("Pipeline ID: " + uploadedPipeline.ID)
 	fmt.Println("Run: " + runDetails.Run.ID + ":" + runDetails.Run.Status)
@@ -93,7 +98,7 @@ func CreateRunFromCompiledPipeline(filePath string, pipelineName string, pipelin
 	return runDetails.Run.ID
 }
 
-func uploadPipeline(filePath string, pipelineName string, pipelineDescription string) *pipelineuploadmodel.APIPipeline {
+func UploadPipeline(filePath string, pipelineName string, pipelineDescription string) *pipelineuploadmodel.APIPipeline {
 	kfpconfig := *NewKFPConfig()
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, true)
@@ -109,19 +114,24 @@ func uploadPipeline(filePath string, pipelineName string, pipelineDescription st
 		panic(err)
 	}
 
+	viper.Set("activepipeline", uploadedPipeline.ID)
+	viper.WriteConfig()
+
 	return uploadedPipeline
 }
 
-func createExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {
+func CreateExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {
 	kfpconfig := *NewKFPConfig()
-
 	experimentclient, err := apiclient.NewExperimentClient(kfpconfig, true)
 	if err != nil {
 		panic(err)
 	}
 	createExperimentParams := experimentparams.NewCreateExperimentParams()
-	createExperimentParams.Body.Name = experimentName
-	createExperimentParams.Body.Description = experimentDescription
+	expBody := experimentmodel.APIExperiment{
+		Name:        experimentName,
+		Description: experimentDescription,
+	}
+	createExperimentParams.Body = &expBody
 	createdExperiment, err := experimentclient.Create(createExperimentParams)
 
 	if err != nil {
@@ -131,7 +141,7 @@ func createExperiment(experimentName string, experimentDescription string) *expe
 	return createdExperiment
 }
 
-func createRun(runName string, pipelineID string, experimentID, runDescription string, runParameters map[string]string) *runmodel.APIRunDetail {
+func CreateRun(runName string, pipelineID string, experimentID string, runDescription string, runParameters map[string]string) *runmodel.APIRunDetail {
 	kfpconfig := *NewKFPConfig()
 
 	runParams := make([]*runmodel.APIParameter, 0)
@@ -146,10 +156,15 @@ func createRun(runName string, pipelineID string, experimentID, runDescription s
 	}
 
 	createRunParams := runparams.NewCreateRunParams()
-	createRunParams.Body.Name = runName
-	createRunParams.Body.Description = runDescription
-	createRunParams.Body.PipelineSpec.Parameters = runParams
-	createRunParams.Body.PipelineSpec.PipelineID = pipelineID
+	runBody := runmodel.APIRun{
+		Name:        runName,
+		Description: runDescription,
+		PipelineSpec: &runmodel.APIPipelineSpec{
+			Parameters: runParams,
+			PipelineID: pipelineID,
+		},
+	}
+	createRunParams.Body = &runBody
 
 	resourceKey := runmodel.APIResourceKey{ID: experimentID, Type: runmodel.APIResourceTypeEXPERIMENT}
 	resourceRef := runmodel.APIResourceReference{

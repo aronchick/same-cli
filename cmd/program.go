@@ -17,8 +17,11 @@ package cmd
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // programCmd represents the program command
@@ -40,9 +43,90 @@ var createProgramCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		programName, err := cmd.PersistentFlags().GetString("name")
+		if err != nil {
+			return err
+		}
+		programDescription, err := cmd.PersistentFlags().GetString("description")
+		if err != nil {
+			return err
+		}
+
+		// HACK: Currently Kubeconfig must define default namespace
+		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
+			println("Could not set kubeconfig default context to use kubeflow namespace.")
+			return err
+		}
 
 		// for demo
 		fmt.Println(fileName)
+
+		UploadPipeline(fileName, programName, programDescription)
+
+		return nil
+	},
+}
+
+var runProgramCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Runs a SAME program",
+	Long:  `Runs a SAME program that was already created.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		pipelineId, err := cmd.PersistentFlags().GetString("program-id")
+		if err != nil {
+			pipelineId = ""
+		}
+		if pipelineId == "" {
+			viper.ReadInConfig()
+			pipelineId = viper.GetString("activepipeline")
+			if pipelineId == "" {
+				println("Must specify --program-id, or create new SAME program.")
+			}
+		}
+
+		runName, err := cmd.PersistentFlags().GetString("run-name")
+		if err != nil {
+			return err
+		}
+		runDescription, err := cmd.PersistentFlags().GetString("run-description")
+		if err != nil {
+			runDescription = ""
+		}
+
+		experimentName, err := cmd.PersistentFlags().GetString("experiment-name")
+		if err != nil {
+			experimentName = "SAME Experiment"
+		}
+
+		experimentDescription, err := cmd.PersistentFlags().GetString("experiment-description")
+		if err != nil {
+			experimentName = "A SAME Experiment"
+		}
+
+		params, _ := cmd.PersistentFlags().GetStringSlice("run-param")
+
+		runParams := make(map[string]string)
+
+		for _, param := range params {
+			parts := strings.Split(param, "=")
+			if len(parts) != 2 {
+				println(fmt.Sprintf("Invalid param format %s. Expect: key=value", param))
+			}
+			runParams[parts[0]] = parts[1]
+		}
+
+		// HACK: Currently Kubeconfig must define default namespace
+		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
+			println("Could not set kubeconfig default context to use kubeflow namespace.")
+			return err
+		}
+
+		// TODO: Use an existing experiment if name exists
+		experimentId := CreateExperiment(experimentName, experimentDescription).ID
+		runDetails := CreateRun(runName, pipelineId, experimentId, runDescription, runParams)
+
+		fmt.Printf("Program run created with ID %s. Current status: %s", runDetails.Run.ID, runDetails.Run.Status)
 
 		return nil
 	},
@@ -53,6 +137,19 @@ func init() {
 
 	createProgramCmd.PersistentFlags().String("file", "", "a SAME program file")
 	createProgramCmd.MarkPersistentFlagRequired("file")
+	createProgramCmd.PersistentFlags().String("name", "SAME Program", "The program name")
+	createProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
+
+	programCmd.AddCommand(runProgramCmd)
+
+	runProgramCmd.PersistentFlags().String("program-id", "", "The ID of a SAME Program")
+	runProgramCmd.PersistentFlags().String("experiment-name", "", "The name of a SAME Experiment to be created or reused.")
+	runProgramCmd.MarkPersistentFlagRequired("experiment-name")
+	runProgramCmd.PersistentFlags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
+	runProgramCmd.PersistentFlags().String("run-name", "", "The name of the SAME program run.")
+	runProgramCmd.MarkPersistentFlagRequired("run-name")
+	runProgramCmd.PersistentFlags().String("run-description", "", "A description of the SAME program run.")
+	runProgramCmd.PersistentFlags().StringSlice("run-param", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
 
 	rootCmd.AddCommand(programCmd)
 
