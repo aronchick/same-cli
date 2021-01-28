@@ -122,7 +122,6 @@ func UploadPipeline(filePath string, pipelineName string, pipelineDescription st
 
 func CreateExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {
 	kfpconfig := *NewKFPConfig()
-	kfpconfig.Namespace()
 	experimentclient, err := apiclient.NewExperimentClient(kfpconfig, true)
 	if err != nil {
 		panic(err)
