@@ -3,7 +3,6 @@ from typing import Dict
 import kfp.dsl as dsl
 import kfp.compiler as compiler
 import kfp.components as components
-from kubernetes.client.models import V1EnvFromSource, V1SecretKeySelector
 
 @dsl.pipeline(
   name='Iris Classifaction',
