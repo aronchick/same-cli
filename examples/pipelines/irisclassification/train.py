@@ -108,24 +108,31 @@ def train_model(mnt_path: str = '/mnt/azure', batch_size: int = 32, num_epochs: 
         epoch_loss_avg = tf.keras.metrics.Mean()
         epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
 
-    # Training loop - using batches of 32
-    for x, y in train_dataset:
-        # Optimize the model
-        loss_value, grads = grad(model, x, y)
-        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+        # Training loop
+        for x, y in train_dataset:
+            # Optimize the model
+            loss_value, grads = grad(model, x, y)
+            optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
-        # Track progress
-        epoch_loss_avg.update_state(loss_value)  # Add current batch loss
-        # Compare predicted label to actual label
-        # training=True is needed only if there are layers with different
-        # behavior during training versus inference (e.g. Dropout).
-        epoch_accuracy.update_state(y, model(x, training=True))
+            # Track progress
+            epoch_loss_avg.update_state(loss_value)  # Add current batch loss
+            # Compare predicted label to actual label
+            # training=True is needed only if there are layers with different
+            # behavior during training versus inference (e.g. Dropout).
+            epoch_accuracy.update_state(y, model(x, training=True))
 
-    # End epoch
-    train_loss_results.append(epoch_loss_avg.result())
-    train_accuracy_results.append(epoch_accuracy.result())
+        # End epoch
+        train_loss_results.append(epoch_loss_avg.result())
+        train_accuracy_results.append(epoch_accuracy.result())
 
-    if epoch % 50 == 0:
-        print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,
-                                                                    epoch_loss_avg.result(),
-                                                                    epoch_accuracy.result()))
+        if epoch % 50 == 0:
+            print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,
+                                                                        epoch_loss_avg.result(),
+                                                                        epoch_accuracy.result()))
+    print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,
+                                                                        epoch_loss_avg.result(),
+                                                                        epoch_accuracy.result()))
+    
+    model_path = str(base_path.joinpath('model.h5').resolve(strict=False))
+    print("Saving model to {0}".format(model_path))
+    model.save(model_path, include_optimizer=False, save_format='h5')
