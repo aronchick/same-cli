@@ -1,3 +1,7 @@
+# PLEASE ONLY CONTRIBUTE WITH THE EXPECTATION THAT 100% OF THIS REPO TO BE DELETED BY 2021-05-01.
+# (we're big on keeping our commitments, but we may break this one)
+# (that said, it's a good assumption that nothing you do here will last in any way other than for archival purposes)
+
 # User experience
 
 Our goal is to have a user experience that looks like this:
