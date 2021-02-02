@@ -85,7 +85,6 @@ func ExecuteInit(sameRepoName string) {
 
 	full_repo_url := fmt.Sprintf("https://github.com/Contoso-University/%v", sameRepoName)
 	nextCommand("gh", []string{"repo", "create", "-p", "the-same-project/same-repo", "-y", "--public", fmt.Sprintf("Contoso-University/%v", sameRepoName)}, dir)
-	// full_repo_url := "https://github.com/Contoso-University/arxiv128391-53090936"
 
 	if err != nil {
 		log.Errorf("unable to clone the SAME project repository: %v", err.Error())
@@ -105,56 +104,6 @@ func ExecuteInit(sameRepoName string) {
 		log.Errorf("unable to clone the with go-git repository: %v", err.Error())
 	}
 	_ = repo
-
-	// CheckIfError(err)
-
-	// // ... retrieving the commit being pointed by HEAD
-	// Info("git show-ref --head HEAD")
-	// ref, err := r.Head()
-	// CheckIfError(err)
-	// fmt.Println(ref.Hash())
-
-	// w, err := r.Worktree()
-	// CheckIfError(err)
-
-	// // ... checking out to commit
-	// Info("git checkout %s", commit)
-	// err = w.Checkout(&git.CheckoutOptions{
-	// 	Hash: plumbing.NewHash(commit),
-	// })
-	// CheckIfError(err)
-
-	// // ... retrieving the commit being pointed by HEAD, it shows that the
-	// // repository is pointing to the giving commit in detached mode
-	// Info("git show-ref --head HEAD")
-	// ref, err = r.Head()
-	// CheckIfError(err)
-	// fmt.Println(ref.Hash())
-	// // nextCommand("sed", []string{"-i", "'s/master/main/g'", ".git/config"}, final_local_dir)
-	// nextCommand("git", []string{"fetch", "--all"}, dir)
-	// nextCommand("git", []string{"checkout", "-b", "main", "--track", "origin/main"}, final_local_dir)
-
-	// //	nextCommand("git", []string{"fetch", "origin"}, dir)
-	// // nextCommand("git", []string{"pull", "origin/main"}, dir)
-	// // nextCommand("git", []string{"checkout", "-B", "main", "-t", "origin/main"}, dir)
-
-	// // nextCommand("git", []string{"switch", "-c", "main", "--track", "origin/main"}, dir)
-	// // nextCommand("git", []string{"checkout", "-B", "main", "--track", "origin/main"}, dir)
-	// // nextCommand("touch", []string{"README.md"}, dir)
-	// // nextCommand("git", []string{"add", "."}, dir)
-	// // nextCommand("git", []string{"commit", "-am."}, dir)
-	// // nextCommand("git", []string{"checkout", "-B", "main", "--track", "origin/main"}, dir)
-	// // nextCommand("git", []string{"branch", "--set-upstream-to=main", "main"}, dir)
-	// // nextCommand("git", []string{"fetch", "--all"}, dir)
-	// // nextCommand("git", []string{"pull", "-r", "--allow-unrelated-histories", "origin", "main"}, dir)
-
-	// // nextCommand("git", []string{"checkout", "-B", "main"}, dir)
-	// // nextCommand("touch", []string{"README.md"}, dir)
-	// // nextCommand("git", []string{"add", "."}, dir)
-	// // nextCommand("git", []string{"commit", "-am."}, dir)
-	// // nextCommand("git", []string{"pull", "-f", "--allow-unrelated-histories", "-n", "--rebase"}, dir)
-	// //nextCommand("git", []string{"branch", "--set-upstream-to=origin/main", "main"}, dir)
-	// // nextCommand("git", []string{"pull"}, dir)
 
 	return
 }
