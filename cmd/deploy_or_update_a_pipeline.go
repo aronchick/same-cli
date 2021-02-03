@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
@@ -14,6 +15,8 @@ import (
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/viper"
 )
@@ -98,7 +101,11 @@ func UploadPipeline(filePath string, pipelineName string, pipelineDescription st
 	}
 
 	viper.Set("activepipeline", uploadedPipeline.ID)
-	viper.WriteConfig()
+	err = viper.WriteConfig()
+	if err != nil {
+		log.Fatal(fmt.Sprintf("could not set file flag as required: %v", err))
+		os.Exit(1)
+	}
 
 	return uploadedPipeline
 }

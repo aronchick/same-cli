@@ -17,6 +17,8 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -78,7 +80,11 @@ var runProgramCmd = &cobra.Command{
 			pipelineId = ""
 		}
 		if pipelineId == "" {
-			viper.ReadInConfig()
+			err = viper.ReadInConfig()
+			if err != nil {
+				log.Fatal(fmt.Sprintf("error loading configuration file: %v", err))
+				os.Exit(1)
+			}
 			pipelineId = viper.GetString("activepipeline")
 			if pipelineId == "" {
 				println("Must specify --program-id, or create new SAME program.")
@@ -136,7 +142,12 @@ func init() {
 	programCmd.AddCommand(createProgramCmd)
 
 	createProgramCmd.PersistentFlags().String("file", "", "a SAME program file")
-	createProgramCmd.MarkPersistentFlagRequired("file")
+	err := createProgramCmd.MarkPersistentFlagRequired("file")
+	if err != nil {
+		log.Fatal(fmt.Sprintf("could not set 'file' flag as required: %v", err))
+		os.Exit(1)
+	}
+
 	createProgramCmd.PersistentFlags().String("name", "SAME Program", "The program name")
 	createProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
 
@@ -144,10 +155,20 @@ func init() {
 
 	runProgramCmd.PersistentFlags().String("program-id", "", "The ID of a SAME Program")
 	runProgramCmd.PersistentFlags().String("experiment-name", "", "The name of a SAME Experiment to be created or reused.")
-	runProgramCmd.MarkPersistentFlagRequired("experiment-name")
+	err = runProgramCmd.MarkPersistentFlagRequired("experiment-name")
+	if err != nil {
+		log.Fatal(fmt.Sprintf("could not set 'experiment-name' flag as required: %v", err))
+		os.Exit(1)
+	}
+
 	runProgramCmd.PersistentFlags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
 	runProgramCmd.PersistentFlags().String("run-name", "", "The name of the SAME program run.")
-	runProgramCmd.MarkPersistentFlagRequired("run-name")
+	err = runProgramCmd.MarkPersistentFlagRequired("run-name")
+	if err != nil {
+		log.Fatal(fmt.Sprintf("could not set 'run-name' flag as required: %v", err))
+		os.Exit(1)
+	}
+
 	runProgramCmd.PersistentFlags().String("run-description", "", "A description of the SAME program run.")
 	runProgramCmd.PersistentFlags().StringSlice("run-param", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
 

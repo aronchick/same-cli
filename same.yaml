@@ -60,3 +60,5 @@ run:
     parameters:
         epochs: 1000
         batch_size: 100
+debugging_features_flags:
+    createStorage: false

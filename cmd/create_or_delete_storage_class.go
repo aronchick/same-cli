@@ -2,16 +2,12 @@ package cmd
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"path/filepath"
 
 	apiv1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
 // StorageClassSetupInterface : Interface for creating and deleting Storage Classes in Kubernetes
@@ -49,7 +45,6 @@ func (setup *azureBlobStorageClassSetup) configureStorageClass(config map[string
 		"-o entry_timeout=120",
 		"-o negative_timeout=120"}
 
-	return
 }
 
 // Create : Create Storage Class in Kubernetes Cluster
@@ -89,28 +84,29 @@ func NewAzureBlobStorageSetup(clientset *kubernetes.Clientset, blobStorageResour
 
 }
 
-func createStorage() {
+// Below is not yet implemented - blocking linting
+// func createStorage() {
 
-	// Load kubeconfig
-	var kubeconfig string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = filepath.Join(home, ".kube", "config")
-	} else {
-		panic("Could not find kube config!")
-	}
-	flag.Parse()
+// 	// Load kubeconfig
+// 	var kubeconfig string
+// 	if home := homedir.HomeDir(); home != "" {
+// 		kubeconfig = filepath.Join(home, ".kube", "config")
+// 	} else {
+// 		panic("Could not find kube config!")
+// 	}
+// 	flag.Parse()
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		panic(err)
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err)
-	}
+// 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	clientset, err := kubernetes.NewForConfig(config)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	// Create the Azure Blob Storage Setup here
-	storageSetup := NewAzureBlobStorageSetup(clientset, "BlobStorageResourceGroup", "BlobStorageAccountName", "BlobStorageContainerName")
-	storageSetup.Create()
+// 	// Create the Azure Blob Storage Setup here
+// 	storageSetup := NewAzureBlobStorageSetup(clientset, "BlobStorageResourceGroup", "BlobStorageAccountName", "BlobStorageContainerName")
+// 	storageSetup.Create()
 
-}
+// }

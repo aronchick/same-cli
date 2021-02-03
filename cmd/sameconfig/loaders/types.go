@@ -19,16 +19,17 @@ type SameConfig struct {
 
 // SameSpec is the spec of a SAME project
 type SameSpec struct {
-	APIVersion string    `yaml:"apiVersion,omitempty"`
-	Version    string    `yaml:"version,omitempty"`
-	Bases      []string  `yaml:"bases,omitempty"`
-	Metadata   Metadata  `yaml:"metadata,omitempty"`
-	EnvFiles   []string  `yaml:"envfiles,omitempty"`
-	Resources  Resource  `yaml:"resources,omitempty"`
-	Workflow   Workflow  `yaml:"workflow,omitempty"`
-	Pipeline   Pipeline  `yaml:"pipeline,omitempty"`
-	DataSets   []DataSet `yaml:"dataSets,omitempty"`
-	Run        Run       `yaml:"run,omitempty"`
+	APIVersion            string          `yaml:"apiVersion,omitempty"`
+	Version               string          `yaml:"version,omitempty"`
+	Bases                 []string        `yaml:"bases,omitempty"`
+	Metadata              Metadata        `yaml:"metadata,omitempty"`
+	EnvFiles              []string        `yaml:"envfiles,omitempty"`
+	Resources             Resource        `yaml:"resources,omitempty"`
+	Workflow              Workflow        `yaml:"workflow,omitempty"`
+	Pipeline              Pipeline        `yaml:"pipeline,omitempty"`
+	DataSets              []DataSet       `yaml:"dataSets,omitempty"`
+	Run                   Run             `yaml:"run,omitempty"`
+	DebuggingFeatureFlags map[string]bool `yaml:"run,omitempty"`
 }
 
 // Metadata is summary data about the SAME program.

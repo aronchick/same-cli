@@ -39,3 +39,4 @@ __pycache__/
 *.py[cod]
 
 .venv
+__debug*

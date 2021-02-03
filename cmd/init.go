@@ -68,7 +68,7 @@ func init() {
 func ExecuteInit(sameRepoName string) {
 	// Using a fixed seed will produce the same output on every run.
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	if randSuffix == true {
+	if randSuffix {
 		sameRepoName = fmt.Sprintf("%v-%v", sameRepoName, r.Int31())
 	}
 
@@ -105,7 +105,6 @@ func ExecuteInit(sameRepoName string) {
 	}
 	_ = repo
 
-	return
 }
 
 func nextCommand(command string, args []string, dir string) {
