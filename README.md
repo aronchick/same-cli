@@ -2,8 +2,17 @@
 - we're big on keeping our commitments, but we may break this one
 - that said, it's a good assumption that nothing you do here will last in any way other than for archival purposes
 
-# User experience
+# Building SAME
+- Start by cloning this repo - `git@github.com:azure-octo/same-cli.git samecli`
+- Then just run `make all`
+- This will build a binary and put it in `bin\same`
+  
+# Adding more functionality
+For now, all functionality is in the `cmd` directory. To add new functionality:
+- For entirely new functionality, use `cobra add <verb>`. This will add a new go file in cmd\verb.go.
+- For existing functionality, edit the file in `cmd\verb.go`. Our norm is that the functionality for the verb is in a method named `verb()` in that file.
 
+# User experience
 Our goal is to have a user experience that looks like this:
 ```
 $ same create -f https://github.com/contoso/great_nlp_model
