@@ -143,3 +143,6 @@ test-generate: test-init dockerfordesktop.generate none.generate
 
 test-apply: test-generate dockerfordesktop.apply none.apply
 
+release:
+	echo "Executing 'make release'"
+	# NOOP
