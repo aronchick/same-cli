@@ -4,9 +4,20 @@
 
 # Building SAME
 - Start by cloning this repo - `git@github.com:azure-octo/same-cli.git samecli`
+- Install poetry (which we use to create a virtual environment)
+    - `pip install poetry`
+    - `poetry install`
+    - `poetry shell`
 - Then just run `make all`
 - This will build a binary and put it in `bin\same`
   
+# Committing changes
+- After you have made changes to your branch, when you commit your code, you will see an array of pre-commit evaluations.
+- Please don't commit until you see something that looks like this:
+
+- If you need to skip this (for example, you need to check in a bunch of vendored libraries), add the `--no-verify` flag. e.g. `git commit -a -m 'adding vendored libs' --no-verify`
+  - Please try to make sure your commit ONLY includes the vendored libs, otherwise you can break the build.
+
 # Adding more functionality
 For now, all functionality is in the `cmd` directory. To add new functionality:
 - For entirely new functionality, use `cobra add <verb>`. This will add a new go file in cmd\verb.go.

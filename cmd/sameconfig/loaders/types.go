@@ -29,7 +29,7 @@ type SameSpec struct {
 	Pipeline              Pipeline        `yaml:"pipeline,omitempty"`
 	DataSets              []DataSet       `yaml:"dataSets,omitempty"`
 	Run                   Run             `yaml:"run,omitempty"`
-	DebuggingFeatureFlags map[string]bool `yaml:"run,omitempty"`
+	DebuggingFeatureFlags map[string]bool `yaml:"debugging_features_flags,omitempty"`
 }
 
 // Metadata is summary data about the SAME program.

@@ -49,6 +49,21 @@ vet:
 	@${GO} vet ./config ./cmd/...
 #	@${GO} vet ./config ./cmd/... ./pkg/...
 
+################################################################################
+# Target: modtidy                                                              #
+################################################################################
+.PHONY: modtidy
+modtidy:
+	go mod tidy
+	
+################################################################################
+# Target: check-diff                                                           #
+################################################################################
+.PHONY: check-diff
+check-diff:
+	git diff --exit-code ./go.mod # check no changes
+	git diff --exit-code ./go.sum # check no changes
+
 
 build: build-same
 
