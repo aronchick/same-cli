@@ -64,25 +64,44 @@ check-diff:
 	git diff --exit-code ./go.mod # check no changes
 	git diff --exit-code ./go.sum # check no changes
 
-
+################################################################################
+# Target: build	                                                               #
+################################################################################
+.PHONY: build
 build: build-same
 
+################################################################################
+# Target: build-same                                                           #
+################################################################################
+.PHONY: build-same
 build-same: fmt vet
 	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 	cp bin/$(ARCH)/same bin/same
 
 # Fast rebuilds useful for development.
 # Does not regenerate code; assumes you already ran build-same once.
+################################################################################
+# Target: build-same-fast                                                      #
+################################################################################
+.PHONY: build-same-fast
 build-same-fast: fmt vet
 	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 
 # Release tarballs suitable for upload to GitHub release pages
+################################################################################
+# Target: build-same-tgz                                                       #
+################################################################################
+.PHONY: build-same-tgz
 build-same-tgz: build-same
 	chmod a+rx ./bin/same
 	rm -f bin/*.tgz
 	cd bin/$(ARCH) && tar -cvzf same_$(TAG)_$(ARCH).tar.gz ./same
 
 # push the releases to a GitHub page
+################################################################################
+# Target: push-to-github-release                                               #
+################################################################################
+.PHONY: push-to-github-release
 push-to-github-release: build-same-tgz
 	github-release upload \
 	    --user same \
@@ -91,6 +110,10 @@ push-to-github-release: build-same-tgz
 	    --name "same_$(TAG)_$(ARCH).tar.gz" \
 	    --file bin/$(ARCH)/same_$(TAG)_$(ARCH).tar.gz
 
+################################################################################
+# Target: build-same-container                                                 #
+################################################################################
+.PHONY: build-same-container
 build-same-container:
 	DOCKER_BUILDKIT=1 docker build \
                 --build-arg REPO="$(REPO)" \
@@ -110,10 +133,18 @@ build-same-container:
 
 # Build but don't attach the latest tag. This allows manual testing/inspection of the image
 # first.
+################################################################################
+# Target: push                                                                 #
+################################################################################
+.PHONY: push
 push: build
 	docker push $(BOOTSTRAPPER_IMG):$(TAG)
 	@echo Pushed $(BOOTSTRAPPER_IMG):$(TAG)
 
+################################################################################
+# Target: install                                                              #
+################################################################################
+.PHONY: install
 install: build-same dockerfordesktop.so
 	@echo copying bin/same to /usr/local/bin
 	@cp bin/same /usr/local/bin
@@ -123,7 +154,10 @@ install: build-same dockerfordesktop.so
 #
 # The rules in this section are used to build the docker image that provides
 # a suitable go build environment for same
-
+################################################################################
+# Target: build-builder-container                                              #
+################################################################################
+.PHONY: build-builder-container
 build-builder-container:
 	docker build \
 		--build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
@@ -133,26 +167,47 @@ build-builder-container:
 
 #***************************************************************************************************
 
+################################################################################
+# Target: clean					                                               #
+################################################################################
+.PHONY: clean
 clean:
 	rm -rf test && mkdir test
 
-#**************************************************************************************************
-# checks licenses
+################################################################################
+# Target: check-licenses		                                               #
+################################################################################
+.PHONY: check-licenses
 check-licenses:
 	# ./third_party/check-license.sh
+
+#
 # rules to run unittests
 #
+
+################################################################################
+# Target: test					                                               #
+################################################################################
+.PHONY: test
 test: build-same check-licenses
 	go test
 	# ginkgo test/... -v
 
-
 # Run the unittests and output a junit report for use with prow
+################################################################################
+# Target: test-junit			                                               #
+################################################################################
+.PHONY: test-junit
 test-junit: build-same
 	echo Running tests ... junit_file=$(JUNIT_FILE)
 	go test ./... -v 2>&1 | go-junit-report > $(JUNIT_FILE) --set-exit-code
 
 #***************************************************************************************************
+
+################################################################################
+# Target: test-init 			                                               #
+################################################################################
+.PHONY: test-init
 test-init: clean install dockerfordesktop.init none.init-no-platform
 
 test-generate: test-init dockerfordesktop.generate none.generate
