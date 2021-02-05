@@ -143,7 +143,8 @@ check-licenses:
 # rules to run unittests
 #
 test: build-same check-licenses
-	ginkgo test/... -v
+	go test
+	# ginkgo test/... -v
 
 
 # Run the unittests and output a junit report for use with prow
