@@ -20,3 +20,5 @@ import cmd "github.com/azure-octo/same-cli/cmd"
 func main() {
 	cmd.Execute()
 }
+
+// Adding a silly test

@@ -221,6 +221,8 @@ github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
+# github.com/google/go-cmp v0.5.4
+## explicit
 # github.com/google/gofuzz v1.1.0
 github.com/google/gofuzz
 # github.com/google/uuid v1.1.2
@@ -387,6 +389,8 @@ github.com/spf13/pflag
 # github.com/spf13/viper v1.7.1
 ## explicit
 github.com/spf13/viper
+# github.com/stretchr/testify v1.7.0
+## explicit
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
 # github.com/ulikunitz/xz v0.5.8
