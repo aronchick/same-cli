@@ -20,6 +20,8 @@ VERBOSE ?=
 
 export GO111MODULE = on
 export GO = go
+export PYTHON = python3
+export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = same-cli
 
@@ -34,7 +36,6 @@ ARCH = linux
 
 # Location of junit file
 JUNIT_FILE ?= /tmp/report.xml
-
 
 all: build
 
@@ -63,6 +64,14 @@ modtidy:
 check-diff:
 	git diff --exit-code ./go.mod # check no changes
 	git diff --exit-code ./go.sum # check no changes
+
+## Run all pre-commit hooks
+################################################################################
+# Target: precommit                                                            #
+################################################################################
+.PHONY: precommit
+precommit:
+	${PRECOMMIT} run --all
 
 ################################################################################
 # Target: build	                                                               #
