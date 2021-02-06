@@ -85,8 +85,8 @@ az account set --subscription $SAME_SUBSCRIPTION_ID
 ```
 
 - EITHER: Create an AKS Cluster
-
 # Select a resource group from the above list
+
 ```
 export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
 export SAME_CLUSTER_NAME="same_test_cluster_$(whoami)"
@@ -116,6 +116,16 @@ export SAME_LOCATION="west europe"
 terraform init
 terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
 terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
+```
+
+- Install CSI blob storage driver
+```
+curl -skSL https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/install-driver.sh | bash -s master --
+```
+
+- Create k8s secret for Azure Container access
+```
+kubectl create secret generic azure-secret --from-literal accountname="${SAME_PREFIX}ac" --from-literal accountkey=$(az keyvault secret show --vault-name $SAME_PREFIX-kv --name same-container-access | jq .value)
 ```
 
 - Set Environment Variables for your cluster
