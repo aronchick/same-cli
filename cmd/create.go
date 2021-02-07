@@ -131,6 +131,20 @@ func createAKSwithKubeflow() error {
 		return err
 	}
 
+	testLogin := `
+	#!/bin/bash
+	set -e
+	export CURRENT_LOGIN=` + "`" + `az account show -o json | jq '\''"\(.name) : \(.id)"'\''` + "`" + `
+	echo "You are logged in with the following credentials: $CURRENT_LOGIN"
+	echo "If this is not correct, please execute:"
+	echo "az account list -o json | jq '\''.[] | \"\(.name) : \(.id)\"'\''"
+	echo "az account set --subscription REPLACE_WITH_YOUR_SUBSCRIPTION_ID"
+	`
+
+	if err := executeInlineBashScript(testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account."); err != nil {
+		return err
+	}
+
 	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
 	theDEMOINSTALL := `
 	#!/bin/bash
@@ -185,6 +199,7 @@ func executeInlineBashScript(SCRIPT string, errorMessage string) error {
 		return err
 	}
 	err = scriptCMD.Start()
+
 	if err != nil {
 		fmt.Println(errorMessage)
 		return err
