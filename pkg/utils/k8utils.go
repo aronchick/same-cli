@@ -15,27 +15,28 @@ package utils
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/cenkalti/backoff"
-	"github.com/ghodss/yaml"
+
 	goyaml "github.com/go-yaml/yaml"
 	gogetter "github.com/hashicorp/go-getter"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	// configtypes "github.com/kubeflow/kfctl/v3/config"
 	// kfapis "github.com/kubeflow/kfctl/v3/pkg/apis"
 	// kftypes "github.com/kubeflow/kfctl/v3/pkg/apis/apps"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+
 	"io"
 	"io/ioutil"
+
+	log "github.com/sirupsen/logrus"
+
 	// "k8s.io/api/core/v1"
 	// k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	// "k8s.io/apimachinery/pkg/api/meta"
 	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	// "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	// k8stypes "k8s.io/apimachinery/pkg/types"
-	// k8syaml "k8s.io/apimachinery/pkg/util/yaml"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	// "k8s.io/cli-runtime/pkg/genericclioptions"
 	// "k8s.io/cli-runtime/pkg/printers"
 	// "k8s.io/client-go/kubernetes"
@@ -47,10 +48,7 @@ import (
 	netUrl "net/url"
 	"os"
 	"path"
-	"regexp"
 	// "sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"time"
 	// Auth plugins
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/azure"
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -147,10 +145,7 @@ func IsRemoteFile(configFile string) (bool, error) {
 	}
 	url, err := netUrl.Parse(configFile)
 	if err != nil {
-		return false, &kfapis.KfError{
-			Code:    int(kfapis.INVALID_ARGUMENT),
-			Message: fmt.Sprintf("Error parsing file path: %v", err),
-		}
+		return false, fmt.Errorf("unable to parse the configfile URL")
 	}
 	if url.Scheme != "" {
 		return true, nil
@@ -178,20 +173,14 @@ func GetObjectKindFromUri(configFile string) (string, error) {
 		log.Infof("Downloading %v to %v", configFile, appFile)
 		err = gogetter.GetFile(appFile, configFile)
 		if err != nil {
-			return "", &kfapis.KfError{
-				Code:    int(kfapis.INVALID_ARGUMENT),
-				Message: fmt.Sprintf("could not fetch specified config %s: %v", configFile, err),
-			}
+			return "", fmt.Errorf("could not fetch specified config %s: %v", configFile, err)
 		}
 	}
 
 	// Read contents
 	configFileBytes, err := ioutil.ReadFile(appFile)
 	if err != nil {
-		return "", &kfapis.KfError{
-			Code:    int(kfapis.INTERNAL_ERROR),
-			Message: fmt.Sprintf("could not read from config file %s: %v", configFile, err),
-		}
+		return "", fmt.Errorf("could not read from config file %s: %v", configFile, err)
 	}
 
 	BUFSIZE := 1024
@@ -200,10 +189,7 @@ func GetObjectKindFromUri(configFile string) (string, error) {
 	job := &unstructured.Unstructured{}
 	err = k8syaml.NewYAMLOrJSONDecoder(buf, BUFSIZE).Decode(job)
 	if err != nil {
-		return "", &kfapis.KfError{
-			Code:    int(kfapis.INVALID_ARGUMENT),
-			Message: fmt.Sprintf("could not decode specified config %s: %v", configFile, err),
-		}
+		return "", fmt.Errorf("could not decode specified config %s: %v", configFile, err)
 	}
 
 	return job.GetKind(), nil
