@@ -56,15 +56,15 @@ import (
 )
 
 const (
-	YamlSeparator              = "(?m)^---[ \t]*$"
-	CertDir                    = "/opt/ca"
-	controlPlaneLabel          = "control-plane"
-	katibMetricsCollectorLabel = "katib-metricscollector-injection"
-	KfDefAnnotation            = "kfctl.kubeflow.io"
-	ForceDelete                = "force-delete"
-	SetAnnotation              = "set-kubeflow-annotation"
-	KfDefInstance              = "kfdef-instance"
-	InstallByOperator          = "install-by-operator"
+	YamlSeparator = "(?m)^---[ \t]*$"
+	CertDir       = "/opt/ca"
+	// controlPlaneLabel          = "control-plane"
+	// katibMetricsCollectorLabel = "katib-metricscollector-injection"
+	KfDefAnnotation   = "kfctl.kubeflow.io"
+	ForceDelete       = "force-delete"
+	SetAnnotation     = "set-kubeflow-annotation"
+	KfDefInstance     = "kfdef-instance"
+	InstallByOperator = "install-by-operator"
 )
 
 func generateRandStr(length int) string {
@@ -467,7 +467,7 @@ func GetObjectKindFromUri(configFile string) (string, error) {
 // 	return nil
 // }
 
-func (a *Apply) tempFile(data []byte) *os.File {
+func tempFile(data []byte) *os.File {
 	tmpfile, err := ioutil.TempFile("/tmp", "kout")
 	if err != nil {
 		log.Fatal(err)
