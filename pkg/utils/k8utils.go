@@ -140,18 +140,21 @@ const (
 // }
 
 // Checks if the path configFile is remote (e.g. http://github...)
-func IsRemoteFilePath(configFile string) (bool, error) {
-	if configFile == "" {
+func IsRemoteFilePath(configFilePath string) (bool, error) {
+	if configFilePath == "" {
 		return false, fmt.Errorf("config file must be a URI or a path")
 	}
-	url, err := netUrl.Parse(configFile)
+	url, err := netUrl.Parse(configFilePath)
 	if err != nil {
 		return false, fmt.Errorf("unable to parse the configfile URL")
 	}
-	if url.Scheme != "" {
-		return true, nil
+	if url.Scheme == "" {
+		message := fmt.Errorf("No scheme specified in the URL - '%v'", url)
+		log.Errorf(message.Error())
+		return false, message
 	}
-	return false, nil
+
+	return true, nil
 }
 
 func GetObjectKindFromUri(configFile string) (string, error) {
