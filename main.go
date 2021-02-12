@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import cmd "github.com/azure-octo/same-cli/cmd"
+import "github.com/azure-octo/same-cli/cmd"
 
 func main() {
 	cmd.Execute()

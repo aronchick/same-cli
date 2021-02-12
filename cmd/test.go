@@ -51,7 +51,7 @@ to quickly create a Cobra application.`,
 		fmt.Println(path) // for example /home/user
 
 		fileURI, _ := filepath.Abs("same.yaml")
-		sameConfig, err := ParseConfig(ctx, "0.0.1", fileURI)
+		sameConfig, err := ParseConfig(ctx, fileURI)
 
 		if err != nil {
 			fmt.Printf("failed to load config: %v", err.Error())

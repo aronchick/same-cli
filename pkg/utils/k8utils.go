@@ -16,6 +16,7 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	goyaml "github.com/go-yaml/yaml"
 	gogetter "github.com/hashicorp/go-getter"
@@ -44,9 +45,9 @@ import (
 	// kubectlapply "k8s.io/kubernetes/pkg/kubectl/cmd/apply"
 	// kubectldelete "k8s.io/kubernetes/pkg/kubectl/cmd/delete"
 	// cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"math/rand"
+
+	"net/url"
 	netUrl "net/url"
-	"os"
 	"path"
 	// "sigs.k8s.io/controller-runtime/pkg/client"
 	// Auth plugins
@@ -67,14 +68,14 @@ const (
 	InstallByOperator = "install-by-operator"
 )
 
-func generateRandStr(length int) string {
-	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = chars[rand.Intn(len(chars))]
-	}
-	return string(b)
-}
+// func generateRandStr(length int) string {
+// 	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+// 	b := make([]byte, length)
+// 	for i := range b {
+// 		b[i] = chars[rand.Intn(len(chars))]
+// 	}
+// 	return string(b)
+// }
 
 // func NewDefaultBackoff() *backoff.ExponentialBackOff {
 // 	b := backoff.NewExponentialBackOff()
@@ -139,7 +140,7 @@ func generateRandStr(length int) string {
 // }
 
 // Checks if the path configFile is remote (e.g. http://github...)
-func IsRemoteFile(configFile string) (bool, error) {
+func IsRemoteFilePath(configFile string) (bool, error) {
 	if configFile == "" {
 		return false, fmt.Errorf("config file must be a URI or a path")
 	}
@@ -154,7 +155,7 @@ func IsRemoteFile(configFile string) (bool, error) {
 }
 
 func GetObjectKindFromUri(configFile string) (string, error) {
-	isRemoteFile, err := IsRemoteFile(configFile)
+	isRemoteFile, err := IsRemoteFilePath(configFile)
 	if err != nil {
 		return "", err
 	}
@@ -193,6 +194,23 @@ func GetObjectKindFromUri(configFile string) (string, error) {
 	}
 
 	return job.GetKind(), nil
+}
+
+func JoinURL(basePath string, paths ...string) (*url.URL, error) {
+
+	u, err := url.Parse(basePath)
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid url")
+	}
+
+	p2 := append([]string{u.Path}, paths...)
+
+	result := path.Join(p2...)
+
+	u.Path = result
+
+	return u, nil
 }
 
 // func DeleteResourceFromFile(config *rest.Config, filename string) error {
@@ -467,19 +485,19 @@ func GetObjectKindFromUri(configFile string) (string, error) {
 // 	return nil
 // }
 
-func tempFile(data []byte) *os.File {
-	tmpfile, err := ioutil.TempFile("/tmp", "kout")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := tmpfile.Write(data); err != nil {
-		log.Fatal(err)
-	}
-	if _, err := tmpfile.Seek(0, 0); err != nil {
-		log.Fatal(err)
-	}
-	return tmpfile
-}
+// func tempFile(data []byte) *os.File {
+// 	tmpfile, err := ioutil.TempFile("/tmp", "kout")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	if _, err := tmpfile.Write(data); err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	if _, err := tmpfile.Seek(0, 0); err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	return tmpfile
+// }
 
 // func (a *Apply) deleteFlags(usage string) *kubectldelete.DeleteFlags {
 // 	cascade := true
@@ -601,4 +619,35 @@ func SplitYAML(resources []byte) ([][]byte, error) {
 		res = append(res, valueBytes)
 	}
 	return res, nil
+}
+
+// IsValidUrl uses netUrl to parse the url string
+func IsValidUrl(toTest string) bool {
+	_, err := netUrl.ParseRequestURI(toTest)
+	if err != nil {
+		return false
+	} else {
+		return true
+	}
+}
+
+// FileToRetrive checks to see if the URL ends with same.yaml (or whatever is provided) and returns a well structured URL
+func UrlToRetrive(url string, fileName string) (fullUrl url.URL) {
+	if strings.HasSuffix(url, fileName) {
+		finalUrl, err := netUrl.Parse(url)
+		if err != nil {
+			log.Errorf("could not parse final url: %v", err)
+		}
+		return *finalUrl
+	}
+
+	u, err := netUrl.Parse(fileName)
+	if err != nil {
+		log.Fatalf("could not parse the file name: %v", err)
+	}
+	base, err := netUrl.Parse(url)
+	if err != nil {
+		log.Fatalf("could not parse the base url: %v", err)
+	}
+	return *base.ResolveReference(u)
 }

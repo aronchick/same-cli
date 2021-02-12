@@ -30,7 +30,7 @@ func Test_IsRemoteFile(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		isRemote, err := IsRemoteFile(test.filePath)
+		isRemote, err := IsRemoteFilePath(test.filePath)
 		if err != nil {
 			t.Errorf("Error checking IsRemoteFile: %v", err)
 		}

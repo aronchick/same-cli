@@ -16,12 +16,20 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"io/ioutil"
+	netUrl "net/url"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
+	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
+	"github.com/azure-octo/same-cli/pkg/utils"
+	gogetter "github.com/hashicorp/go-getter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -41,7 +49,11 @@ var createProgramCmd = &cobra.Command{
 	
 	This command configures the program but does not execute it.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fileName, err := cmd.PersistentFlags().GetString("file")
+		filePath, err := cmd.PersistentFlags().GetString("filePath")
+		if err != nil {
+			return err
+		}
+		fileName, err := cmd.PersistentFlags().GetString("fileName")
 		if err != nil {
 			return err
 		}
@@ -61,9 +73,11 @@ var createProgramCmd = &cobra.Command{
 		}
 
 		// for demo
-		fmt.Println(fileName)
+		fmt.Println(filePath)
 
-		UploadPipeline(fileName, programName, programDescription)
+		getFilePath(filePath, fileName)
+
+		UploadPipeline(filePath, programName, programDescription)
 
 		return nil
 	},
@@ -136,6 +150,67 @@ var runProgramCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func getFilePath(fileRoot string, fileName string) (filePath string) {
+	isRemoteFile, err := utils.IsRemoteFilePath(fileRoot)
+
+	if err != nil {
+		log.Fatalf("could not tell if the file was remote or not: %v", err)
+		os.Exit(1)
+	}
+
+	filePathToRead := path.Join(fileRoot, fileName)
+	if isRemoteFile {
+		tempSameDir, err := ioutil.TempDir("", "")
+		if err != nil {
+			log.Fatalf("error creating a temporary directory to copy the file to.")
+			os.Exit(1)
+		}
+
+		// Get path to store the file to
+		tempSamePath := path.Join(tempSameDir, "tmp_same.yaml")
+
+		configFileUri, err := netUrl.Parse(fileName)
+		if err != nil {
+			log.Fatalf("could not parse sameFile url: %v", err)
+			os.Exit(1)
+		}
+		finalUrl := utils.UrlToRetrive(configFileUri.String(), fileName)
+		log.Infof("Downloading from %v to %v", finalUrl, tempSamePath)
+		errGet := gogetter.GetFile(tempSamePath, finalUrl.String())
+		if errGet != nil {
+			log.Fatalf("could not parse sameFile url: %v", errGet)
+			os.Exit(1)
+		} else {
+			g := new(gogetter.FileGetter)
+			g.Copy = true
+			errGet := g.GetFile(tempSamePath, configFileUri)
+			if errGet != nil {
+				log.Fatalf("could not get sameFile from url: %v\nerror: %v", configFileUri, err)
+				os.Exit(1)
+			}
+		}
+
+		filePathToRead = tempSamePath
+	}
+
+	return filePathToRead
+}
+
+func getSameFileContents(filePath string) (sameconfig *loaders.SameConfig, err error) {
+	ctx := context.Background()
+
+	printVersion()
+
+	sameConfig, err := ParseConfig(ctx, filePath)
+
+	if err != nil {
+		log.Fatalf("could not load file at '%v': %v", filePath, err)
+		os.Exit(1)
+	}
+
+	return sameConfig, nil
 }
 
 func init() {

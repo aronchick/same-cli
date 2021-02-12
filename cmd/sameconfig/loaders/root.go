@@ -23,10 +23,6 @@ type Loader interface {
 	LoadSameDef(config SameConfig, out interface{}) error
 }
 
-// const (
-// 	Api = "kfdef.apps.kubeflow.org"
-// )
-
 // isValidURL reports if the URL is correct.
 func isValidURL(toTest string) bool {
 	_, err := netUrl.ParseRequestURI(toTest)
@@ -48,24 +44,24 @@ func IsRemoteFile(configFile string) (bool, error) {
 	return false, nil
 }
 
-// LoadConfigFromURI reads the samedef from a remote URI or local file,
+// LoadSAMEConfig reads the samedef from a remote URI or local file,
 // and returns the sameconfig.
-func LoadConfigFromURI(configFile string) (*SameConfig, error) {
-	if configFile == "" {
+func LoadSAMEConfig(configFilePath string) (*SameConfig, error) {
+	if configFilePath == "" {
 		return nil, fmt.Errorf("config file must be the URI of a SameDef spec")
 	}
 
-	isRemoteFile, err := IsRemoteFile(configFile)
+	isRemoteFile, err := IsRemoteFile(configFilePath)
 	if err != nil {
 		return nil, err
 	}
 
-	// appFile is configFile if configFile is local.
-	// Otherwise (configFile is remote), appFile points to a downloaded copy of configFile in tmp.
-	appFile := configFile
+	// appFile is configFilePath if configFilePath is local.
+	// Otherwise (configFile is remote), appFile points to a downloaded copy of configFilePath in tmp.
+	appFile := configFilePath
 	// If config is remote, download it to a temp dir.
 	if isRemoteFile {
-		// TODO(jlewi): We should check if configFile doesn't specify a protocol or the protocol
+		// TODO(jlewi): We should check if configFilePath doesn't specify a protocol or the protocol
 		// is file:// then we can just read it rather than fetching with go-getter.
 		appDir, err := ioutil.TempDir("", "")
 		if err != nil {
@@ -74,22 +70,22 @@ func LoadConfigFromURI(configFile string) (*SameConfig, error) {
 		// Open config file
 		appFile = path.Join(appDir, "tmp_app.yaml")
 
-		log.Infof("Downloading %v to %v", configFile, appFile)
-		configFileURI, err := netUrl.Parse(configFile)
+		log.Infof("Downloading %v to %v", configFilePath, appFile)
+		configFileURI, err := netUrl.Parse(configFilePath)
 		if err != nil {
 			log.Errorf("could not parse configFile url")
 		}
-		if isValidURL(configFile) {
-			errGet := gogetter.GetFile(appFile, configFile)
+		if isValidURL(configFilePath) {
+			errGet := gogetter.GetFile(appFile, configFilePath)
 			if errGet != nil {
-				return nil, fmt.Errorf("could not fetch specified config %s: %v", configFile, errGet)
+				return nil, fmt.Errorf("could not fetch specified config %s: %v", configFilePath, errGet)
 			}
 		} else {
 			g := new(gogetter.FileGetter)
 			g.Copy = true
 			errGet := g.GetFile(appFile, configFileURI)
 			if errGet != nil {
-				return nil, fmt.Errorf("could not fetch specified config %s: %v", configFile, err)
+				return nil, fmt.Errorf("could not fetch specified config %s: %v", configFilePath, err)
 			}
 		}
 	}
@@ -97,7 +93,7 @@ func LoadConfigFromURI(configFile string) (*SameConfig, error) {
 	// Read contents
 	configFileBytes, err := ioutil.ReadFile(appFile)
 	if err != nil {
-		return nil, fmt.Errorf("could not read from config file %s: %v", configFile, err)
+		return nil, fmt.Errorf("could not read from config file %s: %v", configFilePath, err)
 	}
 
 	// Check API version.
