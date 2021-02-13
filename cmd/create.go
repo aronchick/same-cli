@@ -224,7 +224,7 @@ func executeInlineBashScript(SCRIPT string, errorMessage string) error {
 }
 
 func init() {
-	rootCmd.AddCommand(createCmd)
+	RootCmd.AddCommand(createCmd)
 
 	// Here you will define your flags and configuration settings.
 

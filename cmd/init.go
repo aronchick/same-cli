@@ -56,7 +56,7 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	rootCmd.AddCommand(initCmd)
+	RootCmd.AddCommand(initCmd)
 
 	// Config file option
 	initCmd.PersistentFlags().StringVarP(&sameRepoName, "name", "n", "", `Name of the SAME repo to use.`)

@@ -49,14 +49,16 @@ var createProgramCmd = &cobra.Command{
 	
 	This command configures the program but does not execute it.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		filePath, err := cmd.PersistentFlags().GetString("filePath")
+		filePath, err := cmd.PersistentFlags().GetString("file")
 		if err != nil {
 			return err
 		}
-		fileName, err := cmd.PersistentFlags().GetString("fileName")
+
+		fileName, err := cmd.PersistentFlags().GetString("filename")
 		if err != nil {
 			return err
 		}
+
 		programName, err := cmd.PersistentFlags().GetString("name")
 		if err != nil {
 			return err
@@ -73,11 +75,11 @@ var createProgramCmd = &cobra.Command{
 		}
 
 		// for demo
-		fmt.Println(filePath)
+		fmt.Printf("File Location: %v\nFile Name: %v\n", filePath, fileName)
 
-		getFilePath(filePath, fileName)
+		onDiskLocation := getFilePath(filePath, fileName)
 
-		UploadPipeline(filePath, programName, programDescription)
+		UploadPipeline(onDiskLocation, programName, programDescription)
 
 		return nil
 	},
@@ -216,38 +218,30 @@ func getSameFileContents(filePath string) (sameconfig *loaders.SameConfig, err e
 func init() {
 	programCmd.AddCommand(createProgramCmd)
 
-	createProgramCmd.PersistentFlags().String("file", "", "a SAME program file")
+	createProgramCmd.PersistentFlags().StringP("file", "f", "", "a SAME program file")
 	err := createProgramCmd.MarkPersistentFlagRequired("file")
 	if err != nil {
 		log.Fatal(fmt.Sprintf("could not set 'file' flag as required: %v", err))
 		os.Exit(1)
 	}
 
-	createProgramCmd.PersistentFlags().String("name", "SAME Program", "The program name")
+	createProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
+
+	createProgramCmd.PersistentFlags().StringP("name", "n", "SAME Program", "The program name")
 	createProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
 
 	programCmd.AddCommand(runProgramCmd)
 
-	runProgramCmd.PersistentFlags().String("program-id", "", "The ID of a SAME Program")
-	runProgramCmd.PersistentFlags().String("experiment-name", "", "The name of a SAME Experiment to be created or reused.")
-	err = runProgramCmd.MarkPersistentFlagRequired("experiment-name")
-	if err != nil {
-		log.Fatal(fmt.Sprintf("could not set 'experiment-name' flag as required: %v", err))
-		os.Exit(1)
-	}
+	runProgramCmd.PersistentFlags().StringP("program-id", "i", "", "The ID of a SAME Program")
+	runProgramCmd.PersistentFlags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
 
 	runProgramCmd.PersistentFlags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
 	runProgramCmd.PersistentFlags().String("run-name", "", "The name of the SAME program run.")
-	err = runProgramCmd.MarkPersistentFlagRequired("run-name")
-	if err != nil {
-		log.Fatal(fmt.Sprintf("could not set 'run-name' flag as required: %v", err))
-		os.Exit(1)
-	}
 
 	runProgramCmd.PersistentFlags().String("run-description", "", "A description of the SAME program run.")
 	runProgramCmd.PersistentFlags().StringSlice("run-param", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
 
-	rootCmd.AddCommand(programCmd)
+	RootCmd.AddCommand(programCmd)
 
 	// Here you will define your flags and configuration settings.
 
