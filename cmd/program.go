@@ -16,7 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	netUrl "net/url"
@@ -27,7 +26,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	gogetter "github.com/hashicorp/go-getter"
 	"github.com/spf13/cobra"
@@ -200,20 +198,20 @@ func getFilePath(fileRoot string, fileName string) (filePath string) {
 	return filePathToRead
 }
 
-func getSameFileContents(filePath string) (sameconfig *loaders.SameConfig, err error) {
-	ctx := context.Background()
+// func getSameFileContents(filePath string) (sameconfig *loaders.SameConfig, err error) {
+// 	ctx := context.Background()
 
-	printVersion()
+// 	printVersion()
 
-	sameConfig, err := ParseConfig(ctx, filePath)
+// 	sameConfig, err := ParseConfig(ctx, filePath)
 
-	if err != nil {
-		log.Fatalf("could not load file at '%v': %v", filePath, err)
-		os.Exit(1)
-	}
+// 	if err != nil {
+// 		log.Fatalf("could not load file at '%v': %v", filePath, err)
+// 		os.Exit(1)
+// 	}
 
-	return sameConfig, nil
-}
+// 	return sameConfig, nil
+// }
 
 func init() {
 	programCmd.AddCommand(createProgramCmd)
