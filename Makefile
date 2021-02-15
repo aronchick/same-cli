@@ -41,14 +41,12 @@ all: build
 
 # Run go fmt against code
 fmt:
-	@${GO} fmt ./config ./cmd/...
-#	@${GO} fmt ./config ./cmd/... ./pkg/...
+	@${GO} fmt ./config ./cmd/... ./pkg/...
 
 
 # Run go vet against code
 vet:
-	@${GO} vet ./config ./cmd/...
-#	@${GO} vet ./config ./cmd/... ./pkg/...
+	@${GO} vet ./config ./cmd/... ./pkg/...
 
 ################################################################################
 # Target: modtidy                                                              #
@@ -199,8 +197,7 @@ check-licenses:
 ################################################################################
 .PHONY: test
 test: build-same check-licenses
-	go test
-	# ginkgo test/... -v
+	ginkgo test/... -v
 
 # Run the unittests and output a junit report for use with prow
 ################################################################################
