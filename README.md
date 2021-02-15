@@ -8,132 +8,46 @@ Read up on our development environment (here)[docs/development/satup-same-develo
 # User experience
 Our goal is to have a user experience that looks like this:
 ```
-$ same create -f https://github.com/contoso/great_nlp_model
+# Local experience
+# Install same CLI & configure K8s cluster (as easy as pip install foobaz)
+$ export SAME_ENVIRONMENT=local
+$ curl http://projectsame.org/install.sh | bash
 ```
-
-Assuming you having a vanilla Kubernetes cluster and local credentials, this will:
-- Deploy a node pool specific to your SAME description
-- Create a namespace for your KF experiment
-- Provision Kubeflow to it
-- Create data buckets (if necessary) 
-- Copy the data into the bucket (if necessary)
-- Provision a PV in the namespace and point it at the data
-- Push a Kubeflow Pipeline to the Kubeflow
-- Allow you to run the pipeline (from either the CLI or the UI)
-
-# Getting your environment variables set up correctly.
-```
-cp set_env_vars_sample.sh set_env_vars.sh
-```
-- Replace everything with an "XXXXXX" with the correct value
-- Run the following:
+The above:
+- Downloads and installs a CLI tool
+- Installs a local kubernetes API (e.g., via k3s/k3d)
+- Installs Kubeflow into that cluster
+- Provides an SAME endpoint inside the Kubernetes cluster that can respond to `same` commands
 
 ```
-. ./set_env_vars.sh
-python create_env_file.py
+# Create a program in Kubernetes and populates it with the defaults generated
+# by the original author. Also uploads history exported by the original author
+$ same create program -f https://github.com/uoftoronto/papers/arXiv.5778v1:1.0
 ```
-
-# How to build
-Just run `make build`
-
-Then run `bin/same`
-
-# Additional installations you probably need to do.
-
-- Install go
-- Install kubectl
-```
-curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x ./kubectl
-sudo mv ./kubectl /usr/local/bin/kubectl
-```
-- Install python conveniences (poetry & pre-commit.com):
-```
-pip install poetry
-poetry shell
-python -m pip install --upgrade pip
-pip install pre-commit
-```
-
-- Set your subscription ID
-```
-az login
-```
-# Set your Resource Group
-```
-az account list -o json | jq '.[] | "\(.name) : \(.id)"'
-export SAME_SUBSCRIPTION_ID='XXXXXXXXXXXXXXXXX'
-az account set --subscription $SAME_SUBSCRIPTION_ID
-```
-
-- EITHER: Create an AKS Cluster
-# Select a resource group from the above list
+The above:
+- Creates all necessary services inside the Kubernetes cluster (same experience on local and/or hosted)
+- Provisions resources necessary (e.g. Premium disk, GPU notes, etc) OR clearly alerts the user that the expected provisioning is not possible
+- Pushes all metadata into the chosen metadata store for future comparison 
 
 ```
-export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
-export SAME_CLUSTER_NAME="same_test_cluster_$(whoami)"
-az aks create --resource-group $SAME_CLUSTER_RG --name $SAME_CLUSTER_NAME --node-count 0 --enable-addons monitoring --generate-ssh-keys
+# Execute a pipeline with new parameters defined by the original author
+$ same run program arXiv.1303.5778v1:1.0 --epochs=1000
 ```
-
-- OR: Use an existing cluster
-```
-az login
-az aks list --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.[] | "- Cluster Name: \t\(.name) \n  Resource Group: \t\(.resourceGroup)"'
-export SAME_CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
-export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
-```
-
-- INSTALL TERRAFORM:
-```
-curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-sudo apt-get update && sudo apt-get install terraform
-```
-
-- Go into `cmd/infrastructure/azure` and type the following commands:
-```
-export SAME_PREFIX="same"
-export SAME_LOCATION="west europe"
-
-terraform init
-terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
-terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
-```
-
-- Install CSI blob storage driver
-```
-curl -skSL https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/install-driver.sh | bash -s master --
-```
-
-- Create k8s secret for Azure Container access
-```
-kubectl create secret generic azure-secret --from-literal accountname="${SAME_PREFIX}ac" --from-literal accountkey=$(az keyvault secret show --vault-name $SAME_PREFIX-kv --name same-container-access | jq .value)
-```
-
-- Set Environment Variables for your cluster
-```
-export SAME_CLUSTER_VERSION=`az aks show -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG -o json | jq -r '.kubernetesVersion'`
-```
-
-- Get your credentials:
-```
-az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
-```
-
-# Using SAME
-- Be in the same directory as same.yaml
-
-# Goal vs non-goals.
+The above: 
+- Executes the program previously uploaded with the override parameter of 'epochs=100'
+- Remainder of the execution occurs as expectedwith the defaults
+- Is _usually_ driven off a git like system
+- Pushes results into expected metadata store
 
 ```
-Todo: 
-
-* This section could be moved somewhere to the top once Once this section is mature it can sit somewhere at the top of this read-me.
-* This seciton will grow as this CLI will enrich with feature.
-* Key contributors please feel free to add or delete antyhing for this section. (It is created as placeholder to grow)
-
+# Export the entire pipeline and history to a single file. Results in file 
+# arXiv.1303.5778v1:1.1.tgz.
+$ same export program -n arXiv.1303.5778v1:1.1
 ```
+The above:
+- Includes all necessary services and infrastructure descriptions to recreate the system anywhere
+- Also offers a way to select metadata to export and include
+- Does not NECESSARILY include data, but could include pointers to the data
+
 
-Goal of this work to build the Kubernetes command-line tool, SAME CLI, for allowing users reproducing machine learning pipelines for their kubernetes cluster. Kubernetes enable users to achieve great things but the key aspect which is missing is the gap between the installation steps to till your kubernetes cluster is ready for the use case. This tool not only takes those early installation \ set-up process but also build reproducible pipelines for the end user and enable them to focus towards Machine Learning model implementations.
-
-Non-Goals: This tool donot intend replace any of the existing eco-systems, this tool main intent as exaplined above it to focus in making ease of use simpler for monolithic \ repetetive machine learning pipelines simpler.
+With all this, we think we can make a breakthrough in the way that machine learning is reproduced across multiple environments.
