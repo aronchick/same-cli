@@ -20,6 +20,7 @@ require (
 	github.com/hashicorp/go-getter v1.5.2
 	github.com/kubeflow/pipelines v0.0.0-20210123000940-f65391309650
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.15.0
 	github.com/onsi/gomega v1.10.5
 	github.com/sirupsen/logrus v1.7.0
