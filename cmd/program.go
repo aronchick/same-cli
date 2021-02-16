@@ -75,7 +75,11 @@ var createProgramCmd = &cobra.Command{
 		// for demo
 		fmt.Printf("File Location: %v\nFile Name: %v\n", filePath, fileName)
 
-		onDiskLocation := getFilePath(filePath, fileName)
+		onDiskLocation, err := getFilePath(filePath)
+		if err != nil {
+			log.Fatal("could not load same config file: err")
+			os.Exit(1)
+		}
 
 		UploadPipeline(onDiskLocation, programName, programDescription)
 
@@ -136,6 +140,10 @@ var runProgramCmd = &cobra.Command{
 			runParams[parts[0]] = parts[1]
 		}
 
+		if _, err := kubectlExists(); err != nil {
+			log.Errorf(err.Error())
+		}
+
 		// HACK: Currently Kubeconfig must define default namespace
 		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
 			println("Could not set kubeconfig default context to use kubeflow namespace.")
@@ -152,15 +160,17 @@ var runProgramCmd = &cobra.Command{
 	},
 }
 
-func getFilePath(fileRoot string, fileName string) (filePath string) {
-	isRemoteFile, err := utils.IsRemoteFilePath(fileRoot)
+// getFilePath returns a file path to the local drive of the SAME config file, or error if invalid.
+// If the file is remote, it pulls from a GitHub repo.
+// Expects a full file path (including the file name)
+func getFilePath(putativeFilePath string) (filePath string, err error) {
+	isRemoteFile, err := utils.IsRemoteFilePath(putativeFilePath)
 
 	if err != nil {
 		log.Fatalf("could not tell if the file was remote or not: %v", err)
 		os.Exit(1)
 	}
 
-	filePathToRead := path.Join(fileRoot, fileName)
 	if isRemoteFile {
 		tempSameDir, err := ioutil.TempDir("", "")
 		if err != nil {
@@ -171,31 +181,46 @@ func getFilePath(fileRoot string, fileName string) (filePath string) {
 		// Get path to store the file to
 		tempSamePath := path.Join(tempSameDir, "tmp_same.yaml")
 
-		configFileUri, err := netUrl.Parse(fileName)
+		configFileUri, err := netUrl.Parse(putativeFilePath)
 		if err != nil {
-			log.Fatalf("could not parse sameFile url: %v", err)
-			os.Exit(1)
+			return "", fmt.Errorf("could not parse sameFile url: %v", err)
 		}
-		finalUrl := utils.UrlToRetrive(configFileUri.String(), fileName)
+		finalUrl := utils.UrlToRetrive(configFileUri.String(), putativeFilePath)
 		log.Infof("Downloading from %v to %v", finalUrl, tempSamePath)
 		errGet := gogetter.GetFile(tempSamePath, finalUrl.String())
 		if errGet != nil {
-			log.Fatalf("could not parse sameFile url: %v", errGet)
-			os.Exit(1)
+			return "", fmt.Errorf("could not parse sameFile url: %v", errGet)
 		} else {
 			g := new(gogetter.FileGetter)
 			g.Copy = true
 			errGet := g.GetFile(tempSamePath, configFileUri)
 			if errGet != nil {
-				log.Fatalf("could not get sameFile from url: %v\nerror: %v", configFileUri, err)
-				os.Exit(1)
+				return "", fmt.Errorf("could not get sameFile from url: %v\nerror: %v", configFileUri, err)
 			}
 		}
 
-		filePathToRead = tempSamePath
+		filePath = tempSamePath
+	} else {
+		if !fileExists(putativeFilePath) {
+			return "", fmt.Errorf("could not find sameFile at: %v\nerror: %v", putativeFilePath, err)
+		}
 	}
+	return putativeFilePath, nil
+}
 
-	return filePathToRead
+func kubectlExists() (kubectlDoesExist bool, err error) {
+	path, err := exec.LookPath("kubectl")
+	if err != nil {
+		err := fmt.Errorf("the 'kubectl' binary is not on your PATH: %v", os.Getenv("PATH"))
+		return false, err
+	}
+	log.Infof("'kubectl' found at %v", path)
+	return true, nil
+}
+
+func fileExists(path string) (fileDoesExist bool) {
+	_, err := os.Stat(path)
+	return os.IsExist(err)
 }
 
 // func getSameFileContents(filePath string) (sameconfig *loaders.SameConfig, err error) {

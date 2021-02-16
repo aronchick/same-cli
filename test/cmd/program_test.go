@@ -62,6 +62,19 @@ var _ = Describe("same program", func() {
 			execute_and_read(*rootCmd, []string{"program"}, "same program [command]")
 		})
 
+		It("Should notify about missing kubectl", func() {
+			// Erase everyting in PATH
+			os.Setenv("PATH", "")
+
+			execute_and_read(*rootCmd, []string{"program", "create", "-f", ""}, "same program create [flags]")
+		})
+
+		// It("Should read a config file from local disk", func() {
+		// 	wd, _ := os.Getwd()
+		// 	log.Info(wd)
+		// 	execute_and_read(*rootCmd, []string{"program", "create", "-f", string(wd)}, "same program create [flags]")
+		// })
+
 		// func Test_ExecuteCommand(t *testing.T) {
 		// 	cmd := NewRootCmd()
 		// 	b := bytes.NewBufferString("")

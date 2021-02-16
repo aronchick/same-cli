@@ -2,18 +2,15 @@ package main
 
 import (
 	"fmt"
-	"net/url"
-
-	"github.com/azure-octo/same-cli/pkg/utils"
+	"log"
+	"os/exec"
 )
 
 func main() {
-	b, err := url.Parse("google.com")
-
-	fmt.Println(b)
-	fmt.Println(err)
-
-	a, err := utils.IsRemoteFilePath("google.com")
-	fmt.Println(err)
-	fmt.Println(a)
+	// os.Setenv("PATH", "/sbin")
+	path, err := exec.LookPath("kubectl")
+	if err != nil {
+		log.Fatal("installing kubectl is in your future")
+	}
+	fmt.Printf("fortune is available at %s\n", path)
 }

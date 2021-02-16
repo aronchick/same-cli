@@ -69,10 +69,11 @@ jobs:
       - name: Install dependencies
         run: |
             go version
-            go install
+            go get github.com/onsi/gomega/...
+            go get -u github.com/onsi/ginkgo/ginkgo
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: golangci/golangci-lint-action@v2.2.1
+        uses: golangci/golangci-lint-action@v2.2.
         with:
           version: ${{ env.GOLANGCILINT_VER }}
       - name: Run go mod tidy check diff
