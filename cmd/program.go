@@ -66,6 +66,11 @@ var createProgramCmd = &cobra.Command{
 			return err
 		}
 
+		if _, err := kubectlExists(); err != nil {
+			log.Error(err.Error())
+			return err
+		}
+
 		// HACK: Currently Kubeconfig must define default namespace
 		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
 			println("Could not set kubeconfig default context to use kubeflow namespace.")
@@ -138,10 +143,6 @@ var runProgramCmd = &cobra.Command{
 				println(fmt.Sprintf("Invalid param format %s. Expect: key=value", param))
 			}
 			runParams[parts[0]] = parts[1]
-		}
-
-		if _, err := kubectlExists(); err != nil {
-			log.Errorf(err.Error())
 		}
 
 		// HACK: Currently Kubeconfig must define default namespace
