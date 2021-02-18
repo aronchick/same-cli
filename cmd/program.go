@@ -38,7 +38,7 @@ var programCmd = &cobra.Command{
 	Short: "Create and Update Programs",
 }
 
-var createProgramCmd = &cobra.Command{
+var CreateProgramCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Creates a SAME program",
 	Long: `Creates a SAME program from a SAME program file.
@@ -77,8 +77,8 @@ var createProgramCmd = &cobra.Command{
 
 		onDiskLocation, err := getFilePath(filePath)
 		if err != nil {
-			log.Fatal("could not load same config file: err")
-			os.Exit(1)
+			log.Errorf("could not load same config file: %v", err)
+			return nil
 		}
 
 		UploadPipeline(onDiskLocation, programName, programDescription)
@@ -100,8 +100,8 @@ var runProgramCmd = &cobra.Command{
 		if pipelineId == "" {
 			err = viper.ReadInConfig()
 			if err != nil {
-				log.Fatal(fmt.Sprintf("error loading configuration file: %v", err))
-				os.Exit(1)
+				log.Errorf(fmt.Sprintf("error loading configuration file: %v", err))
+				return err
 			}
 			pipelineId = viper.GetString("activepipeline")
 			if pipelineId == "" {
@@ -142,6 +142,7 @@ var runProgramCmd = &cobra.Command{
 
 		if _, err := kubectlExists(); err != nil {
 			log.Errorf(err.Error())
+			return err
 		}
 
 		// HACK: Currently Kubeconfig must define default namespace
@@ -167,15 +168,15 @@ func getFilePath(putativeFilePath string) (filePath string, err error) {
 	isRemoteFile, err := utils.IsRemoteFilePath(putativeFilePath)
 
 	if err != nil {
-		log.Fatalf("could not tell if the file was remote or not: %v", err)
-		os.Exit(1)
+		log.Errorf("could not tell if the file was remote or not: %v", err)
+		return "", err
 	}
 
 	if isRemoteFile {
 		tempSameDir, err := ioutil.TempDir("", "")
 		if err != nil {
-			log.Fatalf("error creating a temporary directory to copy the file to.")
-			os.Exit(1)
+			log.Errorf("error creating a temporary directory to copy the file to: %v", err)
+			return "", err
 		}
 
 		// Get path to store the file to
@@ -223,35 +224,20 @@ func fileExists(path string) (fileDoesExist bool) {
 	return os.IsExist(err)
 }
 
-// func getSameFileContents(filePath string) (sameconfig *loaders.SameConfig, err error) {
-// 	ctx := context.Background()
-
-// 	printVersion()
-
-// 	sameConfig, err := ParseConfig(ctx, filePath)
-
-// 	if err != nil {
-// 		log.Fatalf("could not load file at '%v': %v", filePath, err)
-// 		os.Exit(1)
-// 	}
-
-// 	return sameConfig, nil
-// }
-
 func init() {
-	programCmd.AddCommand(createProgramCmd)
+	programCmd.AddCommand(CreateProgramCmd)
 
-	createProgramCmd.PersistentFlags().StringP("file", "f", "", "a SAME program file")
-	err := createProgramCmd.MarkPersistentFlagRequired("file")
+	CreateProgramCmd.PersistentFlags().StringP("file", "f", "", "a SAME program file")
+	err := CreateProgramCmd.MarkPersistentFlagRequired("file")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("could not set 'file' flag as required: %v", err))
-		os.Exit(1)
+		log.Errorf("could not set 'file' flag as required: %v", err)
+		return
 	}
 
-	createProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
+	CreateProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
 
-	createProgramCmd.PersistentFlags().StringP("name", "n", "SAME Program", "The program name")
-	createProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
+	CreateProgramCmd.PersistentFlags().StringP("name", "n", "SAME Program", "The program name")
+	CreateProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
 
 	programCmd.AddCommand(runProgramCmd)
 
@@ -266,13 +252,4 @@ func init() {
 
 	RootCmd.AddCommand(programCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// programCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// programCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
