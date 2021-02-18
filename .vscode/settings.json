@@ -26,5 +26,8 @@
         "**/node_modules/*/**": true,
         "**/.hg/store/**": true,
         "**/vendor/**": true
-    }
+    },
+    "editor.fontSize": 14,
+    "terminal.integrated.fontSize": 14,
+    "debug.console.fontSize": 14
 }

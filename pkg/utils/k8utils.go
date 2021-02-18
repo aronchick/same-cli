@@ -149,9 +149,9 @@ func IsRemoteFilePath(configFilePath string) (bool, error) {
 		return false, fmt.Errorf("unable to parse the configfile URL")
 	}
 	if url.Scheme == "" {
-		message := fmt.Errorf("No scheme specified in the URL - '%v'", url)
-		log.Errorf(message.Error())
-		return false, message
+		message := fmt.Errorf("No scheme specified in the URL, so assuming local - '%v'", url)
+		log.Infof(message.Error())
+		return false, nil
 	}
 
 	return true, nil

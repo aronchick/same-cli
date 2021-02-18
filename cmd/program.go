@@ -47,6 +47,11 @@ var CreateProgramCmd = &cobra.Command{
 	
 	This command configures the program but does not execute it.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		log.Debug("in create")
+		for _, arg := range args {
+			log.Debugf("arg: %v", arg)
+		}
+
 		filePath, err := cmd.PersistentFlags().GetString("file")
 		if err != nil {
 			return err
@@ -73,17 +78,19 @@ var CreateProgramCmd = &cobra.Command{
 
 		// HACK: Currently Kubeconfig must define default namespace
 		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
-			println("Could not set kubeconfig default context to use kubeflow namespace.")
-			return err
+			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
+			log.Error(message.Error())
+			return message
 		}
 
 		// for demo
-		fmt.Printf("File Location: %v\nFile Name: %v\n", filePath, fileName)
+		log.Infof("File Location: %v\n", filePath)
+		log.Infof("File Name: %v\n", fileName)
 
 		onDiskLocation, err := getFilePath(filePath)
 		if err != nil {
 			log.Errorf("could not load same config file: %v", err)
-			return nil
+			return err
 		}
 
 		UploadPipeline(onDiskLocation, programName, programDescription)
@@ -130,7 +137,7 @@ var runProgramCmd = &cobra.Command{
 
 		experimentDescription, err := cmd.PersistentFlags().GetString("experiment-description")
 		if err != nil {
-			experimentName = "A SAME Experiment"
+			experimentDescription = "A SAME Experiment Description"
 		}
 
 		params, _ := cmd.PersistentFlags().GetStringSlice("run-param")
@@ -152,7 +159,7 @@ var runProgramCmd = &cobra.Command{
 
 		// HACK: Currently Kubeconfig must define default namespace
 		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
-			println("Could not set kubeconfig default context to use kubeflow namespace.")
+			log.Errorf("Could not set kubeconfig default context to use kubeflow namespace.")
 			return err
 		}
 
