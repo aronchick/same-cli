@@ -131,6 +131,6 @@ func nextCommand(command string, args []string, dir string) {
 		log.Errorln(fmt.Sprintf("Output: %v", string(out[:])))
 		log.Errorln(fmt.Sprintf("Error found: %v\n\n", err))
 
-		os.Exit(1)
+		return
 	}
 }

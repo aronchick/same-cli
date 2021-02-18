@@ -1,0 +1,64 @@
+# https://github.com/kubeflow/kfctl/blob/4c159515c4045c8f45667094de313a49b3767dda/pkg/kfapp/kustomize/testdata/kustomizeExample/metadata/expected/kustomization.yaml
+apiVersion: projectsame.io/v1alpha1
+metadata:
+    name: MyFirstSameRun
+    sha: a90eaf2
+    labels:
+        label1: value1
+    version: 1.0.4
+bases:
+    - base
+envfiles:
+    - .env
+resources:
+    provider: azure
+    cluster_profile: default
+    # cluster_profile: highMem
+    # cluster_profile: GPU
+    cluster_name: foobaz
+    namespace: same_namespace
+    disks:
+        - name: data_disk
+          size: 10Gi
+          volumeMount:
+            mountPath: "/mnt/data_disk"
+            name: volume
+        - name: model_disk
+          size: 10Gi
+          volumeMount:
+            mountPath: "/mnt/model_disk"
+            name: volume
+workflow:
+    type: kubeflow
+    parameters:
+        # kubernetesAPIServerURI: "https://kubeflowpipelines.contoso.com/"
+        kubeflowVersion: 1.2
+        kubeflowNamespace: kubeflow # Only support Kubeflow namespace
+        services:
+            - tensorflow_crd:2.1
+            - pytorch_crd:1.8
+        credentialFile: porter-kfp
+    # services:
+    #   - tensorflow:2.2
+    #   - katib:3.1
+    #   - feast:1.2 
+pipeline:
+    name: "my_great_pipeline"
+    description: "a very good description goes here"
+    package: "/home/bverst/src/work/kubeflow-pipeline-compiled.zip"
+datasets:
+    - name: "DS1 name"
+      type: remote
+      url: "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv"
+      makeLocalCopy: true
+    - name: "DS2 name"
+      type: remote
+      url: "2.csv"
+      makeLocalCopy: false
+run: 
+    name: "My Run"
+    parameters:
+        epochs: 1000
+        batch_size: 100
+debugging_features_flags:
+    createStorage: false

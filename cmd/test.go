@@ -61,13 +61,13 @@ to quickly create a Cobra application.`,
 		resourceGroupName := os.Getenv("SAME_CLUSTER_RG")
 		if len(resourceGroupName) == 0 {
 			fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_RG")
-			os.Exit(1)
+			return
 		}
 
 		clusterName := os.Getenv("SAME_CLUSTER_NAME")
 		if len(resourceGroupName) == 0 {
 			fmt.Printf("expected to have an environment variable named: SAME_CLUSTER_NAME")
-			os.Exit(1)
+			return
 		}
 
 		aksCluster, err := GetAKS(ctx, resourceGroupName, clusterName)
@@ -78,7 +78,6 @@ to quickly create a Cobra application.`,
 
 		if len(args) < 1 {
 			fmt.Printf("Please name a method to test. Code must already be included in test.go to handle it.")
-			os.Exit(0)
 			return
 		}
 
