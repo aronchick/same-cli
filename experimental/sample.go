@@ -1,6 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"net/url"
+	"os"
+
+	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
+	"github.com/hashicorp/go-getter"
+)
 
 func main() {
 	// os.Setenv("PATH", "/sbin")
@@ -10,9 +17,24 @@ func main() {
 	// }
 	// fmt.Printf("fortune is available at %s\n", path)
 
-	a := []string{"a", "b", "c"}
-	fmt.Println(a)
-	b := a[3:]
-	_ = b
-	fmt.Println(b)
+	// tempFile, _ := ioutil.TempFile("", "")
+	// fmt.Printf("file: %v\n", tempFile.Name())
+	// d, err := gogetter.Detect("https://github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml", "", []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.GitLabDetector), new(gogetter.BitBucketDetector), new(gogetter.GCSDetector)})
+	// d, err := gogetter.Detect("github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml", ".", []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.GitLabDetector), new(gogetter.BitBucketDetector), new(gogetter.GCSDetector)})
+	// d, _ := gogetter.Detect("github/SAME-Project/Sample-SAME-Data-Science/same.yaml", "/", []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.GitLabDetector), new(gogetter.BitBucketDetector), new(gogetter.GCSDetector), new(gogetter.FileDetector)})
+	// cwd, _ := os.Getwd()
+	//d, _ := gogetter.Detect("same.yaml", cwd, []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.GitLabDetector), new(gogetter.BitBucketDetector), new(gogetter.GCSDetector), new(gogetter.FileDetector)})
+	// err := gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
+	// err := gogetter.GetFile(tempFile.Name(), d)
+	// fmt.Printf("d: %v\n", d)
+	// fmt.Printf("err: %v", err)
+
+	d, _ := os.Getwd()
+	// s, _ := getter.Detect("file:///home/daaronch/same-cli/same.yaml", d, []getter.Detector{new(getter.FileDetector)})
+	s, _ := getter.Detect("https://github.com/dapr/dapr/same.yaml", d, getter.Detectors)
+	u, _ := url.ParseRequestURI(s)
+	sameConfig, err := loaders.LoadSAMEConfig(u.Path)
+	fmt.Printf("same u: %v\n", u.String())
+	fmt.Printf("same err: %v\n", err)
+	_ = sameConfig
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
 	experimentmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_model"
 	pipelineuploadparams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
@@ -18,6 +19,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/viper"
 )
 
@@ -48,7 +50,7 @@ func NewKFPConfig() *clientcmd.ClientConfig {
 }
 
 // CreateRunFromCompiledPipeline : Create and run a pipeline
-func CreateRunFromCompiledPipeline(filePath string, pipelineName string, pipelineDescription string, experimentName string, experimentDescription string, runName string, runDescription string, runParams map[string]string) string {
+func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string, experimentName string, experimentDescription string, runName string, runDescription string, runParams map[string]string) string {
 
 	if pipelineName == "" {
 		pipelineName = "New pipeline"
@@ -74,7 +76,7 @@ func CreateRunFromCompiledPipeline(filePath string, pipelineName string, pipelin
 		runDescription = "Description of a new run."
 	}
 
-	uploadedPipeline := UploadPipeline(filePath, pipelineName, pipelineDescription)
+	uploadedPipeline := UploadPipeline(sameConfigFile, pipelineName, pipelineDescription)
 	createdExperiment := CreateExperiment(experimentName, experimentDescription)
 	runDetails := CreateRun(runName, uploadedPipeline.ID, createdExperiment.ID, runDescription, runParams)
 
@@ -84,7 +86,7 @@ func CreateRunFromCompiledPipeline(filePath string, pipelineName string, pipelin
 	return runDetails.Run.ID
 }
 
-func UploadPipeline(filePath string, pipelineName string, pipelineDescription string) *pipelineuploadmodel.APIPipeline {
+func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) *pipelineuploadmodel.APIPipeline {
 	kfpconfig := *NewKFPConfig()
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
@@ -94,7 +96,9 @@ func UploadPipeline(filePath string, pipelineName string, pipelineDescription st
 	uploadparams := pipelineuploadparams.NewUploadPipelineParams()
 	uploadparams.Name = &pipelineName
 	uploadparams.Description = &pipelineDescription
-	uploadedPipeline, err := uploadclient.UploadFile(filePath, uploadparams)
+
+	pipelineFilePath, _ := utils.ResolveLocalFilePath(sameConfigFile.Spec.Pipeline.Package)
+	uploadedPipeline, err := uploadclient.UploadFile(pipelineFilePath, uploadparams)
 
 	if err != nil {
 		panic(err)

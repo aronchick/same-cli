@@ -5,10 +5,8 @@ import (
 
 	"io/ioutil"
 	netUrl "net/url"
-	"path"
 
 	"github.com/ghodss/yaml"
-	gogetter "github.com/hashicorp/go-getter"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -21,12 +19,6 @@ type V1 struct {
 type Loader interface {
 	LoadSameConfig(samedef interface{}) (*SameConfig, error)
 	LoadSameDef(config SameConfig, out interface{}) error
-}
-
-// isValidURL reports if the URL is correct.
-func isValidURL(toTest string) bool {
-	_, err := netUrl.ParseRequestURI(toTest)
-	return err == nil
 }
 
 // IsRemoteFile checks if the path configFile is remote (e.g. http://github...)
@@ -51,47 +43,8 @@ func LoadSAMEConfig(configFilePath string) (*SameConfig, error) {
 		return nil, fmt.Errorf("config file must be the URI of a SameDef spec")
 	}
 
-	isRemoteFile, err := IsRemoteFile(configFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	// appFile is configFilePath if configFilePath is local.
-	// Otherwise (configFile is remote), appFile points to a downloaded copy of configFilePath in tmp.
-	appFile := configFilePath
-	// If config is remote, download it to a temp dir.
-	if isRemoteFile {
-		// TODO(jlewi): We should check if configFilePath doesn't specify a protocol or the protocol
-		// is file:// then we can just read it rather than fetching with go-getter.
-		appDir, err := ioutil.TempDir("", "")
-		if err != nil {
-			return nil, fmt.Errorf("unable to create a temporary directory to copy the file to")
-		}
-		// Open config file
-		appFile = path.Join(appDir, "tmp_app.yaml")
-
-		log.Infof("Downloading %v to %v", configFilePath, appFile)
-		configFileURI, err := netUrl.Parse(configFilePath)
-		if err != nil {
-			log.Errorf("could not parse configFile url")
-		}
-		if isValidURL(configFilePath) {
-			errGet := gogetter.GetFile(appFile, configFilePath)
-			if errGet != nil {
-				return nil, fmt.Errorf("could not fetch specified config %s: %v", configFilePath, errGet)
-			}
-		} else {
-			g := new(gogetter.FileGetter)
-			g.Copy = true
-			errGet := g.GetFile(appFile, configFileURI)
-			if errGet != nil {
-				return nil, fmt.Errorf("could not fetch specified config %s: %v", configFilePath, err)
-			}
-		}
-	}
-
 	// Read contents
-	configFileBytes, err := ioutil.ReadFile(appFile)
+	configFileBytes, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not read from config file %s: %v", configFilePath, err)
 	}

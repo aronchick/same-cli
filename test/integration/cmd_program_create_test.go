@@ -18,13 +18,15 @@ import (
 // returns the current testing context
 type ProgramCreateSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
+	rootCmd       *cobra.Command
+	remoteSAMEURL string
 }
 
 // Make sure that VariableThatShouldStartAtFive is set to five
 // before each test
 func (suite *ProgramCreateSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
+	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
 }
 
 // All methods that begin with "Test" are run as tests within a
@@ -59,9 +61,27 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 	}
 }
 
-func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithPadFile() {
+func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithBadFile() {
 	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "/dev/null/same.yaml")
 	assert.Contains(suite.T(), string(out), "could not find sameFile")
+}
+
+func (suite *ProgramCreateSuite) Test_GetRemoteBadURL() {
+	// Use a URL with a control character
+	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://\n")
+	assert.Contains(suite.T(), string(out), "unable to parse")
+}
+
+func (suite *ProgramCreateSuite) Test_GetRemoteNoSAME() {
+	// The URL 'https://github.com/dapr/dapr' does not have a 'same.yaml' file in it, so it should fail
+	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://github.com/dapr/dapr")
+	assert.Contains(suite.T(), string(out), "could not download SAME")
+}
+
+func (suite *ProgramCreateSuite) Test_GetRemoteSAME() {
+	// The URL 'https://github.com/dapr/dapr' does not have a 'same.yaml' file in it, so it should fail
+	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://github.com/SAME-Project/Sample-SAME-Data-Science")
+	assert.Contains(suite.T(), string(out), "could not download SAME")
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -86,22 +106,3 @@ func executeCommandC(t *testing.T, root *cobra.Command, args ...string) (c *cobr
 	c, err = root.ExecuteC()
 	return c, buf.String(), err
 }
-
-// var _ = Describe("same program", func() {
-
-// 	var rootCmd = cmd.RootCmd
-// 	BeforeSuite(func() {
-// 		log.SetOutput(ioutil.Discard)
-// 		ts, err := cmdtest.Read("testdata/integration")
-// 	})
-
-// 	BeforeEach(func() {
-// 	})
-
-// 	Context("create", func() {
-
-// 		It("Should run without arguments", func() {
-// 			execute_and_read(*rootCmd, []string{}, "same [command]")
-// 		})
-
-// })

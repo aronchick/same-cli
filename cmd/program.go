@@ -21,11 +21,11 @@ import (
 	netUrl "net/url"
 	"os"
 	"os/exec"
-	"path"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	gogetter "github.com/hashicorp/go-getter"
 	"github.com/spf13/cobra"
@@ -87,13 +87,19 @@ var CreateProgramCmd = &cobra.Command{
 		log.Infof("File Location: %v\n", filePath)
 		log.Infof("File Name: %v\n", fileName)
 
-		onDiskLocation, err := getFilePath(filePath)
+		sameConfigFilePath, err := getConfigFilePath(filePath)
 		if err != nil {
-			log.Errorf("could not load same config file: %v", err)
+			log.Errorf("could not resolve same config file path: %v", err)
 			return err
 		}
 
-		UploadPipeline(onDiskLocation, programName, programDescription)
+		sameConfigFile, err := loaders.LoadSAMEConfig(sameConfigFilePath)
+		if err != nil {
+			log.Errorf("could not load SAME config file: %v", err)
+			return err
+		}
+
+		UploadPipeline(sameConfigFile, programName, programDescription)
 
 		return nil
 	},
@@ -176,7 +182,16 @@ var runProgramCmd = &cobra.Command{
 // getFilePath returns a file path to the local drive of the SAME config file, or error if invalid.
 // If the file is remote, it pulls from a GitHub repo.
 // Expects a full file path (including the file name)
-func getFilePath(putativeFilePath string) (filePath string, err error) {
+func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
+	// TODO: aronchick: This is all probably unnecessary. We could just swap everything out
+	// for gogetter.GetFile() and punt the whole problem at it.
+	// HOWEVER, that doesn't solve for when a github url has an https schema, which causes
+	// gogetter to weirdly reformats he URL (dropping the repo).
+	// E.g., gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
+	// Fails with a bad response code: 404
+	// and 	gogetter.GetFile(tempFile.Name(), "github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
+	// Fails with fatal: repository 'https://github.com/SAME-Project/' not found
+
 	isRemoteFile, err := utils.IsRemoteFilePath(putativeFilePath)
 
 	if err != nil {
@@ -185,40 +200,61 @@ func getFilePath(putativeFilePath string) (filePath string, err error) {
 	}
 
 	if isRemoteFile {
+		// Use the default system temp directory and a randomly generated name
 		tempSameDir, err := ioutil.TempDir("", "")
 		if err != nil {
-			log.Errorf("error creating a temporary directory to copy the file to: %v", err)
+			log.Errorf("error creating a temporary directory to copy the file to (we're using the standard temporary directory from your system, so this could be an issue of the permissions this CLI is running under): %v", err)
 			return "", err
 		}
 
 		// Get path to store the file to
-		tempSamePath := path.Join(tempSameDir, "tmp_same.yaml")
+		tempSameFile, err := ioutil.TempFile(tempSameDir, "")
+		if err != nil {
+			return "", fmt.Errorf("could not create temporary file in %v", tempSameDir)
+		}
 
 		configFileUri, err := netUrl.Parse(putativeFilePath)
 		if err != nil {
 			return "", fmt.Errorf("could not parse sameFile url: %v", err)
 		}
-		finalUrl := utils.UrlToRetrive(configFileUri.String(), putativeFilePath)
-		log.Infof("Downloading from %v to %v", finalUrl, tempSamePath)
-		errGet := gogetter.GetFile(tempSamePath, finalUrl.String())
+
+		// TODO: Hard coding 'same.yaml' in now - should be optional
+		finalUrl, err := utils.UrlToRetrive(configFileUri.String(), "same.yaml")
+		if err != nil {
+			message := fmt.Errorf("unable to process the url to retrieve from the provided configFileUri(%v): %v", configFileUri.String(), err)
+			log.Error(message)
+			return "", message
+		}
+
+		corrected_url := finalUrl.String()
+		if (finalUrl.Scheme == "https") || (finalUrl.Scheme == "http") {
+			log.Info("currently only support http and https on github.com because we need to prefix with git")
+			corrected_url = "git::" + finalUrl.RawPath
+		}
+
+		log.Infof("Downloading from %v to %v", finalUrl, tempSameFile)
+		errGet := gogetter.GetFile(tempSameFile.Name(), corrected_url)
 		if errGet != nil {
-			return "", fmt.Errorf("could not parse sameFile url: %v", errGet)
+			return "", fmt.Errorf("could not download SAME file from URL '%v': %v", finalUrl.String(), errGet)
 		} else {
 			g := new(gogetter.FileGetter)
 			g.Copy = true
-			errGet := g.GetFile(tempSamePath, configFileUri)
+			errGet := g.GetFile(tempSameFile.Name(), configFileUri)
 			if errGet != nil {
 				return "", fmt.Errorf("could not get sameFile from url: %v\nerror: %v", configFileUri, err)
 			}
 		}
 
-		filePath = tempSamePath
+		filePath = tempSameFile.Name()
 	} else {
-		if !fileExists(putativeFilePath) {
+		cwd, _ := os.Getwd()
+		filePath, _ = gogetter.Detect(putativeFilePath, cwd, []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.GitLabDetector), new(gogetter.BitBucketDetector), new(gogetter.GCSDetector), new(gogetter.FileDetector)})
+
+		if !fileExists(filePath) {
 			return "", fmt.Errorf("could not find sameFile at: %v\nerror: %v", putativeFilePath, err)
 		}
 	}
-	return putativeFilePath, nil
+	return filePath, nil
 }
 
 func kubectlExists() (kubectlDoesExist bool, err error) {

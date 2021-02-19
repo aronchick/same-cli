@@ -16,44 +16,21 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 
-	goyaml "github.com/go-yaml/yaml"
 	gogetter "github.com/hashicorp/go-getter"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	// configtypes "github.com/kubeflow/kfctl/v3/config"
-	// kfapis "github.com/kubeflow/kfctl/v3/pkg/apis"
-	// kftypes "github.com/kubeflow/kfctl/v3/pkg/apis/apps"
-
-	"io"
 	"io/ioutil"
 
 	log "github.com/sirupsen/logrus"
 
-	// "k8s.io/api/core/v1"
-	// k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	// "k8s.io/apimachinery/pkg/api/meta"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	// k8stypes "k8s.io/apimachinery/pkg/types"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
-	// "k8s.io/cli-runtime/pkg/genericclioptions"
-	// "k8s.io/cli-runtime/pkg/printers"
-	// "k8s.io/client-go/kubernetes"
-	// "k8s.io/client-go/rest"
-	// kubectlapply "k8s.io/kubernetes/pkg/kubectl/cmd/apply"
-	// kubectldelete "k8s.io/kubernetes/pkg/kubectl/cmd/delete"
-	// cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
 	"net/url"
 	netUrl "net/url"
 	"path"
-	// "sigs.k8s.io/controller-runtime/pkg/client"
-	// Auth plugins
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/azure"
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
 const (
@@ -67,77 +44,6 @@ const (
 	KfDefInstance     = "kfdef-instance"
 	InstallByOperator = "install-by-operator"
 )
-
-// func generateRandStr(length int) string {
-// 	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-// 	b := make([]byte, length)
-// 	for i := range b {
-// 		b[i] = chars[rand.Intn(len(chars))]
-// 	}
-// 	return string(b)
-// }
-
-// func NewDefaultBackoff() *backoff.ExponentialBackOff {
-// 	b := backoff.NewExponentialBackOff()
-// 	b.InitialInterval = 3 * time.Second
-// 	b.MaxInterval = 30 * time.Second
-// 	b.MaxElapsedTime = 5 * time.Minute
-// 	return b
-// }
-
-// func CreateResourceFromFile(config *rest.Config, filename string, elems ...configtypes.NameValue) error {
-// 	elemsMap := make(map[string]configtypes.NameValue)
-// 	for _, nv := range elems {
-// 		elemsMap[nv.Name] = nv
-// 	}
-// 	c, err := client.New(config, client.Options{})
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-
-// 	data, err := ioutil.ReadFile(filename)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-// 	splitter := regexp.MustCompile(YamlSeparator)
-// 	objectStrings := splitter.Split(string(data), -1)
-// 	for _, str := range objectStrings {
-// 		if strings.TrimSpace(str) == "" {
-// 			continue
-// 		}
-// 		u := &unstructured.Unstructured{}
-// 		if err := yaml.Unmarshal([]byte(str), u); err != nil {
-// 			return errors.WithStack(err)
-// 		}
-
-// 		name := u.GetName()
-// 		namespace := u.GetNamespace()
-// 		if namespace == "" {
-// 			if val, exists := elemsMap["namespace"]; exists {
-// 				u.SetNamespace(val.Value)
-// 			} else {
-// 				u.SetNamespace("default")
-// 			}
-// 		}
-
-// 		log.Infof("Creating %s", name)
-
-// 		err := c.Get(context.TODO(), k8stypes.NamespacedName{Name: name, Namespace: namespace}, u.DeepCopy())
-// 		if err == nil {
-// 			log.Info("Object already exists...")
-// 			continue
-// 		}
-// 		if !k8serrors.IsNotFound(err) {
-// 			return errors.WithStack(err)
-// 		}
-
-// 		err = c.Create(context.TODO(), u)
-// 		if err != nil {
-// 			return errors.WithStack(err)
-// 		}
-// 	}
-// 	return nil
-// }
 
 // Checks if the path configFile is remote (e.g. http://github...)
 func IsRemoteFilePath(configFilePath string) (bool, error) {
@@ -216,441 +122,40 @@ func JoinURL(basePath string, paths ...string) (*url.URL, error) {
 	return u, nil
 }
 
-// func DeleteResourceFromFile(config *rest.Config, filename string) error {
-// 	c, err := client.New(config, client.Options{})
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-
-// 	data, err := ioutil.ReadFile(filename)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-// 	splitter := regexp.MustCompile(YamlSeparator)
-// 	objectStrings := splitter.Split(string(data), -1)
-// 	for _, str := range objectStrings {
-// 		if strings.TrimSpace(str) == "" {
-// 			continue
-// 		}
-// 		u := &unstructured.Unstructured{}
-// 		if err := yaml.Unmarshal([]byte(str), u); err != nil {
-// 			return errors.WithStack(err)
-// 		}
-
-// 		name := u.GetName()
-// 		namespace := u.GetNamespace()
-
-// 		log.Infof("Deleting %s", name)
-
-// 		err := c.Get(context.TODO(), k8stypes.NamespacedName{Name: name, Namespace: namespace}, u.DeepCopy())
-// 		if k8serrors.IsNotFound(err) {
-// 			log.Info("Object already deleted...")
-// 			continue
-// 		}
-// 		if err != nil {
-// 			return errors.WithStack(err)
-// 		}
-
-// 		err = c.Delete(context.TODO(), u)
-// 		if err != nil {
-// 			return errors.WithStack(err)
-// 		}
-// 	}
-// 	return nil
-// }
-
-// type Apply struct {
-// 	matchVersionKubeConfigFlags *cmdutil.MatchVersionFlags
-// 	factory                     cmdutil.Factory
-// 	clientset                   *kubernetes.Clientset
-// 	options                     *kubectlapply.ApplyOptions
-// 	tmpfile                     *os.File
-// 	stdin                       *os.File
-// }
-
-// func NewApply(namespace string, restConfig *rest.Config) (*Apply, error) {
-// 	configFlags := genericclioptions.NewConfigFlags(false)
-// 	if restConfig != nil {
-// 		certFile := path.Join(CertDir, generateRandStr(10))
-// 		if err := ioutil.WriteFile(certFile, restConfig.TLSClientConfig.CAData, 0644); err != nil {
-// 			return nil, err
-// 		}
-// 		configFlags.CAFile = &certFile
-// 		configFlags.BearerToken = &(restConfig.BearerToken)
-// 		configFlags.APIServer = &(restConfig.Host)
-// 	}
-// 	apply := &Apply{
-// 		matchVersionKubeConfigFlags: cmdutil.NewMatchVersionFlags(configFlags),
-// 	}
-// 	apply.factory = cmdutil.NewFactory(apply.matchVersionKubeConfigFlags)
-// 	clientset, err := apply.factory.KubernetesClientSet()
-// 	if err != nil {
-// 		return nil, &kfapis.KfError{
-// 			Code:    int(kfapis.INTERNAL_ERROR),
-// 			Message: fmt.Sprintf("could not get clientset: %v", err),
-// 		}
-// 	}
-// 	apply.clientset = clientset
-// 	err = apply.namespace(namespace)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Change behaviour of error from exit to panic.
-// 	cmdutil.BehaviorOnFatal(func(s string, i int) {
-// 		panic(fmt.Errorf("Encountered error: %s. Exiting with code: %d.", s, i))
-// 	})
-
-// 	return apply, nil
-// }
-
-// func (a *Apply) IfNamespaceExist(name string) bool {
-// 	_, nsMissingErr := a.clientset.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
-// 	if nsMissingErr != nil {
-// 		return false
-// 	}
-// 	return true
-// }
-
-// func (a *Apply) Apply(data []byte) error {
-// 	a.tmpfile = a.tempFile(data)
-// 	a.stdin = os.Stdin
-// 	os.Stdin = a.tmpfile
-// 	defer a.cleanup()
-// 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
-// 	a.options = kubectlapply.NewApplyOptions(ioStreams)
-// 	a.options.DeleteFlags = a.deleteFlags("that contains the configuration to apply")
-// 	initializeErr := a.init()
-// 	if initializeErr != nil {
-// 		return &kfapis.KfError{
-// 			Code:    int(kfapis.INTERNAL_ERROR),
-// 			Message: fmt.Sprintf("could not initialize : %v", initializeErr),
-// 		}
-// 	}
-// 	var err error
-// 	func() {
-// 		defer func() {
-// 			if temp := recover(); temp != nil {
-// 				err = temp.(error)
-// 			}
-// 		}()
-// 		err = a.run()
-// 	}()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func (a *Apply) run() error {
-// 	resourcesErr := a.options.Run()
-// 	if resourcesErr != nil {
-// 		return &kfapis.KfError{
-// 			Code:    int(kfapis.INTERNAL_ERROR),
-// 			Message: fmt.Sprintf("Apply.Run : %v", resourcesErr),
-// 		}
-// 	}
-// 	return nil
-// }
-
-// func (a *Apply) cleanup() error {
-// 	os.Stdin = a.stdin
-// 	if a.tmpfile != nil {
-// 		if err := a.tmpfile.Close(); err != nil {
-// 			return err
-// 		}
-// 		return os.Remove(a.tmpfile.Name())
-// 	}
-// 	return nil
-// }
-
-// func (a *Apply) init() error {
-// 	var err error
-// 	var o = a.options
-// 	var f = a.factory
-// 	// allow for a success message operation to be specified at print time
-// 	o.ToPrinter = func(operation string) (printers.ResourcePrinter, error) {
-// 		o.PrintFlags.NamePrintFlags.Operation = operation
-// 		if o.DryRun {
-// 			err = o.PrintFlags.Complete("%s (dry run)")
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 		}
-// 		if o.ServerDryRun {
-// 			err = o.PrintFlags.Complete("%s (server dry run)")
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 		}
-// 		return o.PrintFlags.ToPrinter()
-// 	}
-// 	o.DiscoveryClient, err = f.ToDiscoveryClient()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	dynamicClient, err := f.DynamicClient()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	o.DeleteOptions = o.DeleteFlags.ToOptions(dynamicClient, o.IOStreams)
-// 	o.OpenAPIPatch = true
-// 	o.OpenAPISchema, _ = f.OpenAPISchema()
-// 	o.Validator, err = f.Validator(false)
-// 	o.Builder = f.NewBuilder()
-// 	o.Mapper, err = f.ToRESTMapper()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	o.DynamicClient, err = f.DynamicClient()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func (a *Apply) patchNamespaceWithLabel(namespace string, labelKey string,
-// 	labelValue string) error {
-// 	var labelPatchMap = map[string]metav1.ObjectMeta{
-// 		"metadata": metav1.ObjectMeta{
-// 			Labels: map[string]string{labelKey: labelValue},
-// 		},
-// 	}
-// 	labelPatchJSON, err := json.Marshal(labelPatchMap)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	log.Infof("Labeling Namespace: %v", namespace)
-// 	_, err = a.clientset.CoreV1().Namespaces().Patch(
-// 		namespace,
-// 		"application/strategic-merge-patch+json",
-// 		[]byte(labelPatchJSON),
-// 	)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func (a *Apply) namespace(namespace string) error {
-// 	log.Infof(string(kftypes.NAMESPACE)+": %v", namespace)
-// 	namespaceInstance, nsMissingErr := a.clientset.CoreV1().Namespaces().Get(
-// 		namespace, metav1.GetOptions{},
-// 	)
-// 	if nsMissingErr != nil {
-// 		log.Infof("Creating namespace: %v", namespace)
-// 		nsSpec := &v1.Namespace{
-// 			ObjectMeta: metav1.ObjectMeta{
-// 				Name: namespace,
-// 				Labels: map[string]string{
-// 					controlPlaneLabel:          "kubeflow",
-// 					katibMetricsCollectorLabel: "enabled",
-// 				},
-// 			},
-// 		}
-// 		_, nsErr := a.clientset.CoreV1().Namespaces().Create(nsSpec)
-// 		if nsErr != nil {
-// 			return &kfapis.KfError{
-// 				Code: int(kfapis.INVALID_ARGUMENT),
-// 				Message: fmt.Sprintf("couldn't create %v %v Error: %v",
-// 					string(kftypes.NAMESPACE), namespace, nsErr),
-// 			}
-// 		}
-// 	} else {
-// 		if _, ok := namespaceInstance.ObjectMeta.Labels[controlPlaneLabel]; !ok {
-// 			patchErr := a.patchNamespaceWithLabel(
-// 				namespace, controlPlaneLabel, "kubeflow",
-// 			)
-// 			if patchErr != nil {
-// 				return &kfapis.KfError{
-// 					Code:    int(kfapis.INTERNAL_ERROR),
-// 					Message: fmt.Sprintf("couldn't patch %v Error: %v", namespace, patchErr),
-// 				}
-// 			}
-// 		}
-// 		if _, ok := namespaceInstance.ObjectMeta.Labels[katibMetricsCollectorLabel]; !ok {
-// 			patchErr := a.patchNamespaceWithLabel(
-// 				namespace, katibMetricsCollectorLabel, "enabled",
-// 			)
-// 			if patchErr != nil {
-// 				return &kfapis.KfError{
-// 					Code:    int(kfapis.INTERNAL_ERROR),
-// 					Message: fmt.Sprintf("couldn't patch %v Error: %v", namespace, patchErr),
-// 				}
-// 			}
-
-// 		}
-// 	}
-// 	return nil
-// }
-
-// func tempFile(data []byte) *os.File {
-// 	tmpfile, err := ioutil.TempFile("/tmp", "kout")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	if _, err := tmpfile.Write(data); err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	if _, err := tmpfile.Seek(0, 0); err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	return tmpfile
-// }
-
-// func (a *Apply) deleteFlags(usage string) *kubectldelete.DeleteFlags {
-// 	cascade := true
-// 	gracePeriod := -1
-// 	// setup command defaults
-// 	all := false
-// 	force := false
-// 	ignoreNotFound := false
-// 	now := false
-// 	output := ""
-// 	labelSelector := ""
-// 	fieldSelector := ""
-// 	timeout := time.Duration(0)
-// 	wait := true
-// 	filenames := []string{a.tmpfile.Name()}
-// 	recursive := false
-// 	return &kubectldelete.DeleteFlags{
-// 		FileNameFlags:  &genericclioptions.FileNameFlags{Usage: usage, Filenames: &filenames, Recursive: &recursive},
-// 		LabelSelector:  &labelSelector,
-// 		FieldSelector:  &fieldSelector,
-// 		Cascade:        &cascade,
-// 		GracePeriod:    &gracePeriod,
-// 		All:            &all,
-// 		Force:          &force,
-// 		IgnoreNotFound: &ignoreNotFound,
-// 		Now:            &now,
-// 		Timeout:        &timeout,
-// 		Wait:           &wait,
-// 		Output:         &output,
-// 	}
-// }
-
-// // DeleteResource removes resource. Prior to that it checks whether the resource is created through the kubeflow operator.
-// // always removes the resource if it is not created by the Kubeflow operator, otherwise checks the annotation to
-// // be sure the resource is part of the deployment and then remove.
-// func DeleteResource(resourceBytes []byte, kubeclient client.Client, timeout time.Duration, byOperator bool) error {
-
-// 	// Convert to unstructured in order to access object metadata
-// 	resourceMap := map[string]interface{}{}
-// 	err := yaml.Unmarshal(resourceBytes, &resourceMap)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	unstructuredObject := &unstructured.Unstructured{
-// 		Object: resourceMap,
-// 	}
-// 	name, namespace := unstructuredObject.GetName(), unstructuredObject.GetNamespace()
-
-// 	log.Infof("Deleting Kind '%s' in APIVersion '%s' with name '%s' in namespace '%s'",
-// 		unstructuredObject.GetKind(), unstructuredObject.GetAPIVersion(), name, namespace)
-
-// 	// Check if resource exists
-// 	err = kubeclient.Get(context.TODO(), k8stypes.NamespacedName{Name: name, Namespace: namespace}, unstructuredObject)
-// 	if k8serrors.IsNotFound(err) {
-// 		log.Warnf("Resource %s/%s not found", namespace, name)
-// 		return nil
-// 	}
-// 	if _, ok := err.(*meta.NoKindMatchError); ok {
-// 		log.Warnf("No matches for Kind %s in Group %s", unstructuredObject.GetKind(), unstructuredObject.GetAPIVersion())
-// 		return nil
-// 	}
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// if the func is called by the Kubeflow operator, validate it is installed through the operator
-// 	if byOperator {
-// 		anns := unstructuredObject.GetAnnotations()
-// 		kfdefAnn := strings.Join([]string{KfDefAnnotation, KfDefInstance}, "/")
-// 		_, found := anns[kfdefAnn]
-// 		if !found {
-// 			return nil
-// 		}
-// 	}
-
-// 	// Resource exists, try to delete
-// 	if unstructuredObject.GetDeletionTimestamp().IsZero() {
-// 		err = kubeclient.Delete(context.TODO(), unstructuredObject)
-// 		if err != nil {
-// 			return errors.Wrapf(err, "Failed to delete resource %s/%s", namespace, name)
-// 		}
-// 	}
-
-// 	// Delete succeeded, poll until the delete is completed
-// 	interval := 5 * time.Second
-// 	b := backoff.WithMaxRetries(backoff.NewConstantBackOff(interval), uint64(timeout/interval+1))
-// 	err = backoff.Retry(func() error {
-// 		err := kubeclient.Get(context.TODO(), k8stypes.NamespacedName{Name: name, Namespace: namespace}, unstructuredObject.DeepCopy())
-// 		if !k8serrors.IsNotFound(err) {
-// 			return errors.New("deleted resource is not cleaned up yet")
-// 		}
-// 		return nil
-// 	}, b)
-// 	if err != nil {
-// 		return errors.New(fmt.Sprintf("Timed out waiting for resource %s/%s to be deleted. Error %v", namespace, name, err))
-// 	}
-
-// 	return nil
-// }
-
-func SplitYAML(resources []byte) ([][]byte, error) {
-
-	dec := goyaml.NewDecoder(bytes.NewReader(resources))
-
-	var res [][]byte
-	for {
-		var value interface{}
-		err := dec.Decode(&value)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		valueBytes, err := goyaml.Marshal(value)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, valueBytes)
-	}
-	return res, nil
-}
-
-// IsValidUrl uses netUrl to parse the url string
-func IsValidUrl(toTest string) bool {
-	_, err := netUrl.ParseRequestURI(toTest)
-	if err != nil {
-		return false
-	} else {
-		return true
-	}
-}
-
 // FileToRetrive checks to see if the URL ends with same.yaml (or whatever is provided) and returns a well structured URL
-func UrlToRetrive(url string, fileName string) (fullUrl url.URL) {
-	if strings.HasSuffix(url, fileName) {
-		finalUrl, err := netUrl.Parse(url)
-		if err != nil {
-			log.Errorf("could not parse final url: %v", err)
-		}
-		return *finalUrl
+func UrlToRetrive(url string, fileName string) (fullUrl url.URL, err error) {
+	finalUrl, err := netUrl.Parse(url)
+	if err != nil {
+		message := fmt.Errorf("could not parse final url: %v", err)
+		log.Error(message)
+		return netUrl.URL{}, message
 	}
+	if strings.HasSuffix(finalUrl.String(), fileName) {
+		return *finalUrl, nil
+	}
+	// https://raw.githubusercontent.com/SAME-Project/Sample-SAME-Data-Science/same.yaml
+	// https://raw.githubusercontent.com/SAME-Project/Sample-SAME-Data-Science/same.yaml
 
-	u, err := netUrl.Parse(fileName)
+	finalUrl, err = JoinURL(finalUrl.String(), fileName)
 	if err != nil {
-		log.Fatalf("could not parse the file name: %v", err)
+		message := fmt.Errorf("unable to join url (%v) and fileName (%v): %v", url, fileName, err)
+		log.Error(message)
+		return netUrl.URL{}, message
 	}
-	base, err := netUrl.Parse(url)
+	return *finalUrl, nil
+}
+
+// ResolveLocalFilePath takes local file path string, tests for its existence and resolves file:// to local path
+func ResolveLocalFilePath(filePathToTest string) (filePath string, err error) {
+	fileInfo, err := os.Stat(filePathToTest)
 	if err != nil {
-		log.Fatalf("could not parse the base url: %v", err)
+		log.Infof("could not find file '%v': %v", filePathToTest, err)
+		return "", err
 	}
-	return *base.ResolveReference(u)
+	u, err := url.ParseRequestURI(fileInfo.Name())
+	if err != nil {
+		log.Infof("could not parse URL '%v': %v", u, err)
+		return "", err
+	}
+	return u.String(), nil
 }

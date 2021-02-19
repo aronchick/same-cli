@@ -1,84 +1,78 @@
 package utils_test
 
 import (
-	"io/ioutil"
-
-	log "github.com/sirupsen/logrus"
+	"testing"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func badURL(thisUrl string) {
+type nilfn func(t assert.TestingT, object interface{}, msgAndArgs ...interface{}) bool
+
+func isGoodURL(t *testing.T, thisUrl string, expectedValue bool, fn nilfn) {
 	isRemote, err := utils.IsRemoteFilePath(thisUrl)
-	Expect(isRemote).Should(Equal(false))
-	Expect(err).Should(Not(BeNil()))
+	if expectedValue {
+		assert.True(t, isRemote)
+	} else {
+		assert.False(t, isRemote)
+	}
+
+	// Use the function to test if nil or not
+	fn(t, err)
 }
 
-var _ = Describe("IsRemoteFilePath", func() {
+// Define the suite, and absorb the built-in basic suite
+// functionality from testify - including a T() method which
+// returns the current testing context
+type UtilsSuite struct {
+	suite.Suite
+}
 
-	BeforeSuite(func() {
-		log.SetOutput(ioutil.Discard)
-	})
+func (suite *UtilsSuite) SetupTest() {
+}
 
-	Context("can identify", func() {
-		It("a GH url with no org or repo", func() {
-			Expect(utils.IsRemoteFilePath("http://github.com")).Should(Equal(true))
-		})
-		It("a GH url with org but no repo", func() {
-			Expect(utils.IsRemoteFilePath("http://github.com/contoso")).Should(Equal(true))
-		})
-		It("a GH url with org and repo", func() {
-			Expect(utils.IsRemoteFilePath("http://github.com/contoso/sameple-repo")).Should(Equal(true))
-		})
-		It("a GH url with org and repo and file", func() {
-			Expect(utils.IsRemoteFilePath("http://github.com/contoso/sameple-repo/same.yaml")).Should(Equal(true))
-		})
-		It("a URL should start with a scheme (e.g. http://, https:// or git://", func() {
-			badURL("github.com/contoso/sameple-repo/same.yaml")
-		})
-		It("a badly formed URL", func() {
-			badURL("github/contoso/sample-repo/same.yaml")
-		})
-		It("a local relative file", func() {
-			badURL("../abc.txt")
-		})
-		It("a local absolute file", func() {
-			badURL("/ab/c.txt")
-		})
-		It("a file with no path", func() {
-			badURL("c.txt")
-		})
-	})
+// All methods that begin with "Test" are run as tests within a
+// suite.
+func (suite *UtilsSuite) Test_RemoteGithub() {
+	isGoodURL(suite.T(), "http://github.com", true, assert.Nil)
+}
 
-})
+func (suite *UtilsSuite) Test_GitHubURLOrgNoRepo() {
+	isGoodURL(suite.T(), "http://github.com/contoso", true, assert.Nil)
+}
+func (suite *UtilsSuite) Test_GitHubURLOrgRepo() {
+	isGoodURL(suite.T(), "http://github.com/contoso/sameple-repo", true, assert.Nil)
+}
+func (suite *UtilsSuite) Test_GitHubURLOrgRepoFile() {
+	isGoodURL(suite.T(), "http://github.com/contoso/sameple-repo/same.yaml", true, assert.Nil)
+}
+func (suite *UtilsSuite) Test_NoSchema() {
+	// "a URL should start with a scheme (e.g. http://, https:// or git://"
+	isGoodURL(suite.T(), "github.com/contoso/sameple-repo/same.yaml", false, assert.Nil)
+}
+func (suite *UtilsSuite) Test_BadlyFormed() {
+	isGoodURL(suite.T(), "github/contoso/sample-repo/same.yaml", false, assert.Nil)
+}
+func (suite *UtilsSuite) Test_LocalRelative() {
+	isGoodURL(suite.T(), "../abc.txt", false, assert.Nil)
+}
+func (suite *UtilsSuite) Test_LocalAbsolute() {
+	isGoodURL(suite.T(), "/ab/c.txt", false, assert.Nil)
+}
+func (suite *UtilsSuite) Test_LocalNoPath() {
+	isGoodURL(suite.T(), "c.txt", false, assert.Nil)
+}
 
-// var _ = Describe("SplitYAML", func() {
+func (suite *UtilsSuite) Test_FileIsNotNil() {
+	isGoodURL(suite.T(), "", false, assert.NotNil)
+}
 
-// 	tests := []struct {
-// 		name     string
-// 		yaml     []byte
-// 		expected [][]byte
-// 	}{
-// 		{
-// 			name:     "simple",
-// 			yaml:     []byte("a: b\n---\nc: d"),
-// 			expected: [][]byte{[]byte("a: b\n"), []byte("c: d\n")},
-// 		},
-// 	}
+func (suite *UtilsSuite) Test_FileIsParseable() {
+	// Put a control character in the URL
+	isGoodURL(suite.T(), "\n", false, assert.NotNil)
+}
 
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			resources, err := SplitYAML(test.yaml)
-// 			if err != nil {
-// 				t.Fatalf("Unexpected error: %v", err)
-// 			}
-// 			for idx := range resources {
-// 				if string(resources[idx]) != string(test.expected[idx]) {
-// 					t.Fatalf("Resource in place %v. Got '%s', Want '%s'.", idx, resources[idx], test.expected[idx])
-// 				}
-// 			}
-// 		})
-// 	}
-// })
+func TestUtilsSuite(t *testing.T) {
+	suite.Run(t, new(UtilsSuite))
+}
