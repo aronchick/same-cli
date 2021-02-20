@@ -21,6 +21,7 @@ import (
 	netUrl "net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -99,7 +100,10 @@ var CreateProgramCmd = &cobra.Command{
 			return err
 		}
 
-		UploadPipeline(sameConfigFile, programName, programDescription)
+		_, err = UploadPipeline(sameConfigFile, programName, programDescription)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	},
@@ -229,26 +233,20 @@ func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
 		corrected_url := finalUrl.String()
 		if (finalUrl.Scheme == "https") || (finalUrl.Scheme == "http") {
 			log.Info("currently only support http and https on github.com because we need to prefix with git")
-			corrected_url = "git::" + finalUrl.RawPath
+			corrected_url = "git::" + finalUrl.String()
 		}
 
-		log.Infof("Downloading from %v to %v", finalUrl, tempSameFile)
+		log.Infof("Downloading from %v to %v", corrected_url, tempSameFile)
 		errGet := gogetter.GetFile(tempSameFile.Name(), corrected_url)
 		if errGet != nil {
 			return "", fmt.Errorf("could not download SAME file from URL '%v': %v", finalUrl.String(), errGet)
-		} else {
-			g := new(gogetter.FileGetter)
-			g.Copy = true
-			errGet := g.GetFile(tempSameFile.Name(), configFileUri)
-			if errGet != nil {
-				return "", fmt.Errorf("could not get sameFile from url: %v\nerror: %v", configFileUri, err)
-			}
 		}
 
 		filePath = tempSameFile.Name()
 	} else {
 		cwd, _ := os.Getwd()
-		filePath, _ = gogetter.Detect(putativeFilePath, cwd, []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.GitLabDetector), new(gogetter.BitBucketDetector), new(gogetter.GCSDetector), new(gogetter.FileDetector)})
+		absFilePath, _ := filepath.Abs(putativeFilePath)
+		filePath, _ = gogetter.Detect(absFilePath, cwd, []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.FileDetector)})
 
 		if !fileExists(filePath) {
 			return "", fmt.Errorf("could not find sameFile at: %v\nerror: %v", putativeFilePath, err)
@@ -268,8 +266,13 @@ func kubectlExists() (kubectlDoesExist bool, err error) {
 }
 
 func fileExists(path string) (fileDoesExist bool) {
-	_, err := os.Stat(path)
-	return os.IsExist(err)
+	resolvedPath, err := netUrl.Parse(path)
+	if err != nil {
+		log.Errorf("could not parse path '%v': %v", path, err)
+		return false
+	}
+	_, err = os.Stat(resolvedPath.Path)
+	return err == nil
 }
 
 func init() {

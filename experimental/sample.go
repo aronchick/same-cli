@@ -1,12 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"net/url"
 	"os"
-
-	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
-	"github.com/hashicorp/go-getter"
 )
 
 func main() {
@@ -29,12 +24,16 @@ func main() {
 	// fmt.Printf("d: %v\n", d)
 	// fmt.Printf("err: %v", err)
 
-	d, _ := os.Getwd()
-	// s, _ := getter.Detect("file:///home/daaronch/same-cli/same.yaml", d, []getter.Detector{new(getter.FileDetector)})
-	s, _ := getter.Detect("https://github.com/dapr/dapr/same.yaml", d, getter.Detectors)
-	u, _ := url.ParseRequestURI(s)
-	sameConfig, err := loaders.LoadSAMEConfig(u.Path)
-	fmt.Printf("same u: %v\n", u.String())
-	fmt.Printf("same err: %v\n", err)
-	_ = sameConfig
+	// d, _ := os.Getwd()
+	// // s, _ := getter.Detect("file:///home/daaronch/same-cli/same.yaml", d, []getter.Detector{new(getter.FileDetector)})
+	// s, _ := getter.Detect("https://github.com/dapr/dapr/same.yaml", d, getter.Detectors)
+	// u, _ := url.ParseRequestURI(s)
+	// sameConfig, err := loaders.LoadSAMEConfig(u.Path)
+	// fmt.Printf("same u: %v\n", u.String())
+	// fmt.Printf("same err: %v\n", err)
+	// _ = sameConfig
+
+	a, b := os.Stat("/home/daaronch/same-cli/test/testdata/badpipeline.yaml")
+	_ = a
+	_ = b
 }

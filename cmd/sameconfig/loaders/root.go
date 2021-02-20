@@ -24,11 +24,15 @@ type Loader interface {
 // IsRemoteFile checks if the path configFile is remote (e.g. http://github...)
 func IsRemoteFile(configFile string) (bool, error) {
 	if configFile == "" {
-		return false, fmt.Errorf("config file must be a URI or a path")
+		message := fmt.Errorf("config file must be a URI or a path")
+		log.Errorf(message.Error())
+		return false, message
 	}
 	url, err := netUrl.Parse(configFile)
 	if err != nil {
-		return false, fmt.Errorf("error parsing file path: %v", err)
+		message := fmt.Errorf("error parsing file path: %v", err)
+		log.Errorf(message.Error())
+		return false, message
 	}
 	if url.Scheme != "" {
 		return true, nil
@@ -44,9 +48,16 @@ func LoadSAMEConfig(configFilePath string) (*SameConfig, error) {
 	}
 
 	// Read contents
-	configFileBytes, err := ioutil.ReadFile(configFilePath)
+	resolvedConfigFilePath, err := netUrl.Parse(configFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("could not read from config file %s: %v", configFilePath, err)
+		log.Errorf("root.go: could not resolve same config file path: %v", err)
+		return nil, err
+	}
+	configFileBytes, err := ioutil.ReadFile(resolvedConfigFilePath.Path)
+	if err != nil {
+		message := fmt.Errorf("root.go: could not read from config file %s: %v", configFilePath, err)
+		log.Errorf(message.Error())
+		return nil, message
 	}
 
 	// Check API version.

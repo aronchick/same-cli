@@ -76,7 +76,7 @@ func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineN
 		runDescription = "Description of a new run."
 	}
 
-	uploadedPipeline := UploadPipeline(sameConfigFile, pipelineName, pipelineDescription)
+	uploadedPipeline, _ := UploadPipeline(sameConfigFile, pipelineName, pipelineDescription)
 	createdExperiment := CreateExperiment(experimentName, experimentDescription)
 	runDetails := CreateRun(runName, uploadedPipeline.ID, createdExperiment.ID, runDescription, runParams)
 
@@ -86,22 +86,28 @@ func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineN
 	return runDetails.Run.ID
 }
 
-func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) *pipelineuploadmodel.APIPipeline {
+func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipelineuploadmodel.APIPipeline, err error) {
 	kfpconfig := *NewKFPConfig()
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
-		panic(err)
+		log.Errorf("could not create API client for pipeline: %v", err)
+		return nil, err
 	}
+
 	uploadparams := pipelineuploadparams.NewUploadPipelineParams()
 	uploadparams.Name = &pipelineName
 	uploadparams.Description = &pipelineDescription
 
-	pipelineFilePath, _ := utils.ResolveLocalFilePath(sameConfigFile.Spec.Pipeline.Package)
-	uploadedPipeline, err := uploadclient.UploadFile(pipelineFilePath, uploadparams)
+	pipelineFilePath, err := utils.ResolveLocalFilePath(sameConfigFile.Spec.Pipeline.Package)
+	if err != nil {
+		return nil, err
+	}
+	uploadedPipeline, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
 
 	if err != nil {
-		panic(err)
+		log.Errorf("could not upload pipeline: %v", err)
+		return nil, err
 	}
 
 	viper.Set("activepipeline", uploadedPipeline.ID)
@@ -111,7 +117,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 		os.Exit(1)
 	}
 
-	return uploadedPipeline
+	return uploadedPipeline, nil
 }
 
 func CreateExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {

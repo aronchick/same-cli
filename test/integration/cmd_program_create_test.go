@@ -78,10 +78,14 @@ func (suite *ProgramCreateSuite) Test_GetRemoteNoSAME() {
 	assert.Contains(suite.T(), string(out), "could not download SAME")
 }
 
-func (suite *ProgramCreateSuite) Test_GetRemoteSAME() {
-	// The URL 'https://github.com/dapr/dapr' does not have a 'same.yaml' file in it, so it should fail
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://github.com/SAME-Project/Sample-SAME-Data-Science")
-	assert.Contains(suite.T(), string(out), "could not download SAME")
+func (suite *ProgramCreateSuite) Test_GetRemoteSAMEWithBadPipelineFile() {
+	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/badpipelinedirectory.yaml")
+	assert.Contains(suite.T(), string(out), "/dev/null/bad_pipeline.tgz: not a directory")
+}
+
+func (suite *ProgramCreateSuite) Test_GetRemoteSAMEWithBadPipelineDirectory() {
+	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/badpipelinefile.yaml")
+	assert.Contains(suite.T(), string(out), "/tmp/bad_pipeline.tgz: no such file or directory")
 }
 
 // In order for 'go test' to run this suite, we need to create

@@ -1,0 +1,5 @@
+# https://github.com/kubeflow/kfctl/blob/4c159515c4045c8f45667094de313a49b3767dda/pkg/kfapp/kustomize/testdata/kustomizeExample/metadata/expected/kustomization.yaml
+apiVersion: projectsame.io/v1alpha1
+pipeline:
+  name: "bad_pipeline"
+  package: "/tmp/bad_pipeline.tgz"

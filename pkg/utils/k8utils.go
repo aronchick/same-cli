@@ -149,12 +149,12 @@ func UrlToRetrive(url string, fileName string) (fullUrl url.URL, err error) {
 func ResolveLocalFilePath(filePathToTest string) (filePath string, err error) {
 	fileInfo, err := os.Stat(filePathToTest)
 	if err != nil {
-		log.Infof("could not find file '%v': %v", filePathToTest, err)
+		log.Errorf("k8sutils.go: could not find file '%v': %v", filePathToTest, err)
 		return "", err
 	}
 	u, err := url.ParseRequestURI(fileInfo.Name())
 	if err != nil {
-		log.Infof("could not parse URL '%v': %v", u, err)
+		log.Errorf("k8sutils.go: could not parse URL '%v': %v", u, err)
 		return "", err
 	}
 	return u.String(), nil
