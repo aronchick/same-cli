@@ -16,11 +16,9 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.2.0
-	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/go-getter v1.5.2
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/kubeflow/pipelines v0.0.0-20210123000940-f65391309650
+	github.com/kubeflow/pipelines v0.0.0-20210219225645-61f9c2c328d2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.15.0
@@ -36,7 +34,6 @@ require (
 	google.golang.org/genproto v0.0.0-20210212180131-e7f2df4ecc2d // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v11.0.0+incompatible
