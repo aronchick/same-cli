@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
@@ -63,7 +64,8 @@ func (c *PipelineUploadClient) UploadFile(filePath string, parameters *params.Up
 func (c *PipelineUploadClient) Upload(parameters *params.UploadPipelineParams) (*model.APIPipeline,
 	error) {
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), apiServerDefaultTimeout)
+	// ctx, cancel := context.WithTimeout(context.Background(), apiServerDefaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 100000*time.Second)
 	defer cancel()
 
 	// Make service call

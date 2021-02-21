@@ -1,7 +1,11 @@
 package main
 
 import (
-	"os"
+	"fmt"
+
+	"github.com/azure-octo/same-cli/cmd"
+	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
+	"github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 )
 
 func main() {
@@ -33,7 +37,17 @@ func main() {
 	// fmt.Printf("same err: %v\n", err)
 	// _ = sameConfig
 
-	a, b := os.Stat("/home/daaronch/same-cli/test/testdata/badpipeline.yaml")
-	_ = a
-	_ = b
+	// a, b := os.Stat("/home/daaronch/same-cli/test/testdata/badpipeline.yaml")
+	// _ = a
+	// _ = b
+
+	kfpconfig := *cmd.NewKFPConfig()
+	pClient, _ := api_server.NewPipelineClient(kfpconfig, false)
+
+	pipelineClientParams := pipeline_service.NewListPipelinesParams()
+
+	arr, _ := pClient.ListAll(pipelineClientParams, 100)
+	for _, s := range arr {
+		fmt.Println(s.Name)
+	}
 }

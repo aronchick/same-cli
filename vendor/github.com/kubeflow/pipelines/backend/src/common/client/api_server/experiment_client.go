@@ -108,7 +108,7 @@ func (c *ExperimentClient) List(parameters *params.ListExperimentParams) (
 
 		return nil, 0, "", util.NewUserError(err,
 			fmt.Sprintf("Failed to list experiments. Params: '%+v'", parameters),
-			fmt.Sprintf("Failed to list experiments"))
+			fmt.Sprint("Failed to list experiments"))
 	}
 
 	return response.Payload.Experiments, int(response.Payload.TotalSize), response.Payload.NextPageToken, nil

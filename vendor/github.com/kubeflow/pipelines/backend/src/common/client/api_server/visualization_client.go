@@ -22,7 +22,7 @@ type VisualizationClient struct {
 }
 
 func NewVisualizationClient(clientConfig clientcmd.ClientConfig, debug bool) (
-		*VisualizationClient, error) {
+	*VisualizationClient, error) {
 
 	runtime, err := NewHTTPRuntime(clientConfig, debug)
 	if err != nil {
@@ -38,7 +38,7 @@ func NewVisualizationClient(clientConfig clientcmd.ClientConfig, debug bool) (
 }
 
 func (c *VisualizationClient) Create(parameters *params.CreateVisualizationParams) (*model.APIVisualization,
-		error) {
+	error) {
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), apiServerDefaultTimeout)
 	defer cancel()
@@ -55,7 +55,7 @@ func (c *VisualizationClient) Create(parameters *params.CreateVisualizationParam
 
 		return nil, util.NewUserError(err,
 			fmt.Sprintf("Failed to create visualizaiton. Params: '%+v'. Body: '%+v'", parameters, parameters.Body),
-			fmt.Sprintf("Failed to create visualization '%v'", parameters.Body.Type))
+			fmt.Sprintf("Failed to create visualization Type: '%v'", parameters.Body.Type))
 	}
 
 	return response.Payload, nil

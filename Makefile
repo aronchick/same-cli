@@ -197,7 +197,7 @@ check-licenses:
 ################################################################################
 .PHONY: test
 test: build-same check-licenses
-	ginkgo test/... -v
+	go test ./test/... -v
 
 # Run the unittests and output a junit report for use with prow
 ################################################################################

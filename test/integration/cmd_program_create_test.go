@@ -1,12 +1,13 @@
 package integration_test
 
 import (
-	"bytes"
+	"fmt"
 	"os"
 
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 
 	"github.com/stretchr/testify/assert"
@@ -32,19 +33,29 @@ func (suite *ProgramCreateSuite) SetupTest() {
 // All methods that begin with "Test" are run as tests within a
 // suite.
 func (suite *ProgramCreateSuite) Test_ExecuteWithNoCreate() {
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program")
 	assert.Contains(suite.T(), string(out), "same program [command]")
 }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateAndNoArgs() {
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create")
 	assert.Contains(suite.T(), string(out), "required flag(s) \"file\"")
+}
+
+func (suite *ProgramCreateSuite) Test_NoHomeDir() {
+	origHome := os.Getenv("HOME")
+
+	// Set to bad home directory
+	os.Setenv("HOME", "/dev/null/bad_home")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
+	assert.Contains(suite.T(), string(out), "Could not set kubeconfig")
+	os.Setenv("HOME", origHome)
 }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithFileAndNoKubectl() {
 	origPath := os.Getenv("PATH")
 	os.Setenv("PATH", "")
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
 	assert.Contains(suite.T(), string(out), "Error: the 'kubectl' binary is not on your PATH")
 	os.Setenv("PATH", origPath)
 }
@@ -52,7 +63,7 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithFileAndNoKubectl() {
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 	origKubeconfig := os.Getenv("KUBECONFIG")
 	os.Setenv("KUBECONFIG", "/dev/null/baddir")
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
 	assert.Contains(suite.T(), string(out), "Could not set kubeconfig default context")
 	if origKubeconfig != "" {
 		_ = os.Setenv("KUBECONFIG", origKubeconfig)
@@ -62,51 +73,40 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithBadFile() {
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "/dev/null/same.yaml")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "/dev/null/same.yaml")
 	assert.Contains(suite.T(), string(out), "could not find sameFile")
 }
 
 func (suite *ProgramCreateSuite) Test_GetRemoteBadURL() {
 	// Use a URL with a control character
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://\n")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://\n")
 	assert.Contains(suite.T(), string(out), "unable to parse")
 }
 
 func (suite *ProgramCreateSuite) Test_GetRemoteNoSAME() {
 	// The URL 'https://github.com/dapr/dapr' does not have a 'same.yaml' file in it, so it should fail
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://github.com/dapr/dapr")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://github.com/dapr/dapr")
 	assert.Contains(suite.T(), string(out), "could not download SAME")
 }
 
 func (suite *ProgramCreateSuite) Test_GetRemoteSAMEWithBadPipelineFile() {
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/badpipelinedirectory.yaml")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/badpipelinedirectory.yaml")
 	assert.Contains(suite.T(), string(out), "/dev/null/bad_pipeline.tgz: not a directory")
 }
 
 func (suite *ProgramCreateSuite) Test_GetRemoteSAMEWithBadPipelineDirectory() {
-	_, out, _ := executeCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/badpipelinefile.yaml")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/badpipelinefile.yaml")
 	assert.Contains(suite.T(), string(out), "/tmp/bad_pipeline.tgz: no such file or directory")
+}
+
+func (suite *ProgramCreateSuite) Test_GetRemoteSAMEGoodPipeline() {
+	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml")
+	assert.Empty(suite.T(), string(out), fmt.Sprintf("No output expected. Actual: %v", string(out)))
+	assert.NoError(suite.T(), err, fmt.Sprintf("Error found (non expected): %v", err))
 }
 
 // In order for 'go test' to run this suite, we need to create
 // a normal test function and pass our suite to suite.Run
 func TestProgramCreateSuite(t *testing.T) {
 	suite.Run(t, new(ProgramCreateSuite))
-}
-
-func executeCommandC(t *testing.T, root *cobra.Command, args ...string) (c *cobra.Command, output string, err error) {
-	buf := new(bytes.Buffer)
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetArgs(args)
-
-	// Need to check if we're running in debug mode for VSCode
-	// Empty them if they exist
-	if (len(os.Args) > 2) && (os.Args[1] == "-test.run") {
-		os.Args[1] = ""
-		os.Args[2] = ""
-	}
-
-	c, err = root.ExecuteC()
-	return c, buf.String(), err
 }

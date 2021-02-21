@@ -5,14 +5,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
 	experimentmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_model"
+	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
 	pipelineuploadparams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
 	pipelineuploadmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_model"
 	runparams "github.com/kubeflow/pipelines/backend/api/go_http_client/run_client/run_service"
 	runmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
+	"github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -99,18 +102,34 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	uploadparams.Name = &pipelineName
 	uploadparams.Description = &pipelineDescription
 
+	// TODO: We only support local compressed pipelines (for now)
 	pipelineFilePath, err := utils.ResolveLocalFilePath(sameConfigFile.Spec.Pipeline.Package)
 	if err != nil {
 		return nil, err
 	}
 	uploadedPipeline, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
 
+	pipelineID := ""
 	if err != nil {
-		log.Errorf("could not upload pipeline: %v", err)
-		return nil, err
+		// TODO: The below is a GROSS HACK. go-swagger produces the following error for everything with an empty body:
+		// s:"&{0 [] } (*pipeline_upload_model.APIStatus) is not supported by the TextConsumer, can be resolved by supporting TextUnmarshaler interface"
+		// This does not indicate an error (we think), so I'm bailing out.
+		// We SHOULD fix go-swagger so it doesn't produce this.
+		if strings.Contains(err.Error(), "supporting TextUnmarshaler interface") {
+			pipelineID = findPipeline(kfpconfig, *uploadparams.Name)
+			if pipelineID == "" {
+				log.Errorf("deploy_or_update_a_pipeline.go: returned a pipeline but couldn't find it in the list: %v", err)
+				return nil, err
+			}
+		} else {
+			log.Errorf("deploy_or_update_a_pipeline.go: could not upload pipeline: %v", err)
+			return nil, err
+		}
+	} else {
+		pipelineID = uploadedPipeline.ID
 	}
 
-	viper.Set("activepipeline", uploadedPipeline.ID)
+	viper.Set("activepipeline", pipelineID)
 	err = viper.WriteConfig()
 	if err != nil {
 		log.Fatal(fmt.Sprintf("could not set file flag as required: %v", err))
@@ -118,6 +137,20 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	}
 
 	return uploadedPipeline, nil
+}
+
+func findPipeline(kfpconfig clientcmd.ClientConfig, pipelineName string) (pipelineID string) {
+	pClient, _ := api_server.NewPipelineClient(kfpconfig, false)
+
+	pipelineClientParams := pipeline_service.NewListPipelinesParams()
+
+	listOfPipelines, _ := pClient.ListAll(pipelineClientParams, 100)
+	for _, thisPipeline := range listOfPipelines {
+		if pipelineName == thisPipeline.Name {
+			return thisPipeline.ID
+		}
+	}
+	return ""
 }
 
 func CreateExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {

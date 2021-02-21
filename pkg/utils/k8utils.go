@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	gogetter "github.com/hashicorp/go-getter"
@@ -146,16 +147,17 @@ func UrlToRetrive(url string, fileName string) (fullUrl url.URL, err error) {
 }
 
 // ResolveLocalFilePath takes local file path string, tests for its existence and resolves file:// to local path
-func ResolveLocalFilePath(filePathToTest string) (filePath string, err error) {
-	fileInfo, err := os.Stat(filePathToTest)
+func ResolveLocalFilePath(filePathToTest string) (returnFilePath string, err error) {
+	_, err = os.Stat(filePathToTest)
 	if err != nil {
 		log.Errorf("k8sutils.go: could not find file '%v': %v", filePathToTest, err)
 		return "", err
 	}
-	u, err := url.ParseRequestURI(fileInfo.Name())
+	u, err := netUrl.Parse(filePathToTest)
 	if err != nil {
 		log.Errorf("k8sutils.go: could not parse URL '%v': %v", u, err)
 		return "", err
 	}
-	return u.String(), nil
+	returnFilePath, _ = filepath.Abs(u.String())
+	return returnFilePath, nil
 }

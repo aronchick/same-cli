@@ -17,6 +17,8 @@ limitations under the License.
 */
 
 import (
+	"path"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -70,8 +72,7 @@ func initConfig() {
 		}
 
 		// Search config in home directory with name ".same" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".same")
+		viper.SetConfigFile(path.Join(home, ".same", "config.yaml"))
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

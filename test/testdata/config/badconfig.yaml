@@ -1,0 +1,4 @@
+# Intentionally unbalanced quotes to force bad yaml parsing
+a:
+  b:
+    - """
