@@ -42,7 +42,7 @@ func IsRemoteFile(configFile string) (bool, error) {
 
 // LoadSAMEConfig reads the samedef from a remote URI or local file,
 // and returns the sameconfig.
-func LoadSAMEConfig(configFilePath string) (*SameConfig, error) {
+func LoadSAME(configFilePath string) (*SameConfig, error) {
 	if configFilePath == "" {
 		return nil, fmt.Errorf("config file must be the URI of a SameDef spec")
 	}
@@ -71,7 +71,7 @@ func LoadSAMEConfig(configFilePath string) (*SameConfig, error) {
 	// }
 
 	v1 := V1{}
-	sameconfig, err := v1.LoadSameConfig(obj)
+	sameconfig, err := v1.LoadSAME(obj)
 	if err != nil {
 		log.Errorf("Failed to convert kfdef to kfconfig: %v", err)
 		return nil, err

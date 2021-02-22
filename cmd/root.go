@@ -17,13 +17,13 @@ limitations under the License.
 */
 
 import (
+	"fmt"
 	"path"
 
+	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/spf13/viper"
 )
 
 var cfgFile string
@@ -32,7 +32,7 @@ var cfgFile string
 var RootCmd = &cobra.Command{
 	Use:   "same",
 	Short: "Interact with self-assembling machine learning environment configurations",
-	Long:  `A longer SAME`,
+	Long:  `A longer SAME Root Description.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -45,6 +45,7 @@ func Execute() {
 }
 
 func init() {
+	log.Info("in root init")
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -60,25 +61,24 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
+	log.Info("in initConfig")
+	if cfgFile == "" {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			log.Errorf("could not find home directory: %v", err)
+			message := fmt.Sprintf("could not find home directory: %v", err)
+			fmt.Println(message)
+			log.Fatalf(message)
 			return
 		}
 
-		// Search config in home directory with name ".same" (without extension).
-		viper.SetConfigFile(path.Join(home, ".same", "config.yaml"))
+		cfgFile = path.Join(home, ".same", "config.yaml")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		log.Info("Using config file:", viper.ConfigFileUsed())
+	err = utils.LoadConfig(cfgFile)
+	if err != nil {
+		message := fmt.Sprintf("Error reading config file: %v", err)
+		fmt.Println(message)
+		log.Fatalf(message)
 	}
 }

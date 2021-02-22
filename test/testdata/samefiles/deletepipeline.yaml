@@ -1,0 +1,4 @@
+apiVersion: projectsame.io/v1alpha1
+pipeline:
+  name: "delete_pipeline_874c1a7d-7f84-4879-b496-0f14d3b77de5"
+  package: "../testdata/pipelines/goodpipeline.tar.gz"

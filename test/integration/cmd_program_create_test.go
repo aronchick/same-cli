@@ -101,7 +101,7 @@ func (suite *ProgramCreateSuite) Test_GetRemoteSAMEWithBadPipelineDirectory() {
 
 func (suite *ProgramCreateSuite) Test_GetRemoteSAMEGoodPipeline() {
 	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml")
-	assert.Empty(suite.T(), string(out), fmt.Sprintf("No output expected. Actual: %v", string(out)))
+	assert.Contains(suite.T(), string(out), "Pipeline Uploaded")
 	assert.NoError(suite.T(), err, fmt.Sprintf("Error found (non expected): %v", err))
 }
 

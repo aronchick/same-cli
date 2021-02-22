@@ -21,21 +21,29 @@ import (
 	"fmt"
 	"os/exec"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Creates a new pipeline on your Kubeflow from a SAME file.",
+	Long:  `Creates a new pipeline on your Kubeflow from a SAME file. Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// for simplicity we currently rely on Porter, Azure CLI and Kubectl
+
+		allSettings := viper.AllSettings()
+
+		// len in go checks for both nil and 0
+		if len(allSettings) == 0 {
+			message := "Nil file or empty load config settings. Please run 'same config new' to initialize."
+			cmd.PrintErr(message)
+			log.Fatalf(message)
+			return nil
+		}
 
 		if err := checkDepenciesInstalled(); err != nil {
 			return err

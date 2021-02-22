@@ -98,7 +98,7 @@ func ExecuteFull() {
 
 	// Get the YAML from disk
 	fileURI, _ := filepath.Abs("/home/daaronch/same-cli/same.yaml")
-	sameConfig, err := ParseConfig(ctx, fileURI)
+	sameConfig, err := ParseSAME(ctx, fileURI)
 
 	if err != nil {
 		fmt.Printf("failed to load config: %v", err.Error())

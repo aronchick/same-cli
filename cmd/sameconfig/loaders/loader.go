@@ -11,7 +11,7 @@ import (
 // }
 
 // LoadSameConfig takes the loaded definiton file, loads it and then unmarshalls it into a SameConfig struct.
-func (v V1) LoadSameConfig(def interface{}) (sameConfig *SameConfig, err error) {
+func (v V1) LoadSAME(def interface{}) (sameConfig *SameConfig, err error) {
 	// First create the struct to unmarshall the yaml into
 	sameConfigFromFile := &SameSpec{}
 

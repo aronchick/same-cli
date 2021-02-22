@@ -6,7 +6,9 @@ import (
 
 	"github.com/azure-octo/same-cli/cmd"
 	"github.com/azure-octo/same-cli/pkg/utils"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -31,17 +33,45 @@ func (suite *RootSuite) SetupTest() {
 // All methods that begin with "Test" are run as tests within a
 // suite.
 func (suite *RootSuite) Test_NoConfigDir() {
+	viper.Reset()
+	defer func() { log.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	log.StandardLogger().ExitFunc = func(int) { fatal = true }
+
 	origHome := os.Getenv("HOME")
 
 	// Set to empty HOME
 	os.Setenv("HOME", "/tmp")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "")
-	assert.Contains(suite.T(), string(out), "same [command]")
+	fatal = false
+	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "create")
+
+	// Putting empty assignments here for debugging in the future
+	_ = command
+	_ = err
+
+	assert.Equal(suite.T(), true, fatal)
+	assert.Contains(suite.T(), string(out), "Nil file or empty load config settings")
 	os.Setenv("HOME", origHome)
+
 }
 
-// In order for 'go test' to run this suite, we need to create
-// a normal test function and pass our suite to suite.Run
+func (suite *RootSuite) Test_BadConfig() {
+	viper.Reset()
+	defer func() { log.StandardLogger().ExitFunc = nil }()
+	var fatal bool
+	log.StandardLogger().ExitFunc = func(int) { fatal = true }
+
+	fatal = false
+	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "--config", "/tmp/badfile.yaml", "create")
+
+	// Putting empty assignments here for debugging in the future
+	_ = command
+	_ = err
+
+	assert.Equal(suite.T(), true, fatal)
+	assert.Contains(suite.T(), string(out), "Nil file or empty load config settings")
+}
+
 func TestRootSuite(t *testing.T) {
 	suite.Run(t, new(RootSuite))
 }

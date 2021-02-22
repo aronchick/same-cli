@@ -11,8 +11,8 @@ import (
 	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
 	experimentmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_model"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
+	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_model"
 	pipelineuploadparams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
-	pipelineuploadmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_model"
 	runparams "github.com/kubeflow/pipelines/backend/api/go_http_client/run_client/run_service"
 	runmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
 	"github.com/kubeflow/pipelines/backend/src/common/client/api_server"
@@ -89,7 +89,7 @@ func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineN
 	return runDetails.Run.ID
 }
 
-func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipelineuploadmodel.APIPipeline, err error) {
+func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipeline_model.APIPipeline, err error) {
 	kfpconfig := *NewKFPConfig()
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
@@ -107,29 +107,38 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	if err != nil {
 		return nil, err
 	}
+
+	// uploadedPipeline will always be nil until we fix the swagger implementation
 	uploadedPipeline, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
 
-	pipelineID := ""
-	if err != nil {
-		// TODO: The below is a GROSS HACK. go-swagger produces the following error for everything with an empty body:
-		// s:"&{0 [] } (*pipeline_upload_model.APIStatus) is not supported by the TextConsumer, can be resolved by supporting TextUnmarshaler interface"
-		// This does not indicate an error (we think), so I'm bailing out.
-		// We SHOULD fix go-swagger so it doesn't produce this.
-		if strings.Contains(err.Error(), "supporting TextUnmarshaler interface") {
-			pipelineID = findPipeline(kfpconfig, *uploadparams.Name)
-			if pipelineID == "" {
-				log.Errorf("deploy_or_update_a_pipeline.go: returned a pipeline but couldn't find it in the list: %v", err)
-				return nil, err
-			}
-		} else {
-			log.Errorf("deploy_or_update_a_pipeline.go: could not upload pipeline: %v", err)
+	// TODO: The below is a GROSS HACK. go-swagger produces the following error for everything with an empty body:
+	// s:"&{0 [] } (*pipeline_upload_model.APIStatus) is not supported by the TextConsumer, can be resolved by supporting TextUnmarshaler interface"
+	// This does not indicate an error (we think), so I'm bailing out.
+	// We SHOULD fix go-swagger so it doesn't produce this.
+	if strings.Contains(err.Error(), "supporting TextUnmarshaler interface") {
+		uploadedPipeline, err = findPipeline(kfpconfig, *uploadparams.Name)
+		if uploadedPipeline.ID == "" {
+			log.Errorf("deploy_or_update_a_pipeline.go: returned with no error, but we couldn't resolve it to an ID: %v", err)
 			return nil, err
+		} else {
+			// The error was just the one we know about and the uploadedPipeline has a value, so swallow the err
+			err = nil
 		}
-	} else {
-		pipelineID = uploadedPipeline.ID
 	}
 
-	viper.Set("activepipeline", pipelineID)
+	if err != nil {
+		// It's not an error we know about, and we couldn't find the pipeline we uploaded, so assuming it didn't get uploaded
+		log.Errorf("deploy_or_update_a_pipeline.go: could not upload pipeline: %v", err)
+		return nil, err
+	} else {
+		// if uploadedPipeline != nil {
+		// 	log.Fatalf("the app currently is expecting the uploaded pipeline to be nil due to a bug in swagger docs. this branch is unlikely to work: %v", uploadedPipeline)
+		// } else {
+		if uploadedPipeline == nil {
+			log.Fatalf("both uploadedPipeline and err are nil, unclear how you got here.")
+		}
+	}
+	viper.Set("activepipeline", uploadedPipeline.ID)
 	err = viper.WriteConfig()
 	if err != nil {
 		log.Fatal(fmt.Sprintf("could not set file flag as required: %v", err))
@@ -139,7 +148,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	return uploadedPipeline, nil
 }
 
-func findPipeline(kfpconfig clientcmd.ClientConfig, pipelineName string) (pipelineID string) {
+func findPipeline(kfpconfig clientcmd.ClientConfig, pipelineName string) (uploadedPipeline *pipeline_model.APIPipeline, err error) {
 	pClient, _ := api_server.NewPipelineClient(kfpconfig, false)
 
 	pipelineClientParams := pipeline_service.NewListPipelinesParams()
@@ -147,10 +156,10 @@ func findPipeline(kfpconfig clientcmd.ClientConfig, pipelineName string) (pipeli
 	listOfPipelines, _ := pClient.ListAll(pipelineClientParams, 100)
 	for _, thisPipeline := range listOfPipelines {
 		if pipelineName == thisPipeline.Name {
-			return thisPipeline.ID
+			return thisPipeline, nil
 		}
 	}
-	return ""
+	return nil, fmt.Errorf("could not find a pipeline with the name: %v", pipelineName)
 }
 
 func CreateExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {
