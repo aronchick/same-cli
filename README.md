@@ -1,5 +1,5 @@
 # PLEASE ONLY CONTRIBUTE WITH THE EXPECTATION THAT 100% OF THIS REPO TO BE DELETED BY 2021-05-01.
-- we're big on keeping our commitments, but we may break this one
+- We're big on keeping our commitments, but we may break this one
 - that said, it's a good assumption that nothing you do here will last in any way other than for archival purposes
 
 # TO GET STARTED
@@ -51,3 +51,10 @@ The above:
 
 
 With all this, we think we can make a breakthrough in the way that machine learning is reproduced across multiple environments.
+
+
+=====
+ICEBERGS:
+1. How do we run code in a cluster such that a data scientist doesn't need to know about containerization? How do they fork public repo and change code in as small a way as possible? How do we check your cluster is appropriate? Etc
+2. What do we do about pipelines? Kubeflow requires compilation which isn't great. Kedro does it all in python which feels right, how do we test/swap?
+3. Data versioning - how do we capture the data this ran on? How do we capture and verify data schema? Give errors when schema invalid? How do we trivially allow swapping of data sources for trying existing models in new organizations? (including access to the data)
