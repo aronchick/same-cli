@@ -109,7 +109,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	}
 
 	// uploadedPipeline will always be nil until we fix the swagger implementation
-	uploadedPipeline, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
+	_, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
 
 	// TODO: The below is a GROSS HACK. go-swagger produces the following error for everything with an empty body:
 	// s:"&{0 [] } (*pipeline_upload_model.APIStatus) is not supported by the TextConsumer, can be resolved by supporting TextUnmarshaler interface"

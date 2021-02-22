@@ -7,12 +7,10 @@ import (
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
-	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_model"
 	apiclient "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client"
 	params "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
 	model "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_model"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
-	log "github.com/sirupsen/logrus"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -50,7 +48,7 @@ func NewPipelineUploadClient(clientConfig clientcmd.ClientConfig, debug bool) (
 }
 
 func (c *PipelineUploadClient) UploadFile(filePath string, parameters *params.UploadPipelineParams) (
-	*pipeline_model.APIPipeline, error) {
+	*model.APIPipeline, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, util.NewUserErrorWithSingleMessage(err,
@@ -62,7 +60,7 @@ func (c *PipelineUploadClient) UploadFile(filePath string, parameters *params.Up
 	return c.Upload(parameters)
 }
 
-func (c *PipelineUploadClient) Upload(parameters *params.UploadPipelineParams) (*pipeline_model.APIPipeline,
+func (c *PipelineUploadClient) Upload(parameters *params.UploadPipelineParams) (*model.APIPipeline,
 	error) {
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), apiServerDefaultTimeout)
@@ -84,8 +82,7 @@ func (c *PipelineUploadClient) Upload(parameters *params.UploadPipelineParams) (
 			fmt.Sprintf("Failed to upload pipeline"))
 	}
 
-	log.Debugf("returning from an uploaded pipeline is currently broken - waiting on fixing the swagger to figure this out: %v", response)
-	return nil, nil
+	return response.Payload, nil
 }
 
 // UploadPipelineVersion uploads pipeline version from local file.
