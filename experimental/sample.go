@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/azure-octo/same-cli/cmd/program"
+	"github.com/azure-octo/same-cli/cmd"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
 	"github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 )
@@ -41,7 +41,7 @@ func main() {
 	// _ = a
 	// _ = b
 
-	kfpconfig := *program.NewKFPConfig()
+	kfpconfig := *cmd.NewKFPConfig()
 	pClient, _ := api_server.NewPipelineClient(kfpconfig, false)
 
 	pipelineClientParams := pipeline_service.NewListPipelinesParams()
