@@ -69,6 +69,7 @@ jobs:
       - name: Install dependencies
         run: |
           go version
+          echo ${{ env.GOARCH }}
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: actions-contrib/golangci-lint@v1
