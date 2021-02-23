@@ -67,7 +67,7 @@ func initConfig() {
 		home, err := homedir.Dir()
 		if err != nil {
 			message := fmt.Sprintf("could not find home directory: %v", err)
-			fmt.Println(message)
+			RootCmd.Println(message)
 			log.Fatalf(message)
 			return
 		}
@@ -78,7 +78,7 @@ func initConfig() {
 	err = utils.LoadConfig(cfgFile)
 	if err != nil {
 		message := fmt.Sprintf("Error reading config file: %v", err)
-		fmt.Println(message)
+		RootCmd.Println(message)
 		log.Fatalf(message)
 	}
 }

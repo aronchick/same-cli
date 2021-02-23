@@ -5,7 +5,6 @@ import (
 
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 type nilfn func(t assert.TestingT, object interface{}, msgAndArgs ...interface{}) bool
@@ -20,16 +19,6 @@ func isGoodURL(t *testing.T, thisUrl string, expectedValue bool, fn nilfn) {
 
 	// Use the function to test if nil or not
 	fn(t, err)
-}
-
-// Define the suite, and absorb the built-in basic suite
-// functionality from testify - including a T() method which
-// returns the current testing context
-type UtilsSuite struct {
-	suite.Suite
-}
-
-func (suite *UtilsSuite) SetupTest() {
 }
 
 // All methods that begin with "Test" are run as tests within a
@@ -71,8 +60,4 @@ func (suite *UtilsSuite) Test_FileIsNotNil() {
 func (suite *UtilsSuite) Test_FileIsParseable() {
 	// Put a control character in the URL
 	isGoodURL(suite.T(), "\n", false, assert.NotNil)
-}
-
-func TestUtilsSuite(t *testing.T) {
-	suite.Run(t, new(UtilsSuite))
 }

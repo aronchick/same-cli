@@ -2,16 +2,20 @@ package integration_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
 	"github.com/azure-octo/same-cli/pkg/utils"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/onsi/gomega/gbytes"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -21,13 +25,19 @@ type ProgramCreateSuite struct {
 	suite.Suite
 	rootCmd       *cobra.Command
 	remoteSAMEURL string
+	logBuf        *gbytes.Buffer
 }
 
-// Make sure that VariableThatShouldStartAtFive is set to five
-// before each test
+// Before all suite
+func (suite *ProgramCreateSuite) SetupAllSuite() {
+	suite.logBuf = gbytes.NewBuffer()
+}
+
+// Before each test
 func (suite *ProgramCreateSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
+	log.SetOutput(ioutil.Discard)
 }
 
 // All methods that begin with "Test" are run as tests within a

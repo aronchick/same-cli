@@ -1,11 +1,13 @@
 package integration_test
 
 import (
-	"log"
+	"io/ioutil"
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
 	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/onsi/gomega/gbytes"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/stretchr/testify/suite"
@@ -18,9 +20,10 @@ type ProgramRunSuite struct {
 	suite.Suite
 	rootCmd       *cobra.Command
 	remoteSAMEURL string
+	logBuf        *gbytes.Buffer
 }
 
-// Before test
+// Before all suite
 func (suite *ProgramRunSuite) SetupAllSuite() {
 	suite.rootCmd = cmd.RootCmd
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
@@ -28,6 +31,13 @@ func (suite *ProgramRunSuite) SetupAllSuite() {
 	if out != "" {
 		log.Printf("not sure if this is a bad thing, there's an output from creating the pipeline during setup: %v", string(out))
 	}
+	suite.logBuf = gbytes.NewBuffer()
+}
+
+// Before each test
+func (suite *ProgramRunSuite) SetupTest() {
+	suite.rootCmd = cmd.RootCmd
+	log.SetOutput(ioutil.Discard)
 }
 
 // After test

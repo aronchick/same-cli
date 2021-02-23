@@ -23,7 +23,6 @@ type RootSuite struct {
 	remoteSAMEURL string
 }
 
-// Make sure that VariableThatShouldStartAtFive is set to five
 // before each test
 func (suite *RootSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
