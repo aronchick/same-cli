@@ -6,24 +6,61 @@ sudo apt-get update && sudo apt-get upgrade -y
 - Download go
   We use Go 1.16 (https://golang.org/dl/). You'll probably use the following:
 ```
-https://golang.org/dl/go1.16.linux-amd64.tar.gz
+wget https://golang.org/dl/go1.16.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.16.linux-amd64.tar.gz
+echo "export PATH=$PATH:/usr/local/go/bin" >> $HOME/.profile
+go -v
+```
+- Install Docker
+  Test for rootless pre-requisites
+```
+id -u # 1001
+whoami # testuser
+grep ^$(whoami): /etc/subuid # testuser:231072:65536
+grep ^$(whoami): /etc/subgid # testuser:231072:65536
+```
+  Install Docker rootless
+```
+curl -fsSL https://get.docker.com/rootless | sh
+echo "export PATH=/home/$(whoami)/bin:$PATH" >> ~/.bashrc
+echo "export PATH=$PATH:/sbin" >> ~/.bashrc
+echo "export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock" >> ~/.bashrc
+echo "systemctl --user start docker" >> ~/.bashrc
+sudo loginctl enable-linger $(whoami)
+```
+  Install Docker client
+```
+sudo apt-get remove docker docker-engine docker.io containerd runc
+sudo apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common -y
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+sudo apt-get install docker-ce docker-ce-cli containerd.io -y 
 ```
 - Log into Azure
-- Update python
-- Install poetry
-- Clone the repo
-- # How to build
-Just run `make build`
+```
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+az login
+```
 
-Then run `bin/same`
+- Set your Resource Group
+```
+sudo apt install jq -y
+az account list -o json | jq '.[] | "\(.name) : \(.id)"'
+```
+Pick your subscription:
+```
+export AZURE_SUBSCRIPTION_ID=XXXXXXXXXXXXXXXXX
+az account set --subscription $AZURE_SUBSCRIPTION_ID
+```
 
-- Run the full tests
-
-
-
-# Additional installations you probably need to do.
-
-- Install go
 - Install kubectl
 ```
 curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
@@ -32,80 +69,53 @@ sudo mv ./kubectl /usr/local/bin/kubectl
 ```
 - Install python conveniences (poetry & pre-commit.com):
 ```
-pip install poetry
-poetry shell
+sudo apt install software-properties-common -y 
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update -y
+sudo apt install python3.9 -y
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+sudo apt install python3.9-distutils
+curl -LO "https://bootstrap.pypa.io/get-pip.py" > get-pip.py
+python3 get-pip.py
+echo "export PATH=$PATH:~/.local/bin" >> ~/.bashrc
+pip3 install --upgrade pip setuptools distlib keyrings.alt poetry
+```
+- Clone the repo
+```
+git clone git@github.com:azure-octo/same-cli.git
+```
+- Install the poetry venv
+```
+cd same-cli
+python -m poetry shell
 python -m pip install --upgrade pip
 pip install pre-commit
+pre-commit install
+```
+- Install Porter
+```
+curl https://cdn.porter.sh/latest/install-linux.sh | bash
+echo "export PATH=$PATH:~/.porter" >> ~/.bashrc
 ```
 
-- Set your subscription ID
+- # How to build
+Just run `make build`
 ```
-az login
+# The below will go away soon
+mkdir ~/.same
+touch ~/.same/config.yaml
+echo "activepipeline: nil" >> ~/.same/config.yaml
 ```
-# Set your Resource Group
+- Create your first Kubeflow cluster
 ```
-az account list -o json | jq '.[] | "\(.name) : \(.id)"'
-export SAME_SUBSCRIPTION_ID='XXXXXXXXXXXXXXXXX'
-az account set --subscription $SAME_SUBSCRIPTION_ID
-```
-
-- EITHER: Create an AKS Cluster
-# Select a resource group from the above list
-
-```
-export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
-export SAME_CLUSTER_NAME="same_test_cluster_$(whoami)"
-az aks create --resource-group $SAME_CLUSTER_RG --name $SAME_CLUSTER_NAME --node-count 0 --enable-addons monitoring --generate-ssh-keys
+bin/same create
 ```
 
-- OR: Use an existing cluster
-```
-az login
-az aks list --subscription=$SAME_SUBSCRIPTION_ID -o json | jq -r '.[] | "- Cluster Name: \t\(.name) \n  Resource Group: \t\(.resourceGroup)"'
-export SAME_CLUSTER_NAME='XXXXXXXXXXXXXXXXX'
-export SAME_CLUSTER_RG='XXXXXXXXXXXXXXXXX'
-```
+- Run the full tests
 
-- INSTALL TERRAFORM:
 ```
-curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-sudo apt-get update && sudo apt-get install terraform
+make test
 ```
-
-- Go into `cmd/infrastructure/azure` and type the following commands:
-```
-export SAME_PREFIX="same"
-export SAME_LOCATION="west europe"
-
-terraform init
-terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
-terraform plan -var "prefix=$(SAME_PREFIX)" -var "location=$(SAME_LOCATION)"
-```
-
-- Install CSI blob storage driver
-```
-curl -skSL https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/install-driver.sh | bash -s master --
-```
-
-- Create k8s secret for Azure Container access
-```
-kubectl create secret generic azure-secret --from-literal accountname="${SAME_PREFIX}ac" --from-literal accountkey=$(az keyvault secret show --vault-name $SAME_PREFIX-kv --name same-container-access | jq .value)
-```
-
-- Set Environment Variables for your cluster
-```
-export SAME_CLUSTER_VERSION=`az aks show -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG -o json | jq -r '.kubernetesVersion'`
-```
-
-- Get your credentials:
-```
-az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_CLUSTER_RG
-```
-
-# Using SAME
-- Be in the same directory as same.yaml
-
 # Goal vs non-goals.
 
 ```

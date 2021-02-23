@@ -5,7 +5,7 @@ description = ""
 authors = ["David Aronchick <aronchick@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 pre-commit = "^2.9.3"
 pathlib2 = "^2.3.5"
 numpy = "^1.19.5"

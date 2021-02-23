@@ -60,13 +60,13 @@ var deleteCmd = &cobra.Command{
 			pipelineName := cmd.Flag("name").Value.String()
 			pipeline, err := findPipeline(kfpconfig, pipelineName)
 			if err != nil {
-				message := fmt.Errorf("delete.go: error looking for pipeline: %v", err)
-				log.Errorf(message.Error())
+				message := fmt.Errorf("error while searching for pipeline: %v", err)
+				log.Errorf("delete.go:" + message.Error())
 				cmd.Print(message.Error())
 				return message
 			} else if pipeline == nil {
-				message := fmt.Errorf("delete.go: could not find a pipeline with the name: %v", pipelineName)
-				log.Errorf(message.Error())
+				message := fmt.Errorf("could not find a pipeline with the name: %v", pipelineName)
+				log.Errorf("delete.go:" + message.Error())
 				cmd.Print(message.Error())
 				return message
 			}
@@ -76,7 +76,7 @@ var deleteCmd = &cobra.Command{
 		if err != nil {
 			message := fmt.Errorf("could not create API client for deleting a pipeline pipeline: %v", err)
 			cmd.Print(message.Error())
-			log.Errorf(message.Error())
+			log.Errorf("delete.go:" + message.Error())
 			return message
 		}
 
@@ -86,7 +86,7 @@ var deleteCmd = &cobra.Command{
 		err = deleteClient.Delete(deleteParams)
 		if err != nil {
 			message := fmt.Errorf("could not delete the pipeline with ID (%v): %v", pipelineID, err)
-			cmd.PrintErr(message.Error())
+			cmd.PrintErr("delete.go:" + message.Error())
 			log.Fatalf(message.Error())
 		}
 
