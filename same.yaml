@@ -58,7 +58,7 @@ datasets:
 run: 
     name: "My Run"
     parameters:
-        epochs: 1000
+        epochs: 250
         batch_size: 100
 debugging_features_flags:
     createStorage: false

@@ -72,7 +72,9 @@ jobs:
           echo ${{ env.GOARCH }}
       - name: golangci-lint
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        uses: actions-contrib/golangci-lint@v1
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.37
       - name: Run go mod tidy check diff
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: make modtidy check-diff
