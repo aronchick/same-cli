@@ -42,7 +42,7 @@ func (suite *RootSuite) Test_NoConfigDir() {
 	// Set to empty HOME
 	os.Setenv("HOME", "/tmp")
 	fatal = false
-	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "create")
+	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init")
 
 	// Putting empty assignments here for debugging in the future
 	_ = command
@@ -61,7 +61,7 @@ func (suite *RootSuite) Test_BadConfig() {
 	log.StandardLogger().ExitFunc = func(int) { fatal = true }
 
 	fatal = false
-	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "--config", "/tmp/badfile.yaml", "create")
+	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "--config", "/tmp/badfile.yaml", "init")
 
 	// Putting empty assignments here for debugging in the future
 	_ = command

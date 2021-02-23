@@ -75,7 +75,7 @@ func initConfig() {
 		cfgFile = path.Join(home, ".same", "config.yaml")
 	}
 
-	err = utils.LoadConfig(cfgFile)
+	err := utils.LoadConfig(cfgFile)
 	if err != nil {
 		message := fmt.Sprintf("Error reading config file: %v", err)
 		RootCmd.Println(message)

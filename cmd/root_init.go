@@ -26,10 +26,10 @@ import (
 )
 
 // createCmd represents the create command
-var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Creates a new pipeline on your Kubeflow from a SAME file.",
-	Long:  `Creates a new pipeline on your Kubeflow from a SAME file. Longer Description.`,
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc)",
+	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// for simplicity we currently rely on Porter, Azure CLI and Kubectl
 
@@ -229,7 +229,7 @@ func executeInlineBashScript(SCRIPT string, errorMessage string) error {
 }
 
 func init() {
-	RootCmd.AddCommand(createCmd)
+	RootCmd.AddCommand(initCmd)
 
 	// Here you will define your flags and configuration settings.
 

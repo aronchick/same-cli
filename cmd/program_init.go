@@ -35,7 +35,7 @@ var randSuffix bool
 var err error
 
 // initCmd represents the init command
-var initCmd = &cobra.Command{
+var programInitCmd = &cobra.Command{
 	Use:   "init -f ${CONFIG}",
 	Short: "Initialize an empty directory with a SAME compliant repo.",
 	Long: `A longer description that spans multiple lines and likely contains examples
@@ -56,11 +56,11 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	RootCmd.AddCommand(initCmd)
+	programCmd.AddCommand(programInitCmd)
 
 	// Config file option
-	initCmd.PersistentFlags().StringVarP(&sameRepoName, "name", "n", "", `Name of the SAME repo to use.`)
-	initCmd.PersistentFlags().BoolP("random_suffix", "r", false, "Add a random suffix to the repo (for testing purposes, usually).")
+	programInitCmd.PersistentFlags().StringVarP(&sameRepoName, "name", "n", "", `Name of the SAME repo to use.`)
+	programInitCmd.PersistentFlags().BoolP("random_suffix", "r", false, "Add a random suffix to the repo (for testing purposes, usually).")
 
 }
 
