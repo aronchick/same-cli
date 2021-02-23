@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -29,6 +30,7 @@ func (suite *InitSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
 	suite.fatal = false
+	log.SetOutput(ioutil.Discard)
 	os.Setenv("TEST_PASS", "1")
 }
 
