@@ -19,7 +19,10 @@ limitations under the License.
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"os/exec"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -39,7 +42,19 @@ var initCmd = &cobra.Command{
 		if len(allSettings) == 0 {
 			message := "Nil file or empty load config settings. Please run 'same config new' to initialize."
 			cmd.PrintErr(message)
+			log.Fatalf(message)
 			return nil
+		}
+
+		if viper.GetString("target") == "" {
+			message := "No 'target' set for deployment - using 'local' as a default. To change this, please execute 'same config set target=XXXX'"
+			cmd.Print(message)
+
+			// Building in the ability to bail out during test. Probably don't need this often.
+			if os.Getenv("TEST_PASS") == "1" {
+				return nil
+			}
+
 		}
 
 		if err := checkDepenciesInstalled(); err != nil {
