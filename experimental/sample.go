@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/azure-octo/same-cli/cmd/program"
+	program "github.com/azure-octo/same-cli/cmd"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
 	"github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 )
