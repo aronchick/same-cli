@@ -21,12 +21,16 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+type setupStruct struct {
+}
 
 // createCmd represents the create command
 var initCmd = &cobra.Command{
@@ -46,7 +50,12 @@ var initCmd = &cobra.Command{
 			return nil
 		}
 
-		if viper.GetString("target") == "" {
+		if err := checkDepenciesInstalled(cmd); err != nil {
+			return err
+		}
+
+		target := strings.ToLower(viper.GetString("target"))
+		if target == "" {
 			message := "No 'target' set for deployment - using 'local' as a default. To change this, please execute 'same config set target=XXXX'"
 			cmd.Print(message)
 
@@ -57,29 +66,33 @@ var initCmd = &cobra.Command{
 
 		}
 
-		if err := checkDepenciesInstalled(); err != nil {
-			return err
-		}
+		var setupParams *setupStruct
 
-		hasProvisionedNewResources := false
-		if !isClusterWithKubeflowCreated() {
-			hasProvisionedNewResources = true
-			if err := createAKSwithKubeflow(); err != nil {
-				return err
+		switch target {
+		case "local":
+			message := "Executing local setup."
+			log.Trace(message)
+			cmd.Println(message)
+			err = setup_local(cmd, setupParams)
+		case "aks":
+			message := "Executing AKS setup."
+			log.Trace(message)
+			cmd.Println(message)
+			err = setup_aks(cmd, setupParams)
+		default:
+			message := fmt.Errorf("Setup target '%v' not understood.", target)
+			cmd.Printf(message.Error())
+			log.Fatalf(message.Error())
+
+			// Building in the ability to bail out during test. Probably don't need this often.
+			if os.Getenv("TEST_PASS") == "1" {
+				return nil
 			}
+
 		}
 
-		if !isStorageConfigured() {
-			hasProvisionedNewResources = true
-			if err := configureStorage(); err != nil {
-				return err
-			}
-		}
-
-		if hasProvisionedNewResources {
-			fmt.Println("Infrastructure Setup Complete. Ready to create programs.")
-		} else {
-			fmt.Println("Using existing infrastructure. Ready to create programs.")
+		if err != nil {
+			log.Fatalf("Error while setting up Kubernetes API: %v", err)
 		}
 
 		return nil
@@ -87,47 +100,76 @@ var initCmd = &cobra.Command{
 	},
 }
 
-func isClusterWithKubeflowCreated() bool {
+func setup_local(cmd *cobra.Command, setupParams *setupStruct) (err error) {
+	return nil
+}
+
+func setup_aks(cmd *cobra.Command, setupParams *setupStruct) (err error) {
+	hasProvisionedNewResources := false
+	if !isClusterWithKubeflowCreated(cmd) {
+		hasProvisionedNewResources = true
+		if err := createAKSwithKubeflow(cmd); err != nil {
+			return err
+		}
+	}
+
+	if !isStorageConfigured(cmd) {
+		hasProvisionedNewResources = true
+		if err := configureStorage(cmd); err != nil {
+			return err
+		}
+	}
+
+	if hasProvisionedNewResources {
+		cmd.Println("Infrastructure Setup Complete. Ready to create programs.")
+	} else {
+		programCmd.Println("Using existing infrastructure. Ready to create programs.")
+	}
+
+	return nil
+}
+
+func isClusterWithKubeflowCreated(cmd *cobra.Command) bool {
 	return exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow").Run() == nil
 }
 
-func isStorageConfigured() bool {
+func isStorageConfigured(cmd *cobra.Command) bool {
 	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run() == nil
 }
 
-func checkDepenciesInstalled() error {
+func checkDepenciesInstalled(cmd *cobra.Command) error {
 	_, err := exec.Command("/bin/bash", "-c", "az account list -otable").Output()
 	if err != nil {
 
-		println("Azure CLI not installed on PATH or not logged in.")
-		println("Install with https://aka.ms/getcli and run 'az login'")
+		cmd.Println("Azure CLI not installed on PATH or not logged in.")
+		cmd.Println("Install with https://aka.ms/getcli and run 'az login'")
 		return err
 	}
 
 	_, err = exec.Command("/bin/bash", "-c", "porter").Output()
 	if err != nil {
 
-		println("Porter not installed or not on PATH")
-		println("Install porter at: https://porter.sh")
+		cmd.Println("Porter not installed or not on PATH")
+		cmd.Println("Install porter at: https://porter.sh")
 		return err
 	}
 
 	_, err = exec.Command("/bin/bash", "-c", "kubectl").Output()
 	if err != nil {
 		// No Kubectl, let's install
-		println("Running az aks install-cli to install kubectl.")
+		cmd.Println("Running az aks install-cli to install kubectl.")
 		_, err = exec.Command("/bin/bash", "-c", "az aks install-cli").Output()
 		if err != nil {
 
-			println("Porter not installed or not on PATH")
-			println("Install porter at: https://porter.sh")
+			cmd.Println("Porter not installed or not on PATH")
+			cmd.Println("Install porter at: https://porter.sh")
 			return err
 		}
 	}
 	return nil
 }
 
-func createAKSwithKubeflow() error {
+func createAKSwithKubeflow(cmd *cobra.Command) error {
 	credPORTER := `
 	{
 		"schemaVersion": "1.0.0-DRAFT+b6c701f",
@@ -147,7 +189,7 @@ func createAKSwithKubeflow() error {
 
 	_, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' > ~/.porter/credentials/aks-kubeflow-msi.json", credPORTER)).Output()
 	if err != nil {
-		fmt.Println("Porter Setup: Could not create AKS credential mapping for Kubeflow Installer")
+		cmd.Println("Porter Setup: Could not create AKS credential mapping for Kubeflow Installer")
 		return err
 	}
 
@@ -161,7 +203,7 @@ func createAKSwithKubeflow() error {
 	echo "az account set --subscription REPLACE_WITH_YOUR_SUBSCRIPTION_ID"
 	`
 
-	if err := executeInlineBashScript(testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account."); err != nil {
+	if err := executeInlineBashScript(cmd, testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account."); err != nil {
 		return err
 	}
 
@@ -184,13 +226,13 @@ func createAKSwithKubeflow() error {
 	echo "Kubeflow installed."
 	echo "TODO: Set up storage account."
 	`
-	if err := executeInlineBashScript(theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exsts."); err != nil {
+	if err := executeInlineBashScript(cmd, theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exsts."); err != nil {
 		return err
 	}
 	return nil
 }
 
-func configureStorage() error {
+func configureStorage(cmd *cobra.Command) error {
 
 	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
 	theDEMOINSTALL := `
@@ -204,40 +246,40 @@ func configureStorage() error {
 
 	// Note: To use the storage, create a PVC with spec.storageClassName: blob for dynamic provisioning
 
-	if err := executeInlineBashScript(theDEMOINSTALL, "Configuring Storage failed."); err != nil {
+	if err := executeInlineBashScript(cmd, theDEMOINSTALL, "Configuring Storage failed."); err != nil {
 		return err
 	}
 	return nil
 }
 
-func executeInlineBashScript(SCRIPT string, errorMessage string) error {
+func executeInlineBashScript(cmd *cobra.Command, SCRIPT string, errorMessage string) error {
 	scriptCMD := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' | bash -s --", SCRIPT))
 	outPipe, err := scriptCMD.StdoutPipe()
 	errPipe, _ := scriptCMD.StderrPipe()
 	if err != nil {
-		fmt.Println(errorMessage)
+		cmd.Println(errorMessage)
 		return err
 	}
 	err = scriptCMD.Start()
 
 	if err != nil {
-		fmt.Println(errorMessage)
+		cmd.Println(errorMessage)
 		return err
 	}
 	errScanner := bufio.NewScanner(errPipe)
 	scanner := bufio.NewScanner(outPipe)
 	for scanner.Scan() {
 		m := scanner.Text()
-		fmt.Println(m)
+		cmd.Println(m)
 	}
 	err = scriptCMD.Wait()
 
 	if err != nil {
 		for errScanner.Scan() {
 			m := errScanner.Text()
-			println(m)
+			cmd.Println(m)
 		}
-		fmt.Println(errorMessage)
+		cmd.Println(errorMessage)
 		return err
 	}
 	return nil

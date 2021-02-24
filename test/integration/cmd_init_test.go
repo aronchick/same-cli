@@ -30,6 +30,7 @@ func (suite *InitSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
 	suite.fatal = false
+	viper.Reset()
 	log.SetOutput(ioutil.Discard)
 	os.Setenv("TEST_PASS", "1")
 }
@@ -66,6 +67,45 @@ func (suite *InitSuite) Test_NoTargetSet() {
 	assert.Contains(suite.T(), string(out), "No 'target' set for deployment")
 }
 
+func (suite *InitSuite) Test_BadTarget() {
+	out := execute_target(suite, "UNKNOWN", true)
+	assert.Contains(suite.T(), string(out), "Setup target 'unknown' not understood")
+}
+
+func (suite *InitSuite) Test_AKSTarget() {
+	out := execute_target(suite, "aks", false)
+	assert.Contains(suite.T(), string(out), "Executing AKS setup.")
+}
+
+func (suite *InitSuite) Test_LocalTarget() {
+	out := execute_target(suite, "local", false)
+	assert.Contains(suite.T(), string(out), "Executing local setup")
+}
+
 func TestInitSuite(t *testing.T) {
 	suite.Run(t, new(InitSuite))
+}
+
+func execute_target(suite *InitSuite, target string, fatal bool) (out string) {
+	viper.Reset()
+	defer func() { log.StandardLogger().ExitFunc = nil }()
+	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
+
+	viper.SetEnvPrefix("same") // will be uppercased automatically
+	err := viper.BindEnv("target")
+	if err != nil {
+		assert.Failf(suite.T(), "could not bind viper to 'target': %v ", err.Error())
+	}
+
+	os.Setenv("SAME_TARGET", target) // typically done outside of the app
+
+	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", "../testdata/config/notarget.yaml")
+
+	// Putting empty assignments here for debugging in the future
+	_ = command
+	_ = err
+
+	assert.Equal(suite.T(), fatal, suite.fatal)
+	return out
+
 }
