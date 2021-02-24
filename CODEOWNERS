@@ -1,2 +1,5 @@
 # These owners will be the default owners for everything in the repo. 
 *       @aronchick @berndverst @tcnghia
+
+# These are the additional owners for the SAME pipeline examples
+/examples/ @philwinder @lukemarsden
