@@ -2,11 +2,53 @@ package main
 
 import (
 	"fmt"
+	"log"
+	user "os/user"
 
-	"github.com/azure-octo/same-cli/cmd"
-	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
-	"github.com/kubeflow/pipelines/backend/src/common/client/api_server"
+	"github.com/azure-octo/same-cli/pkg/utils"
 )
+
+// Settings default user setting
+type Settings struct {
+	// Repo is --plugin-repo
+	Repo string `yaml:"repo"`
+	// UseKubectl use kubectl instead of k3s
+	UseKubectl bool `yaml:"use-kubectl"`
+}
+
+type Config struct {
+	Kind                string          `yaml:"kind"`
+	TargetCustomization []TargetCustoms `yaml:"targetCustomizations,flow"`
+}
+
+//PluginGroup represent the structure for the inline plugins
+type PluginGroup struct {
+	Repo string `yaml:"repo,omitempty"`
+	Name string `yaml:"name,omitempty"`
+}
+
+//TargetCustoms represent the single customization group
+type TargetCustoms struct {
+	Name              string        `yaml:"name"`
+	Enabled           bool          `yaml:"enabled"`
+	Type              string        `yaml:"type"`
+	Config            string        `yaml:"config"`
+	ClusterName       string        `yaml:"clusterName"`
+	ClusterDeployment string        `yaml:"clusterDeployment"`
+	ClusterStart      string        `yaml:"clusterStart,omitempty"`
+	Spec              Spec          `yaml:"spec,omitempty"`
+	Plugins           []PluginGroup `yaml:"plugins,flow"`
+}
+
+type Spec struct {
+	Wsl             string `yaml:"wsl,omitempty"`
+	Mac             string `yaml:"mac,omitempty"`
+	Linux           string `yaml:"linux,omitempty"`
+	Windows         string `yaml:"windows,omitempty"`
+	cloudType       string `yaml:"cloudType,omitempty"`
+	cloudNodes      string `yaml:"cloudNodes,omitempty"`
+	cloudSecretPath string `yaml:"cloudSecretPath,omitempty"`
+}
 
 func main() {
 	// os.Setenv("PATH", "/sbin")
@@ -41,13 +83,46 @@ func main() {
 	// _ = a
 	// _ = b
 
-	kfpconfig := *cmd.NewKFPConfig()
-	pClient, _ := api_server.NewPipelineClient(kfpconfig, false)
+	// kfpconfig := *cmd.NewKFPConfig()
+	// pClient, _ := api_server.NewPipelineClient(kfpconfig, false)
 
-	pipelineClientParams := pipeline_service.NewListPipelinesParams()
+	// pipelineClientParams := pipeline_service.NewListPipelinesParams()
 
-	arr, _ := pClient.ListAll(pipelineClientParams, 100)
-	for _, s := range arr {
-		fmt.Println(s.Name)
+	// arr, _ := pClient.ListAll(pipelineClientParams, 100)
+	// for _, s := range arr {
+	// 	fmt.Println(s.Name)
+	// }
+
+	// var c Config
+
+	// yamlFile, err := ioutil.ReadFile("/home/daaronch/same-cli/test/testdata/k3ai/default.yaml")
+	// if err != nil {
+	// 	log.Printf("yamlFile.Get err   #%v ", err)
+	// }
+	// err = yaml.Unmarshal(yamlFile, &c)
+	// if err != nil {
+	// 	log.Fatalf("Unmarshal: %v", err)
+	// }
+
+	dockerGroupId, err := user.LookupGroup("docker")
+
+	if _, ok := err.(user.UnknownGroupError); ok {
+		message := fmt.Errorf("could not find the group 'docker' on your system. This is required to run.")
+		log.Fatal(message)
+	} else if err != nil {
+		message := fmt.Errorf("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err)
+		log.Fatal(message)
+	}
+
+	a, _ := user.Current()
+	allGroups, err := a.GroupIds()
+	if err != nil {
+		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
+		log.Fatal(message)
+	}
+
+	if !utils.ContainsString(allGroups, dockerGroupId.Gid) {
+		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
+		log.Fatal(message)
 	}
 }

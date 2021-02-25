@@ -81,6 +81,21 @@ func (suite *InitSuite) Test_LocalTarget() {
 	out := execute_target(suite, "local", false)
 	assert.Contains(suite.T(), string(out), "Executing local setup")
 }
+func (suite *InitSuite) Test_NoDocker() {
+	origPath := os.Getenv("PATH")
+	err := os.Setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/home/daaronch/.porter")
+	if err != nil {
+		assert.Fail(suite.T(), "Could not set the PATH to be empty.")
+	}
+	out := execute_target(suite, "local", true)
+	assert.Contains(suite.T(), string(out), "not find docker in your PATH")
+	_ = os.Setenv("PATH", origPath)
+}
+
+func (suite *InitSuite) Test_NotInDockerGroup() {
+	out := execute_target(suite, "local", true)
+	assert.Contains(suite.T(), string(out), "not find docker in your PATH")
+}
 
 func TestInitSuite(t *testing.T) {
 	suite.Run(t, new(InitSuite))

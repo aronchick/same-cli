@@ -18,6 +18,7 @@ limitations under the License.
 
 import (
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
@@ -62,7 +63,13 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	log.Info("in initConfig")
+
 	if cfgFile == "" {
+
+		if (os.Geteuid() == 0) && (os.Getenv("SUDO_UID") != "") {
+			RootCmd.Println("Running as sudo, skipping over checking for configuration file in your root directory. If this is a mistake, please use the --config flag.")
+			return
+		}
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
