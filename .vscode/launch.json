@@ -26,14 +26,14 @@
             "program": "${file}"
         },
         {
-            "name": "Build and run 'create'",
+            "name": "Build and run 'install_docker'",
             "type": "go",
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceRoot}/main.go",
             "envFile": "${workspaceRoot}/.env",
             "args": [
-                "create"
+                "install_docker"
             ],
             "showLog": true,
             // "trace": false,

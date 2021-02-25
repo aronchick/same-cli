@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -58,12 +60,9 @@ var initCmd = &cobra.Command{
 		if target == "" {
 			message := "No 'target' set for deployment - using 'local' as a default. To change this, please execute 'same config set target=XXXX'"
 			cmd.Print(message)
-
-			// Building in the ability to bail out during test. Probably don't need this often.
 			if os.Getenv("TEST_PASS") == "1" {
 				return nil
 			}
-
 		}
 
 		var setupParams *setupStruct
@@ -83,12 +82,9 @@ var initCmd = &cobra.Command{
 			message := fmt.Errorf("Setup target '%v' not understood.", target)
 			cmd.Printf(message.Error())
 			log.Fatalf(message.Error())
-
-			// Building in the ability to bail out during test. Probably don't need this often.
 			if os.Getenv("TEST_PASS") == "1" {
 				return nil
 			}
-
 		}
 
 		if err != nil {
@@ -101,6 +97,66 @@ var initCmd = &cobra.Command{
 }
 
 func setup_local(cmd *cobra.Command, setupParams *setupStruct) (err error) {
+	dockerPath, err := exec.LookPath("docker")
+	if err != nil || dockerPath == "" {
+		message := fmt.Errorf("Could not find docker in your PATH: %v", err)
+		cmd.Printf(message.Error())
+		log.Fatalf(message.Error())
+
+		// Building in the ability to bail out during test. Probably don't need this often.
+		if os.Getenv("TEST_PASS") == "1" {
+			return nil
+		}
+
+	}
+
+	dockerGroupId, err := user.LookupGroup("docker")
+
+	if _, ok := err.(user.UnknownGroupError); ok {
+		message := fmt.Errorf("could not find the group 'docker' on your system. This is required to run.")
+		cmd.Printf(message.Error())
+		log.Fatal(message.Error())
+		if os.Getenv("TEST_PASS") == "1" {
+			return nil
+		}
+	} else if err != nil {
+		message := fmt.Errorf("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err)
+		cmd.Printf(message.Error())
+		log.Fatal(message.Error())
+		if os.Getenv("TEST_PASS") == "1" {
+			return nil
+		}
+	}
+
+	currentUser, _ := user.Current()
+	allGroups, err := currentUser.GroupIds()
+	if err != nil {
+		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
+		cmd.Printf(message.Error())
+		log.Fatal(message.Error())
+		if os.Getenv("TEST_PASS") == "1" {
+			return nil
+		}
+	}
+
+	if !utils.ContainsString(allGroups, dockerGroupId.Gid) {
+		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
+		cmd.Printf(message.Error())
+		log.Fatal(message)
+		if os.Getenv("TEST_PASS") == "1" {
+			return nil
+		}
+	}
+
+	kindInstall := `
+	#!/bin/bash
+	set -e
+	k3ai init
+	`
+	if err := executeInlineBashScript(cmd, kindInstall, "Kind installed."); err != nil {
+		return err
+	}
+
 	return nil
 }
 
