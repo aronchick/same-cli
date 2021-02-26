@@ -68,40 +68,39 @@ func (suite *InitSuite) Test_NoTargetSet() {
 }
 
 func (suite *InitSuite) Test_BadTarget() {
-	out := execute_target(suite, "UNKNOWN", true)
+	out := execute_target(suite, "UNKNOWN", true, "")
 	assert.Contains(suite.T(), string(out), "Setup target 'unknown' not understood")
 }
 
 func (suite *InitSuite) Test_AKSTarget() {
-	out := execute_target(suite, "aks", false)
+	out := execute_target(suite, "aks", false, "")
 	assert.Contains(suite.T(), string(out), "Executing AKS setup.")
 }
 
 func (suite *InitSuite) Test_LocalTarget() {
-	out := execute_target(suite, "local", false)
+	out := execute_target(suite, "local", false, "")
 	assert.Contains(suite.T(), string(out), "Executing local setup")
 }
 func (suite *InitSuite) Test_NoDocker() {
-	origPath := os.Getenv("PATH")
-	err := os.Setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/home/daaronch/.porter")
-	if err != nil {
-		assert.Fail(suite.T(), "Could not set the PATH to be empty.")
-	}
-	out := execute_target(suite, "local", true)
+	out := execute_target(suite, "local", true, "no-docker-path")
 	assert.Contains(suite.T(), string(out), "not find docker in your PATH")
-	_ = os.Setenv("PATH", origPath)
+}
+
+func (suite *InitSuite) Test_NotDockerGroupOnSystem() {
+	out := execute_target(suite, "local", true, "no-docker-group-on-system")
+	assert.Contains(suite.T(), string(out), "could not find the group")
 }
 
 func (suite *InitSuite) Test_NotInDockerGroup() {
-	out := execute_target(suite, "local", true)
-	assert.Contains(suite.T(), string(out), "not find docker in your PATH")
+	out := execute_target(suite, "local", true, "not-in-docker-group")
+	assert.Contains(suite.T(), string(out), "not part of the docker group")
 }
 
 func TestInitSuite(t *testing.T) {
 	suite.Run(t, new(InitSuite))
 }
 
-func execute_target(suite *InitSuite, target string, fatal bool) (out string) {
+func execute_target(suite *InitSuite, target string, fatal bool, additionalFlag string) (out string) {
 	viper.Reset()
 	defer func() { log.StandardLogger().ExitFunc = nil }()
 	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
@@ -114,7 +113,7 @@ func execute_target(suite *InitSuite, target string, fatal bool) (out string) {
 
 	os.Setenv("SAME_TARGET", target) // typically done outside of the app
 
-	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", "../testdata/config/notarget.yaml")
+	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", "../testdata/config/notarget.yaml", "--", "--unittestmode", additionalFlag)
 
 	// Putting empty assignments here for debugging in the future
 	_ = command

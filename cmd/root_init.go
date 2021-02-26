@@ -29,9 +29,73 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/mock"
 )
 
-type setupStruct struct {
+var cmdArgs []string
+
+type mockDependencyCheckers struct {
+	mock.Mock
+}
+
+func (mock *mockDependencyCheckers) lookPath(s string) (string, error) {
+	if utils.ContainsString(cmdArgs, "no-docker-path") {
+		return "", fmt.Errorf("not find docker in your PATH")
+	}
+
+	return "VALID_PATH", nil
+}
+
+func (dc *mockDependencyCheckers) lookGroup(s string) (*user.Group, error) {
+	if utils.ContainsString(cmdArgs, "not-in-docker-group") {
+		return nil, fmt.Errorf("not part of the docker group")
+	} else if utils.ContainsString(cmdArgs, "no-docker-group-on-system") {
+		return nil, user.UnknownGroupError("NOT_FOUND")
+	}
+
+	return &user.Group{Gid: "1001", Name: "docker"}, nil
+}
+
+func (mock *mockDependencyCheckers) printError(cmd *cobra.Command, s string, err error) (exit bool) {
+	message := fmt.Errorf(s, err)
+	cmd.Printf(message.Error())
+	log.Fatalf(message.Error())
+
+	return true
+}
+
+type dependencyCheckers interface {
+	lookPath(string) (string, error)
+	lookGroup(string) (*user.Group, error)
+	printError(*cobra.Command, string, error) bool
+	checkDepenciesInstalled(*cobra.Command) error
+}
+
+type liveDependencyCheckers struct {
+}
+
+func (dc *liveDependencyCheckers) printError(cmd *cobra.Command, s string, err error) (exit bool) {
+	message := fmt.Errorf(s, err)
+	cmd.Printf(message.Error())
+	log.Fatalf(message.Error())
+
+	return false
+}
+
+func (dc *liveDependencyCheckers) lookPath(s string) (string, error) {
+	return exec.LookPath(s)
+}
+
+func (dc *liveDependencyCheckers) lookGroup(s string) (*user.Group, error) {
+	return user.LookupGroup("docker")
+}
+
+func (dc *mockDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
+	return nil
+}
+
+type initClusterMethods struct {
+	dc dependencyCheckers
 }
 
 // createCmd represents the create command
@@ -41,9 +105,16 @@ var initCmd = &cobra.Command{
 	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// for simplicity we currently rely on Porter, Azure CLI and Kubectl
-
 		allSettings := viper.AllSettings()
 
+		var i = &initClusterMethods{}
+		cmdArgs = args
+		i.dc = &liveDependencyCheckers{}
+
+		if utils.ContainsString(args, "--unittestmode") {
+			i.dc = &mockDependencyCheckers{}
+
+		}
 		// len in go checks for both nil and 0
 		if len(allSettings) == 0 {
 			message := "Nil file or empty load config settings. Please run 'same config new' to initialize."
@@ -52,7 +123,7 @@ var initCmd = &cobra.Command{
 			return nil
 		}
 
-		if err := checkDepenciesInstalled(cmd); err != nil {
+		if err := i.dc.checkDepenciesInstalled(cmd); err != nil {
 			return err
 		}
 
@@ -65,19 +136,17 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		var setupParams *setupStruct
-
 		switch target {
 		case "local":
 			message := "Executing local setup."
 			log.Trace(message)
 			cmd.Println(message)
-			err = setup_local(cmd, setupParams)
+			err = i.setup_local(cmd)
 		case "aks":
 			message := "Executing AKS setup."
 			log.Trace(message)
 			cmd.Println(message)
-			err = setup_aks(cmd, setupParams)
+			err = i.setup_aks(cmd)
 		default:
 			message := fmt.Errorf("Setup target '%v' not understood.", target)
 			cmd.Printf(message.Error())
@@ -96,34 +165,23 @@ var initCmd = &cobra.Command{
 	},
 }
 
-func setup_local(cmd *cobra.Command, setupParams *setupStruct) (err error) {
-	dockerPath, err := exec.LookPath("docker")
+func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
+	dockerPath, err := i.dc.lookPath("docker")
 	if err != nil || dockerPath == "" {
-		message := fmt.Errorf("Could not find docker in your PATH: %v", err)
-		cmd.Printf(message.Error())
-		log.Fatalf(message.Error())
-
-		// Building in the ability to bail out during test. Probably don't need this often.
-		if os.Getenv("TEST_PASS") == "1" {
+		if i.dc.printError(cmd, "Could not find docker in your PATH: %v", err) {
 			return nil
 		}
 
 	}
 
-	dockerGroupId, err := user.LookupGroup("docker")
+	dockerGroupId, err := i.dc.lookGroup("docker")
 
 	if _, ok := err.(user.UnknownGroupError); ok {
-		message := fmt.Errorf("could not find the group 'docker' on your system. This is required to run.")
-		cmd.Printf(message.Error())
-		log.Fatal(message.Error())
-		if os.Getenv("TEST_PASS") == "1" {
+		if i.dc.printError(cmd, "could not find the group 'docker' on your system. This is required to run.", err) {
 			return nil
 		}
 	} else if err != nil {
-		message := fmt.Errorf("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err)
-		cmd.Printf(message.Error())
-		log.Fatal(message.Error())
-		if os.Getenv("TEST_PASS") == "1" {
+		if i.dc.printError(cmd, "unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err) {
 			return nil
 		}
 	}
@@ -160,7 +218,7 @@ func setup_local(cmd *cobra.Command, setupParams *setupStruct) (err error) {
 	return nil
 }
 
-func setup_aks(cmd *cobra.Command, setupParams *setupStruct) (err error) {
+func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 	hasProvisionedNewResources := false
 	if !isClusterWithKubeflowCreated(cmd) {
 		hasProvisionedNewResources = true
@@ -193,7 +251,7 @@ func isStorageConfigured(cmd *cobra.Command) bool {
 	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run() == nil
 }
 
-func checkDepenciesInstalled(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
 	_, err := exec.Command("/bin/bash", "-c", "az account list -otable").Output()
 	if err != nil {
 
@@ -343,7 +401,6 @@ func executeInlineBashScript(cmd *cobra.Command, SCRIPT string, errorMessage str
 
 func init() {
 	RootCmd.AddCommand(initCmd)
-
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
