@@ -50,7 +50,8 @@ var installDockerCmd = &cobra.Command{
 			logrus.Info("It _appears_ you have docker rootless installed (based on the presence of both *rootless* apt packages and your DOCKER_HOST is pointing at '/run/user'.). This has been an issue in the past - please uninstall if you run into problems.")
 		}
 
-		installDockerScript := `
+		logrus.Info("Updating apt")
+		updateAptScript := `
 		#!/bin/bash
 		set -e
 		apt-get update
@@ -60,22 +61,61 @@ var installDockerCmd = &cobra.Command{
 			curl \
 			gnupg-agent \
 			software-properties-common
+		`
+		buf := gbytes.NewBuffer()
+		cmd.SetOut(buf)
+
+		if err := utils.ExecuteInlineBashScript(cmd, updateAptScript, "Failure updating apt."); err != nil {
+			log.Fatalf("Failed to install Docker. That's all we know: %v", err)
+		}
+
+		logrus.Info("Updating docker packages")
+		updateDockerPackages := `
+		#!/bin/bash
+		set -e
 		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 		add-apt-repository \
 			"deb [arch=amd64] https://download.docker.com/linux/ubuntu \
 			$(lsb_release -cs) \
 			stable"
 		apt-get update
-		apt-get install -y docker-ce docker-ce-cli containerd.io
-		usermod -aG docker ` + executingUser.Username + `
-		sudo su ` + executingUser.Username + `
-		docker run hello-world
 		`
 
-		buf := gbytes.NewBuffer()
+		buf = gbytes.NewBuffer()
+		cmd.SetOut(buf)
+
+		if err := utils.ExecuteInlineBashScript(cmd, updateDockerPackages, "Failure during adding Docker packages."); err != nil {
+			log.Fatalf("Failed to install Docker. That's all we know: %v", err)
+		}
+
+		logrus.Info("Installing docker packages.")
+		installDockerScript := `
+		#!/bin/bash
+		set -e
+		apt-get install -y docker-ce docker-ce-cli containerd.io
+		`
+
+		buf = gbytes.NewBuffer()
 		cmd.SetOut(buf)
 
 		if err := utils.ExecuteInlineBashScript(cmd, installDockerScript, "Failure during executing installing Docker."); err != nil {
+			log.Fatalf("Failed to install Docker. That's all we know: %v", err)
+		}
+
+		logrus.Infof("Adding user '%v' to docker system group.", executingUser.Username)
+		addingToUserGroupScript := `
+		#!/bin/bash
+		set -e
+		usermod -aG docker ` + executingUser.Username + `
+		sudo su ` + executingUser.Username + `
+		export DOCKER_HOST=unix:///run/docker.sock
+		docker run hello-world
+		`
+
+		buf = gbytes.NewBuffer()
+		cmd.SetOut(buf)
+
+		if err := utils.ExecuteInlineBashScript(cmd, addingToUserGroupScript, "Could not add user to usergroup."); err != nil {
 			log.Fatalf("Failed to install Docker. That's all we know: %v", err)
 		}
 
