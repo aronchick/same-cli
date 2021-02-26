@@ -3,15 +3,30 @@
 ```
 sudo apt-get update && sudo apt-get upgrade -y
 ```
-- Download go
-  We use Go 1.16 (https://golang.org/dl/). You'll probably use the following:
+- Download go 1.16
+
+  We use Go 1.16 (https://golang.org/dl/) so that we can utilize some of the latest language features:
+  * embed package for static content
+  * module-aware builds by default
+  * no automatic changes to go.mod and go.sum
+  
+  
+  You'll probably use the following to install go:
 ```
 wget https://golang.org/dl/go1.16.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.16.linux-amd64.tar.gz
 echo "export PATH=$PATH:/usr/local/go/bin" >> $HOME/.profile
 go -v
 ```
+
+- Install Python 3.9
+
+  https://www.python.org/downloads/
+
 - Install Docker
+
+  On Windows/Mac: https://docs.docker.com/get-docker/
+
   Test for rootless pre-requisites
 ```
 id -u # 1001
@@ -67,6 +82,8 @@ curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s ht
 chmod +x ./kubectl
 sudo mv ./kubectl /usr/local/bin/kubectl
 ```
+For convenience `kubectl` can be installed via `az aks install-cli`
+
 - Install python conveniences (poetry & pre-commit.com):
 ```
 sudo apt install software-properties-common -y 

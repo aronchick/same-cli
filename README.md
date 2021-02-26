@@ -3,7 +3,7 @@
 - that said, it's a good assumption that nothing you do here will last in any way other than for archival purposes
 
 # TO GET STARTED
-Read up on our development environment (here)[docs/development/setup-same-development.md] 
+Read up on our development environment [here](docs/development/setup-development-environment.md) 
 
 # User experience
 Our goal is to have a user experience that looks like this:
