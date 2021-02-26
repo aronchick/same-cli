@@ -2,10 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
-	user "os/user"
-
-	"github.com/azure-octo/same-cli/pkg/utils"
+	"runtime"
 )
 
 // Settings default user setting
@@ -104,25 +101,26 @@ func main() {
 	// 	log.Fatalf("Unmarshal: %v", err)
 	// }
 
-	dockerGroupId, err := user.LookupGroup("docker")
+	// dockerGroupId, err := user.LookupGroup("docker")
 
-	if _, ok := err.(user.UnknownGroupError); ok {
-		message := fmt.Errorf("could not find the group 'docker' on your system. This is required to run.")
-		log.Fatal(message)
-	} else if err != nil {
-		message := fmt.Errorf("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err)
-		log.Fatal(message)
-	}
+	// if _, ok := err.(user.UnknownGroupError); ok {
+	// 	message := fmt.Errorf("could not find the group 'docker' on your system. This is required to run.")
+	// 	log.Fatal(message)
+	// } else if err != nil {
+	// 	message := fmt.Errorf("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err)
+	// 	log.Fatal(message)
+	// }
 
-	a, _ := user.Current()
-	allGroups, err := a.GroupIds()
-	if err != nil {
-		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
-		log.Fatal(message)
-	}
+	// a, _ := user.Current()
+	// allGroups, err := a.GroupIds()
+	// if err != nil {
+	// 	message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
+	// 	log.Fatal(message)
+	// }
 
-	if !utils.ContainsString(allGroups, dockerGroupId.Gid) {
-		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
-		log.Fatal(message)
-	}
+	// if !utils.ContainsString(allGroups, dockerGroupId.Gid) {
+	// 	message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
+	// 	log.Fatal(message)
+	// }
+	fmt.Printf("Runtime: %v - %v - %v", runtime.GOOS, runtime.GOARCH, runtime.)
 }
