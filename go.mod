@@ -33,8 +33,9 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
+	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/net v0.0.0-20210220033124-5f55cee0dc0d // indirect
+	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7 // indirect
 	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	golang.org/x/tools v0.1.1-0.20210201201750-4d4ee958a9b7 // indirect
@@ -42,6 +43,7 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v11.0.0+incompatible
