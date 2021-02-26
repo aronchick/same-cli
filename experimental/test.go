@@ -32,13 +32,13 @@ package main
 // 	// testLoginReplaced := strings.ReplaceAll(testLogin, "BACKTICK", "`")
 // 	fmt.Println(testLogin)
 
-// 	err := executeInlineBashScript(testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account.")
+// 	err := utils.ExecuteInlineBashScript(testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account.")
 // 	if err != nil {
 // 		fmt.Printf("Error: %v", err)
 // 	}
 // }
 
-// func executeInlineBashScript(SCRIPT string, errorMessage string) error {
+// func utils.ExecuteInlineBashScript(SCRIPT string, errorMessage string) error {
 // 	scriptCMD := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' | bash -s --", SCRIPT))
 // 	outPipe, err := scriptCMD.StdoutPipe()
 // 	errPipe, _ := scriptCMD.StderrPipe()

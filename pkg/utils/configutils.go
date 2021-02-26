@@ -37,4 +37,9 @@ func LoadConfig(path string) (err error) {
 			return message
 		}
 	}
+
+}
+
+func DetectRootless() (detected bool) {
+	return false
 }

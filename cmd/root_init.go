@@ -17,7 +17,6 @@ limitations under the License.
 */
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -47,9 +46,7 @@ func (mock *mockDependencyCheckers) lookPath(s string) (string, error) {
 }
 
 func (dc *mockDependencyCheckers) lookGroup(s string) (*user.Group, error) {
-	if utils.ContainsString(cmdArgs, "not-in-docker-group") {
-		return nil, fmt.Errorf("not part of the docker group")
-	} else if utils.ContainsString(cmdArgs, "no-docker-group-on-system") {
+	if utils.ContainsString(cmdArgs, "no-docker-group-on-system") {
 		return nil, user.UnknownGroupError("NOT_FOUND")
 	}
 
@@ -64,9 +61,20 @@ func (mock *mockDependencyCheckers) printError(cmd *cobra.Command, s string, err
 	return true
 }
 
+func (mock *mockDependencyCheckers) getUserGroups(u *user.User) (returnGroups []string, err error) {
+	if utils.ContainsString(cmdArgs, "cannot-retrieve-groups") {
+		return nil, fmt.Errorf("CANNOT RETRIEVE GROUPS")
+	} else if utils.ContainsString(cmdArgs, "not-in-docker-group") {
+		return []string{}, nil
+	}
+
+	return []string{"docker"}, nil
+}
+
 type dependencyCheckers interface {
 	lookPath(string) (string, error)
 	lookGroup(string) (*user.Group, error)
+	getUserGroups(*user.User) ([]string, error)
 	printError(*cobra.Command, string, error) bool
 	checkDepenciesInstalled(*cobra.Command) error
 }
@@ -92,6 +100,10 @@ func (dc *liveDependencyCheckers) lookGroup(s string) (*user.Group, error) {
 
 func (dc *mockDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
 	return nil
+}
+
+func (dc *liveDependencyCheckers) getUserGroups(u *user.User) ([]string, error) {
+	return u.GroupIds()
 }
 
 type initClusterMethods struct {
@@ -185,23 +197,16 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 			return nil
 		}
 	}
-
-	currentUser, _ := user.Current()
-	allGroups, err := currentUser.GroupIds()
+	u, _ := user.Current()
+	allGroups, err := i.dc.getUserGroups(u)
 	if err != nil {
-		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
-		cmd.Printf(message.Error())
-		log.Fatal(message.Error())
-		if os.Getenv("TEST_PASS") == "1" {
+		if i.dc.printError(cmd, "could not retrieve a list of groups for the current user: %v", err) {
 			return nil
 		}
 	}
 
 	if !utils.ContainsString(allGroups, dockerGroupId.Gid) {
-		message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
-		cmd.Printf(message.Error())
-		log.Fatal(message)
-		if os.Getenv("TEST_PASS") == "1" {
+		if i.dc.printError(cmd, "user not in the 'docker' group: %v", err) {
 			return nil
 		}
 	}
@@ -209,9 +214,9 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 	kindInstall := `
 	#!/bin/bash
 	set -e
-	k3ai init
-	`
-	if err := executeInlineBashScript(cmd, kindInstall, "Kind installed."); err != nil {
+kind version	`
+
+	if err := utils.ExecuteInlineBashScript(cmd, kindInstall, "Kind installed."); err != nil {
 		return err
 	}
 
@@ -317,7 +322,7 @@ func createAKSwithKubeflow(cmd *cobra.Command) error {
 	echo "az account set --subscription REPLACE_WITH_YOUR_SUBSCRIPTION_ID"
 	`
 
-	if err := executeInlineBashScript(cmd, testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account."); err != nil {
+	if err := utils.ExecuteInlineBashScript(cmd, testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account."); err != nil {
 		return err
 	}
 
@@ -340,7 +345,7 @@ func createAKSwithKubeflow(cmd *cobra.Command) error {
 	echo "Kubeflow installed."
 	echo "TODO: Set up storage account."
 	`
-	if err := executeInlineBashScript(cmd, theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exsts."); err != nil {
+	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exsts."); err != nil {
 		return err
 	}
 	return nil
@@ -360,40 +365,7 @@ func configureStorage(cmd *cobra.Command) error {
 
 	// Note: To use the storage, create a PVC with spec.storageClassName: blob for dynamic provisioning
 
-	if err := executeInlineBashScript(cmd, theDEMOINSTALL, "Configuring Storage failed."); err != nil {
-		return err
-	}
-	return nil
-}
-
-func executeInlineBashScript(cmd *cobra.Command, SCRIPT string, errorMessage string) error {
-	scriptCMD := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' | bash -s --", SCRIPT))
-	outPipe, err := scriptCMD.StdoutPipe()
-	errPipe, _ := scriptCMD.StderrPipe()
-	if err != nil {
-		cmd.Println(errorMessage)
-		return err
-	}
-	err = scriptCMD.Start()
-
-	if err != nil {
-		cmd.Println(errorMessage)
-		return err
-	}
-	errScanner := bufio.NewScanner(errPipe)
-	scanner := bufio.NewScanner(outPipe)
-	for scanner.Scan() {
-		m := scanner.Text()
-		cmd.Println(m)
-	}
-	err = scriptCMD.Wait()
-
-	if err != nil {
-		for errScanner.Scan() {
-			m := errScanner.Text()
-			cmd.Println(m)
-		}
-		cmd.Println(errorMessage)
+	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Configuring Storage failed."); err != nil {
 		return err
 	}
 	return nil

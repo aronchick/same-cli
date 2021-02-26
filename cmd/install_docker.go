@@ -22,7 +22,9 @@ import (
 	"os/user"
 	"strings"
 
+	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -42,6 +44,10 @@ var installDockerCmd = &cobra.Command{
 		executingUser, err := user.LookupId(os.Getenv("SUDO_UID"))
 		if err != nil {
 			log.Fatalf("Could not find the user who executed this command.")
+		}
+
+		if utils.DetectRootless() {
+			logrus.Info("It _appears_ you have docker rootless installed (based on the presence of both *rootless* apt packages and your DOCKER_HOST is pointing at '/run/user'.). This has been an issue in the past - please uninstall if you run into problems.")
 		}
 
 		installDockerScript := `
@@ -69,7 +75,7 @@ var installDockerCmd = &cobra.Command{
 		buf := gbytes.NewBuffer()
 		cmd.SetOut(buf)
 
-		if err := executeInlineBashScript(cmd, installDockerScript, "Failure during executing installing Docker."); err != nil {
+		if err := utils.ExecuteInlineBashScript(cmd, installDockerScript, "Failure during executing installing Docker."); err != nil {
 			log.Fatalf("Failed to install Docker. That's all we know: %v", err)
 		}
 

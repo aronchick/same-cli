@@ -127,6 +127,4 @@ func init() {
 	runProgramCmd.PersistentFlags().String("run-description", "", "A description of the SAME program run.")
 	runProgramCmd.PersistentFlags().StringSlice("run-param", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
 
-	RootCmd.AddCommand(programCmd)
-
 }
