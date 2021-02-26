@@ -91,9 +91,14 @@ func (suite *InitSuite) Test_NotDockerGroupOnSystem() {
 	assert.Contains(suite.T(), string(out), "could not find the group")
 }
 
+func (suite *InitSuite) Test_CouldNotRetrieveGroups() {
+	out := execute_target(suite, "local", true, "cannot-retrieve-groups")
+	assert.Contains(suite.T(), string(out), "could not retrieve a list of groups")
+}
+
 func (suite *InitSuite) Test_NotInDockerGroup() {
 	out := execute_target(suite, "local", true, "not-in-docker-group")
-	assert.Contains(suite.T(), string(out), "not part of the docker group")
+	assert.Contains(suite.T(), string(out), "user not in the 'docker' group")
 }
 
 func TestInitSuite(t *testing.T) {
