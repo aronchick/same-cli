@@ -35,9 +35,27 @@ var cmdArgs []string
 
 type mockDependencyCheckers struct {
 	mock.Mock
+	_cmd            *cobra.Command
+	_kubectlCommand string
 }
 
-func (mock *mockDependencyCheckers) lookPath(s string) (string, error) {
+func (mockDC *mockDependencyCheckers) setCmd(cmd *cobra.Command) {
+	mockDC._cmd = cmd
+}
+
+func (mockDC *mockDependencyCheckers) getCmd() *cobra.Command {
+	return mockDC._cmd
+}
+
+func (mockDC *mockDependencyCheckers) setKubectlCmd(s string) {
+	mockDC._kubectlCommand = s
+}
+
+func (mockDC *mockDependencyCheckers) getKubectlCmd() string {
+	return mockDC._kubectlCommand
+}
+
+func (mockDC *mockDependencyCheckers) detectDockerBin(s string) (string, error) {
 	if utils.ContainsString(cmdArgs, "no-docker-path") {
 		return "", fmt.Errorf("not find docker in your PATH")
 	}
@@ -45,7 +63,7 @@ func (mock *mockDependencyCheckers) lookPath(s string) (string, error) {
 	return "VALID_PATH", nil
 }
 
-func (dc *mockDependencyCheckers) lookGroup(s string) (*user.Group, error) {
+func (mockDC *mockDependencyCheckers) detectDockerGroup(s string) (*user.Group, error) {
 	if utils.ContainsString(cmdArgs, "no-docker-group-on-system") {
 		return nil, user.UnknownGroupError("NOT_FOUND")
 	}
@@ -53,15 +71,22 @@ func (dc *mockDependencyCheckers) lookGroup(s string) (*user.Group, error) {
 	return &user.Group{Gid: "1001", Name: "docker"}, nil
 }
 
-func (mock *mockDependencyCheckers) printError(cmd *cobra.Command, s string, err error) (exit bool) {
+func (mockDC *mockDependencyCheckers) detectK3s(s string) (string, error) {
+	if utils.ContainsString(cmdArgs, "k3s-not-present") {
+		return "", fmt.Errorf("in your PATH")
+	}
+	return "VALID_PATH", nil
+}
+
+func (mockDC *mockDependencyCheckers) printError(s string, err error) (exit bool) {
 	message := fmt.Errorf(s, err)
-	cmd.Printf(message.Error())
+	mockDC.getCmd().Printf(message.Error())
 	log.Fatalf(message.Error())
 
 	return true
 }
 
-func (mock *mockDependencyCheckers) getUserGroups(u *user.User) (returnGroups []string, err error) {
+func (mockDC *mockDependencyCheckers) getUserGroups(u *user.User) (returnGroups []string, err error) {
 	if utils.ContainsString(cmdArgs, "cannot-retrieve-groups") {
 		return nil, fmt.Errorf("CANNOT RETRIEVE GROUPS")
 	} else if utils.ContainsString(cmdArgs, "not-in-docker-group") {
@@ -71,35 +96,80 @@ func (mock *mockDependencyCheckers) getUserGroups(u *user.User) (returnGroups []
 	return []string{"docker"}, nil
 }
 
+func (mockDC *mockDependencyCheckers) installK3s() (k3sPath string, err error) {
+	if utils.ContainsString(cmdArgs, "k3s-install-failed") {
+		return "", fmt.Errorf("INSTALL K3S FAILED")
+	}
+
+	return "VALID_PATH", nil
+}
+
+func (mockDC *mockDependencyCheckers) installKFP() (err error) {
+	if utils.ContainsString(cmdArgs, "kfp-install-failed") {
+		return fmt.Errorf("INSTALL KFP FAILED")
+	}
+
+	return nil
+}
+
+func (mockDC *mockDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
+	return nil
+}
+
 type dependencyCheckers interface {
-	lookPath(string) (string, error)
-	lookGroup(string) (*user.Group, error)
+	detectDockerBin(string) (string, error)
+	detectDockerGroup(string) (*user.Group, error)
 	getUserGroups(*user.User) ([]string, error)
-	printError(*cobra.Command, string, error) bool
+	printError(string, error) bool
 	checkDepenciesInstalled(*cobra.Command) error
+	detectK3s(string) (string, error)
+	installK3s() (string, error)
+	installKFP() error
+	getCmd() *cobra.Command
+	setCmd(*cobra.Command)
+	getKubectlCmd() string
+	setKubectlCmd(string)
 }
 
 type liveDependencyCheckers struct {
+	_cmd            *cobra.Command
+	_kubectlCommand string
 }
 
-func (dc *liveDependencyCheckers) printError(cmd *cobra.Command, s string, err error) (exit bool) {
+func (dc *liveDependencyCheckers) setCmd(cmd *cobra.Command) {
+	dc._cmd = cmd
+}
+
+func (dc *liveDependencyCheckers) getCmd() *cobra.Command {
+	return dc._cmd
+}
+
+func (dc *liveDependencyCheckers) setKubectlCmd(kubectlCommand string) {
+	dc._kubectlCommand = kubectlCommand
+}
+
+func (dc *liveDependencyCheckers) getKubectlCmd() string {
+	return dc._kubectlCommand
+}
+
+func (dc *liveDependencyCheckers) printError(s string, err error) (exit bool) {
 	message := fmt.Errorf(s, err)
-	cmd.Printf(message.Error())
+	dc.getCmd().Printf(message.Error())
 	log.Fatalf(message.Error())
 
 	return false
 }
 
-func (dc *liveDependencyCheckers) lookPath(s string) (string, error) {
+func (dc *liveDependencyCheckers) detectDockerBin(s string) (string, error) {
 	return exec.LookPath(s)
 }
 
-func (dc *liveDependencyCheckers) lookGroup(s string) (*user.Group, error) {
+func (dc *liveDependencyCheckers) detectDockerGroup(s string) (*user.Group, error) {
 	return user.LookupGroup("docker")
 }
 
-func (dc *mockDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
-	return nil
+func (dc *liveDependencyCheckers) detectK3s(s string) (string, error) {
+	return exec.LookPath(s)
 }
 
 func (dc *liveDependencyCheckers) getUserGroups(u *user.User) ([]string, error) {
@@ -127,6 +197,9 @@ var initCmd = &cobra.Command{
 			i.dc = &mockDependencyCheckers{}
 
 		}
+
+		i.dc.setCmd(cmd)
+
 		// len in go checks for both nil and 0
 		if len(allSettings) == 0 {
 			message := "Nil file or empty load config settings. Please run 'same config new' to initialize."
@@ -178,49 +251,60 @@ var initCmd = &cobra.Command{
 }
 
 func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
-	dockerPath, err := i.dc.lookPath("docker")
+	dockerPath, err := i.dc.detectDockerBin("docker")
 	if err != nil || dockerPath == "" {
-		if i.dc.printError(cmd, "Could not find docker in your PATH: %v", err) {
+		if i.dc.printError("Could not find docker in your PATH: %v", err) {
 			return nil
 		}
-
 	}
 
-	dockerGroupId, err := i.dc.lookGroup("docker")
+	dockerGroupId, err := i.dc.detectDockerGroup("docker")
 
 	if _, ok := err.(user.UnknownGroupError); ok {
-		if i.dc.printError(cmd, "could not find the group 'docker' on your system. This is required to run.", err) {
+		if i.dc.printError("could not find the group 'docker' on your system. This is required to run.", err) {
 			return nil
 		}
 	} else if err != nil {
-		if i.dc.printError(cmd, "unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err) {
+		if i.dc.printError("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err) {
 			return nil
 		}
 	}
 	u, _ := user.Current()
 	allGroups, err := i.dc.getUserGroups(u)
 	if err != nil {
-		if i.dc.printError(cmd, "could not retrieve a list of groups for the current user: %v", err) {
+		if i.dc.printError("could not retrieve a list of groups for the current user: %v", err) {
 			return nil
 		}
 	}
 
-	if !utils.ContainsString(allGroups, dockerGroupId.Gid) {
-		if i.dc.printError(cmd, "user not in the 'docker' group: %v", err) {
+	if !utils.ContainsString(allGroups, dockerGroupId.Gid) && !utils.ContainsString(allGroups, dockerGroupId.Name) {
+		if i.dc.printError("user not in the 'docker' group: %v", nil) {
 			return nil
 		}
 	}
 
-	kindInstall := `
-	#!/bin/bash
-	set -e
-	curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/v0.10.0/kind-linux-amd64
-	chmod +x /tmp/kind
-	mv /tmp/kind /usr/local/bin
-	`
-	
-	if err := utils.ExecuteInlineBashScript(cmd, kindInstall, "Kind installed."); err != nil {
-		return err
+	k8sType := "k3s"
+
+	switch k8sType {
+	case "k3s":
+		k3sPath, err := i.dc.installK3s()
+		if err != nil {
+			if i.dc.printError("k3s installation failed: %v", err) {
+				return nil
+			}
+		}
+		i.dc.setKubectlCmd(k3sPath + "kubectl")
+	default:
+		if i.dc.printError("no local kubernetes type selected", nil) {
+			return nil
+		}
+	}
+
+	err = i.dc.installKFP()
+	if err != nil {
+		if i.dc.printError("kfp failed to install", err) {
+			return nil
+		}
 	}
 
 	return nil
@@ -371,6 +455,49 @@ func configureStorage(cmd *cobra.Command) error {
 	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Configuring Storage failed."); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (dc *liveDependencyCheckers) installK3s() (k3sCommand string, err error) {
+	k3sCommand, err = dc.detectK3s("k3s")
+	if err != nil {
+		return "", fmt.Errorf("error looking for K3s in PATH")
+	} else if k3sCommand == "" {
+		k3sInstallScript := `
+		#!/bin/bash
+		set -e
+		curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/v0.10.0/kind-linux-amd64
+		chmod +x /tmp/kind
+		mv /tmp/kind /usr/local/bin
+		`
+
+		// I wonder if the below code is right - you could remove the if statement, but then it's slightly less
+		// readable, assuming that a user has to deduce that returning err could be nil
+		if err := utils.ExecuteInlineBashScript(dc.getCmd(), k3sInstallScript, "K3s failed to install locally."); err != nil {
+			return "", err
+		}
+	}
+
+	return dc.detectK3s("k3s")
+}
+
+func (dc *liveDependencyCheckers) installKFP() (err error) {
+
+	kubectlCommand := dc.getKubectlCmd()
+	cmd := dc.getCmd()
+	kfpInstall := fmt.Sprintf(`
+	#!/bin/bash
+	set -e
+	export PIPELINE_VERSION=1.4.1
+	%v apply -k "github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=$PIPELINE_VERSION"
+	%v wait --for condition=established --timeout=60s crd/applications.app.k8s.io
+	%v apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic-pns?ref=$PIPELINE_VERSION"
+	`, kubectlCommand, kubectlCommand, kubectlCommand)
+
+	if err := utils.ExecuteInlineBashScript(cmd, kfpInstall, "KFP failed to install."); err != nil {
+		return err
+	}
+
 	return nil
 }
 

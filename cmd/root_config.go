@@ -59,7 +59,6 @@ func init() {
 	RootCmd.AddCommand(configCmd)
 
 	log.Tracef("In config init")
-	cobra.OnInitialize(initConfig)
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

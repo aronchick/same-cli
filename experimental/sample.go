@@ -5,47 +5,47 @@ import (
 	"runtime"
 )
 
-// Settings default user setting
-type Settings struct {
-	// Repo is --plugin-repo
-	Repo string `yaml:"repo"`
-	// UseKubectl use kubectl instead of k3s
-	UseKubectl bool `yaml:"use-kubectl"`
-}
+// // Settings default user setting
+// type Settings struct {
+// 	// Repo is --plugin-repo
+// 	Repo string `yaml:"repo"`
+// 	// UseKubectl use kubectl instead of k3s
+// 	UseKubectl bool `yaml:"use-kubectl"`
+// }
 
-type Config struct {
-	Kind                string          `yaml:"kind"`
-	TargetCustomization []TargetCustoms `yaml:"targetCustomizations,flow"`
-}
+// type Config struct {
+// 	Kind                string          `yaml:"kind"`
+// 	TargetCustomization []TargetCustoms `yaml:"targetCustomizations,flow"`
+// }
 
-//PluginGroup represent the structure for the inline plugins
-type PluginGroup struct {
-	Repo string `yaml:"repo,omitempty"`
-	Name string `yaml:"name,omitempty"`
-}
+// //PluginGroup represent the structure for the inline plugins
+// type PluginGroup struct {
+// 	Repo string `yaml:"repo,omitempty"`
+// 	Name string `yaml:"name,omitempty"`
+// }
 
-//TargetCustoms represent the single customization group
-type TargetCustoms struct {
-	Name              string        `yaml:"name"`
-	Enabled           bool          `yaml:"enabled"`
-	Type              string        `yaml:"type"`
-	Config            string        `yaml:"config"`
-	ClusterName       string        `yaml:"clusterName"`
-	ClusterDeployment string        `yaml:"clusterDeployment"`
-	ClusterStart      string        `yaml:"clusterStart,omitempty"`
-	Spec              Spec          `yaml:"spec,omitempty"`
-	Plugins           []PluginGroup `yaml:"plugins,flow"`
-}
+// //TargetCustoms represent the single customization group
+// type TargetCustoms struct {
+// 	Name              string        `yaml:"name"`
+// 	Enabled           bool          `yaml:"enabled"`
+// 	Type              string        `yaml:"type"`
+// 	Config            string        `yaml:"config"`
+// 	ClusterName       string        `yaml:"clusterName"`
+// 	ClusterDeployment string        `yaml:"clusterDeployment"`
+// 	ClusterStart      string        `yaml:"clusterStart,omitempty"`
+// 	Spec              Spec          `yaml:"spec,omitempty"`
+// 	Plugins           []PluginGroup `yaml:"plugins,flow"`
+// }
 
-type Spec struct {
-	Wsl             string `yaml:"wsl,omitempty"`
-	Mac             string `yaml:"mac,omitempty"`
-	Linux           string `yaml:"linux,omitempty"`
-	Windows         string `yaml:"windows,omitempty"`
-	cloudType       string `yaml:"cloudType,omitempty"`
-	cloudNodes      string `yaml:"cloudNodes,omitempty"`
-	cloudSecretPath string `yaml:"cloudSecretPath,omitempty"`
-}
+// type Spec struct {
+// 	Wsl             string `yaml:"wsl,omitempty"`
+// 	Mac             string `yaml:"mac,omitempty"`
+// 	Linux           string `yaml:"linux,omitempty"`
+// 	Windows         string `yaml:"windows,omitempty"`
+// 	cloudType       string `yaml:"cloudType,omitempty"`
+// 	cloudNodes      string `yaml:"cloudNodes,omitempty"`
+// 	cloudSecretPath string `yaml:"cloudSecretPath,omitempty"`
+// }
 
 func main() {
 	// os.Setenv("PATH", "/sbin")
@@ -122,5 +122,5 @@ func main() {
 	// 	message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
 	// 	log.Fatal(message)
 	// }
-	fmt.Printf("Runtime: %v - %v - %v", runtime.GOOS, runtime.GOARCH, runtime.)
+	fmt.Printf("Runtime: %v - %v", runtime.GOOS, runtime.GOARCH)
 }

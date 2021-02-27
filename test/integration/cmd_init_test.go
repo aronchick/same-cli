@@ -100,6 +100,15 @@ func (suite *InitSuite) Test_NotInDockerGroup() {
 	out := execute_target(suite, "local", true, "not-in-docker-group")
 	assert.Contains(suite.T(), string(out), "user not in the 'docker' group")
 }
+func (suite *InitSuite) Test_K3sInstallFailed() {
+	out := execute_target(suite, "local", true, "k3s-install-failed")
+	assert.Contains(suite.T(), string(out), "INSTALL K3S FAILED")
+}
+
+func (suite *InitSuite) Test_KFPInstallFailed() {
+	out := execute_target(suite, "local", true, "kfp-install-failed")
+	assert.Contains(suite.T(), string(out), "INSTALL KFP FAILED")
+}
 
 func TestInitSuite(t *testing.T) {
 	suite.Run(t, new(InitSuite))
@@ -118,7 +127,15 @@ func execute_target(suite *InitSuite, target string, fatal bool, additionalFlag 
 
 	os.Setenv("SAME_TARGET", target) // typically done outside of the app
 
-	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", "../testdata/config/notarget.yaml", "--", "--unittestmode", additionalFlag)
+	tmpFile, _ := ioutil.TempFile(os.TempDir(), "SAME-TEST-RUN-CONFIG-*.yaml")
+	defer os.Remove(tmpFile.Name())
+
+	text, _ := ioutil.ReadFile("../testdata/config/notarget.yaml")
+	if _, err = tmpFile.Write(text); err != nil {
+		log.Fatal("Failed to write to temporary file", err)
+	}
+
+	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", tmpFile.Name(), "--", "--unittestmode", additionalFlag)
 
 	// Putting empty assignments here for debugging in the future
 	_ = command
