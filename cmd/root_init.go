@@ -214,8 +214,11 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 	kindInstall := `
 	#!/bin/bash
 	set -e
-kind version	`
-
+	curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/v0.10.0/kind-linux-amd64
+	chmod +x /tmp/kind
+	mv /tmp/kind /usr/local/bin
+	`
+	
 	if err := utils.ExecuteInlineBashScript(cmd, kindInstall, "Kind installed."); err != nil {
 		return err
 	}
