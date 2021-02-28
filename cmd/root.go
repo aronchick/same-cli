@@ -39,14 +39,14 @@ var RootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	log.Info("in base")
+	log.Traceln("in base")
 	if err := RootCmd.Execute(); err != nil {
 		log.Error(err)
 	}
 }
 
 func init() {
-	log.Info("in root init")
+	log.Traceln("in root init")
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -62,7 +62,7 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	log.Info("in initConfig")
+	log.Traceln("in initConfig")
 
 	if cfgFile == "" {
 

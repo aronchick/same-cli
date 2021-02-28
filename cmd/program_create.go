@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	log "github.com/sirupsen/logrus"
 
@@ -64,13 +65,24 @@ var CreateProgramCmd = &cobra.Command{
 			return err
 		}
 
-		if _, err := kubectlExists(); err != nil {
-			log.Error(err.Error())
+		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
+		if err != nil {
 			return err
 		}
 
+		if kubectlCommand == "" {
+			if _, err := kubectlExists(); err != nil {
+				log.Error(err.Error())
+				return err
+			}
+			kubectlCommand = "kubectl"
+		} else {
+			// Remove beginning and ending quotes if present
+			kubectlCommand = regexp.MustCompile(`['"]*([^'"]*)['"]*`).ReplaceAllString(kubectlCommand, `$1`)
+		}
 		// HACK: Currently Kubeconfig must define default namespace
-		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
+		commandToRun := fmt.Sprintf("%v config set 'contexts.'`%v config current-context`'.namespace' kubeflow", kubectlCommand, kubectlCommand)
+		if err := exec.Command("/bin/bash", "-c", commandToRun).Run(); err != nil {
 			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
 			log.Error(message.Error())
 			return message
@@ -217,4 +229,6 @@ func init() {
 
 	CreateProgramCmd.PersistentFlags().StringP("name", "n", "SAME Program", "The program name")
 	CreateProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
+	CreateProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
+
 }

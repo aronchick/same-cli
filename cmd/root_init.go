@@ -37,6 +37,7 @@ type mockDependencyCheckers struct {
 	mock.Mock
 	_cmd            *cobra.Command
 	_kubectlCommand string
+	_installers     *utils.Installers
 }
 
 func (mockDC *mockDependencyCheckers) setCmd(cmd *cobra.Command) {
@@ -53,6 +54,14 @@ func (mockDC *mockDependencyCheckers) setKubectlCmd(s string) {
 
 func (mockDC *mockDependencyCheckers) getKubectlCmd() string {
 	return mockDC._kubectlCommand
+}
+
+func (mockDC *mockDependencyCheckers) setInstallers(i *utils.Installers) {
+	mockDC._installers = i
+}
+
+func (mockDC *mockDependencyCheckers) getInstallers() *utils.Installers {
+	return mockDC._installers
 }
 
 func (mockDC *mockDependencyCheckers) detectDockerBin(s string) (string, error) {
@@ -96,14 +105,6 @@ func (mockDC *mockDependencyCheckers) getUserGroups(u *user.User) (returnGroups 
 	return []string{"docker"}, nil
 }
 
-func (mockDC *mockDependencyCheckers) installK3s() (k3sPath string, err error) {
-	if utils.ContainsString(cmdArgs, "k3s-install-failed") {
-		return "", fmt.Errorf("INSTALL K3S FAILED")
-	}
-
-	return "VALID_PATH", nil
-}
-
 func (mockDC *mockDependencyCheckers) installKFP() (err error) {
 	if utils.ContainsString(cmdArgs, "kfp-install-failed") {
 		return fmt.Errorf("INSTALL KFP FAILED")
@@ -123,17 +124,19 @@ type dependencyCheckers interface {
 	printError(string, error) bool
 	checkDepenciesInstalled(*cobra.Command) error
 	detectK3s(string) (string, error)
-	installK3s() (string, error)
 	installKFP() error
 	getCmd() *cobra.Command
 	setCmd(*cobra.Command)
 	getKubectlCmd() string
 	setKubectlCmd(string)
+	getInstallers() *utils.Installers
+	setInstallers(*utils.Installers)
 }
 
 type liveDependencyCheckers struct {
 	_cmd            *cobra.Command
 	_kubectlCommand string
+	_installers     *utils.Installers
 }
 
 func (dc *liveDependencyCheckers) setCmd(cmd *cobra.Command) {
@@ -150,6 +153,14 @@ func (dc *liveDependencyCheckers) setKubectlCmd(kubectlCommand string) {
 
 func (dc *liveDependencyCheckers) getKubectlCmd() string {
 	return dc._kubectlCommand
+}
+
+func (dc *liveDependencyCheckers) setInstallers(i *utils.Installers) {
+	dc._installers = i
+}
+
+func (dc *liveDependencyCheckers) getInstallers() *utils.Installers {
+	return dc._installers
 }
 
 func (dc *liveDependencyCheckers) printError(s string, err error) (exit bool) {
@@ -169,7 +180,8 @@ func (dc *liveDependencyCheckers) detectDockerGroup(s string) (*user.Group, erro
 }
 
 func (dc *liveDependencyCheckers) detectK3s(s string) (string, error) {
-	return exec.LookPath(s)
+	i := utils.Installers{}
+	return i.DetectK3s(s)
 }
 
 func (dc *liveDependencyCheckers) getUserGroups(u *user.User) ([]string, error) {
@@ -287,13 +299,13 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 
 	switch k8sType {
 	case "k3s":
-		k3sPath, err := i.dc.installK3s()
-		if err != nil {
-			if i.dc.printError("k3s installation failed: %v", err) {
+		k3sCommand, err := i.dc.getInstallers().DetectK3s("k3s")
+		if (err != nil) && (k3sCommand != "") {
+			if i.dc.printError("k3s not installed/detected on path. Please run 'sudo same install_k3s' to install: %v", err) {
 				return nil
 			}
 		}
-		i.dc.setKubectlCmd(k3sPath + "kubectl")
+		i.dc.setKubectlCmd("kubectl")
 	default:
 		if i.dc.printError("no local kubernetes type selected", nil) {
 			return nil
@@ -456,29 +468,6 @@ func configureStorage(cmd *cobra.Command) error {
 		return err
 	}
 	return nil
-}
-
-func (dc *liveDependencyCheckers) installK3s() (k3sCommand string, err error) {
-	k3sCommand, err = dc.detectK3s("k3s")
-	if err != nil {
-		return "", fmt.Errorf("error looking for K3s in PATH")
-	} else if k3sCommand == "" {
-		k3sInstallScript := `
-		#!/bin/bash
-		set -e
-		curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/v0.10.0/kind-linux-amd64
-		chmod +x /tmp/kind
-		mv /tmp/kind /usr/local/bin
-		`
-
-		// I wonder if the below code is right - you could remove the if statement, but then it's slightly less
-		// readable, assuming that a user has to deduce that returning err could be nil
-		if err := utils.ExecuteInlineBashScript(dc.getCmd(), k3sInstallScript, "K3s failed to install locally."); err != nil {
-			return "", err
-		}
-	}
-
-	return dc.detectK3s("k3s")
 }
 
 func (dc *liveDependencyCheckers) installKFP() (err error) {

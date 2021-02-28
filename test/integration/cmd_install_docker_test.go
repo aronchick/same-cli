@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,6 +34,11 @@ func (suite *InstallDockerSuite) SetupTest() {
 
 func (suite *InstallDockerSuite) TearDownTest() {
 
+}
+
+func (suite *InstallDockerSuite) Test_AssertPass() {
+	// Just a placeholder test until we figure out what to test for real.
+	assert.True(suite.T(), true)
 }
 
 // TODO: Commenting out because we've got to figure out how to test under sudo

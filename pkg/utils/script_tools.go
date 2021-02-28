@@ -8,6 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func ExecuteInlineBashScriptSudo(cmd *cobra.Command, SCRIPT string, errorMessage string) error {
+	return ExecuteInlineBashScript(cmd, "sudo "+SCRIPT, errorMessage)
+}
 func ExecuteInlineBashScript(cmd *cobra.Command, SCRIPT string, errorMessage string) error {
 	scriptCMD := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' | bash -s --", SCRIPT))
 	outPipe, err := scriptCMD.StdoutPipe()
