@@ -116,6 +116,41 @@ func (mockDC *mockDependencyCheckers) getUserGroups(u *user.User) (returnGroups 
 	return []string{"docker"}, nil
 }
 
+func (mockDC *mockDependencyCheckers) hasValidAzureToken(*cobra.Command) (err error) {
+	if utils.ContainsString(cmdArgs, "invalid-azure-token") {
+		return fmt.Errorf("INVALID AZURE TOKEN")
+	}
+	return nil
+}
+
+func (mockDC *mockDependencyCheckers) isStorageConfigured(*cobra.Command) (err error) {
+	if utils.ContainsString(cmdArgs, "is-storage-configuration-failed") {
+		return fmt.Errorf("IS STORAGE CONFIGURATION FAILED")
+	}
+	return nil
+}
+
+func (mockDC *mockDependencyCheckers) configureStorage(*cobra.Command) (err error) {
+	if utils.ContainsString(cmdArgs, "storage-configuration-failed") {
+		return fmt.Errorf("STORAGE CONFIGURATION FAILED")
+	}
+	return nil
+}
+
+func (mockDC *mockDependencyCheckers) createAKSwithKubeflow(*cobra.Command) (err error) {
+	if utils.ContainsString(cmdArgs, "create-aks-with-kubeflow-failed") {
+		return fmt.Errorf("CREATE AKS WITH KUBEFLOW FAILED")
+	}
+	return nil
+}
+
+func (mockDC *mockDependencyCheckers) isClusterWithKubeflowCreated(*cobra.Command) (err error) {
+	if utils.ContainsString(cmdArgs, "is-cluster-with-kubeflow-created-failed") {
+		return fmt.Errorf("IS CLUSTER WITH KUBEFLOW CREATED FAILED")
+	}
+	return nil
+}
+
 func (mockDC *mockDependencyCheckers) installKFP() (err error) {
 	if utils.ContainsString(cmdArgs, "kfp-install-failed") {
 		return fmt.Errorf("INSTALL KFP FAILED")
@@ -125,6 +160,10 @@ func (mockDC *mockDependencyCheckers) installKFP() (err error) {
 }
 
 func (mockDC *mockDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
+	if utils.ContainsString(cmdArgs, "dependencies-missing") {
+		return fmt.Errorf("DEPENDENCIES MISSING")
+	}
+
 	return nil
 }
 
@@ -134,6 +173,11 @@ type dependencyCheckers interface {
 	getUserGroups(*user.User) ([]string, error)
 	printError(string, error) bool
 	checkDepenciesInstalled(*cobra.Command) error
+	hasValidAzureToken(*cobra.Command) error
+	isClusterWithKubeflowCreated(*cobra.Command) error
+	createAKSwithKubeflow(*cobra.Command) error
+	isStorageConfigured(*cobra.Command) error
+	configureStorage(*cobra.Command) error
 	installKFP() error
 	getCmd() *cobra.Command
 	setCmd(*cobra.Command)
@@ -330,26 +374,26 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 
 func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 	log.Info("Testing AZ Token")
-	err = hasValidAzureToken(cmd)
+	err = i.dc.hasValidAzureToken(cmd)
 	if err != nil {
 		return err
 	}
 	log.Info("Token passed, testing cluster exists.")
 	hasProvisionedNewResources := false
-	if !isClusterWithKubeflowCreated(cmd) {
+	if i.dc.isClusterWithKubeflowCreated(cmd) != nil {
 		log.Info("Cluster does not exist, creating.")
 		hasProvisionedNewResources = true
-		if err := createAKSwithKubeflow(cmd); err != nil {
+		if err := i.dc.createAKSwithKubeflow(cmd); err != nil {
 			return err
 		}
 		log.Info("Cluster created.")
 	}
 
 	log.Info("Cluster exists, testing to see if storage provisioned.")
-	if !isStorageConfigured(cmd) {
+	if i.dc.isStorageConfigured(cmd) != nil {
 		log.Info("Storage not provisioned, creating.")
 		hasProvisionedNewResources = true
-		if err := configureStorage(cmd); err != nil {
+		if err := i.dc.configureStorage(cmd); err != nil {
 			return err
 		}
 		log.Info("Storage provisioned.")
@@ -364,7 +408,7 @@ func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 	return nil
 }
 
-func hasValidAzureToken(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) hasValidAzureToken(cmd *cobra.Command) error {
 	output, err := exec.Command("/bin/bash", "-c", "az aks list").Output()
 	if (err != nil) || (strings.Contains(string(output), "refresh token has expired")) {
 		cmd.Println("Azure authentication token invalid. Please execute 'az login' and run again..")
@@ -373,12 +417,12 @@ func hasValidAzureToken(cmd *cobra.Command) error {
 	return nil
 }
 
-func isClusterWithKubeflowCreated(cmd *cobra.Command) bool {
-	return exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow").Run() == nil
+func (dc *liveDependencyCheckers) isClusterWithKubeflowCreated(cmd *cobra.Command) error {
+	return exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow").Run()
 }
 
-func isStorageConfigured(cmd *cobra.Command) bool {
-	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run() == nil
+func (dc *liveDependencyCheckers) isStorageConfigured(cmd *cobra.Command) error {
+	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run()
 }
 
 func (dc *liveDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
@@ -413,7 +457,7 @@ func (dc *liveDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) er
 	return nil
 }
 
-func createAKSwithKubeflow(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) createAKSwithKubeflow(cmd *cobra.Command) error {
 	credPORTER := `
 	{
 		"schemaVersion": "1.0.0-DRAFT+b6c701f",
@@ -486,7 +530,7 @@ func createAKSwithKubeflow(cmd *cobra.Command) error {
 	return nil
 }
 
-func configureStorage(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) configureStorage(cmd *cobra.Command) error {
 
 	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
 	theDEMOINSTALL := `

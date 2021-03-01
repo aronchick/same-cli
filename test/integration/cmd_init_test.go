@@ -63,59 +63,71 @@ func (suite *InitSuite) Test_NoTargetSet() {
 	_ = command
 	_ = err
 
-	assert.Equal(suite.T(), false, suite.fatal)
 	assert.Contains(suite.T(), string(out), "No 'target' set for deployment")
+	assert.Equal(suite.T(), false, suite.fatal)
 }
 
 func (suite *InitSuite) Test_BadTarget() {
-	out := execute_target(suite, "UNKNOWN", true, "")
+	out := execute_target(suite, "UNKNOWN", "")
 	assert.Contains(suite.T(), string(out), "Setup target 'unknown' not understood")
+	assert.Equal(suite.T(), true, suite.fatal)
 }
 
 func (suite *InitSuite) Test_AKSTarget() {
-	out := execute_target(suite, "aks", false, "")
+	out := execute_target(suite, "aks", "")
 	assert.Contains(suite.T(), string(out), "Executing AKS setup.")
+	assert.Equal(suite.T(), false, suite.fatal)
 }
 
 func (suite *InitSuite) Test_LocalTarget() {
-	out := execute_target(suite, "local", false, "")
+	out := execute_target(suite, "local", "")
 	assert.Contains(suite.T(), string(out), "Executing local setup")
+	assert.Equal(suite.T(), false, suite.fatal)
 }
 func (suite *InitSuite) Test_NoDocker() {
-	out := execute_target(suite, "local", true, "no-docker-path")
+	out := execute_target(suite, "local", "no-docker-path")
 	assert.Contains(suite.T(), string(out), "not find docker in your PATH")
+	assert.Equal(suite.T(), true, suite.fatal)
 }
 
 func (suite *InitSuite) Test_NotDockerGroupOnSystem() {
-	out := execute_target(suite, "local", true, "no-docker-group-on-system")
+	out := execute_target(suite, "local", "no-docker-group-on-system")
 	assert.Contains(suite.T(), string(out), "could not find the group")
+	assert.Equal(suite.T(), true, suite.fatal)
 }
 
 func (suite *InitSuite) Test_CouldNotRetrieveGroups() {
-	out := execute_target(suite, "local", true, "cannot-retrieve-groups")
+	out := execute_target(suite, "local", "cannot-retrieve-groups")
 	assert.Contains(suite.T(), string(out), "could not retrieve a list of groups")
+	assert.Equal(suite.T(), true, suite.fatal)
+
 }
 
 func (suite *InitSuite) Test_NotInDockerGroup() {
-	out := execute_target(suite, "local", true, "not-in-docker-group")
+	out := execute_target(suite, "local", "not-in-docker-group")
 	assert.Contains(suite.T(), string(out), "user not in the 'docker' group")
+	assert.Equal(suite.T(), true, suite.fatal)
+
 }
 
 func (suite *InitSuite) Test_K3sInstallFailed() {
-	out := execute_target(suite, "local", true, "k3s-not-detected")
+	out := execute_target(suite, "local", "k3s-not-detected")
 	assert.Contains(suite.T(), string(out), "K3S NOT DETECTED")
+	assert.Equal(suite.T(), true, suite.fatal)
 }
 
 func (suite *InitSuite) Test_KFPLocalInstallFailed() {
-	out := execute_target(suite, "local", true, "kfp-install-failed")
+	out := execute_target(suite, "local", "kfp-install-failed")
 	assert.Contains(suite.T(), string(out), "INSTALL KFP FAILED")
+	assert.Equal(suite.T(), true, suite.fatal)
+
 }
 
 func TestInitSuite(t *testing.T) {
 	suite.Run(t, new(InitSuite))
 }
 
-func execute_target(suite *InitSuite, target string, fatal bool, additionalFlag string) (out string) {
+func execute_target(suite *InitSuite, target string, additionalFlag string) (out string) {
 	viper.Reset()
 	defer func() { log.StandardLogger().ExitFunc = nil }()
 	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
@@ -142,7 +154,6 @@ func execute_target(suite *InitSuite, target string, fatal bool, additionalFlag 
 	_ = command
 	_ = err
 
-	assert.Equal(suite.T(), fatal, suite.fatal)
 	return out
 
 }
