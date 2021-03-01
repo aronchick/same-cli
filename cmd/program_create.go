@@ -82,6 +82,7 @@ var CreateProgramCmd = &cobra.Command{
 		}
 		// HACK: Currently Kubeconfig must define default namespace
 		commandToRun := fmt.Sprintf("%v config set 'contexts.'`%v config current-context`'.namespace' kubeflow", kubectlCommand, kubectlCommand)
+		log.Infof("About to run: %v", commandToRun)
 		if err := exec.Command("/bin/bash", "-c", commandToRun).Run(); err != nil {
 			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
 			log.Error(message.Error())

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
@@ -111,8 +112,12 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	_, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
 
 	if err != nil {
-		log.Errorf("deploy_or_update_a_pipeline.go: failed to upload pipeline: %v", err)
-		return nil, err
+		if strings.Contains(err.Error(), "can be resolved by supporting TextUnmarshaler interface") {
+			log.Warn("Skipping error on return due to lack of support in go-swagger for TextUnmarshaler interface (it doesn't support blank response.body)")
+		} else {
+			log.Errorf("deploy_or_update_a_pipeline.go: failed to upload pipeline: %v", err)
+			return nil, err
+		}
 	}
 
 	// TODO: The below is a GROSS HACK. go-swagger produces the following error for everything with an empty body:

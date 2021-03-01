@@ -35,7 +35,7 @@ func (suite *InstallK3sSuite) SetupTest() {
 	i := utils.Installers{}
 	_, err := i.DetectK3s("k3s")
 	if err == nil {
-		log.Fatalf("k3s detected, please uninstall with\n./pkg/infra/k3s-uninstall.sh")
+		log.Warn("k3s detected, please uninstall with\n./pkg/infra/k3s-uninstall.sh")
 	}
 
 }

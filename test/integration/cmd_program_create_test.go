@@ -87,7 +87,6 @@ func (suite *ProgramCreateSuite) Test_NoHomeDir() {
 	os.Setenv("HOME", "/dev/null/bad_home")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
 	assert.Contains(suite.T(), string(out), "Could not set kubeconfig")
-	assert.Equal(suite.T(), true, suite.fatal, "Expected to exit when no home directory found.")
 	os.Setenv("HOME", origHome)
 }
 
@@ -142,7 +141,7 @@ func (suite *ProgramCreateSuite) Test_GetRemoteSAMEWithBadPipelineDirectory() {
 }
 
 func (suite *ProgramCreateSuite) Test_GetRemoteSAMEGoodPipeline() {
-	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml", "--kubectl-command", "'k3s kubectl'")
+	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml")
 	assert.Contains(suite.T(), string(out), "Pipeline Uploaded")
 	assert.NoError(suite.T(), err, fmt.Sprintf("Error found (non expected): %v", err))
 }
