@@ -41,6 +41,12 @@ func (suite *ProgramCreateSuite) SetupAllSuite() {
 		log.Fatal("Failed to write to temporary file", err)
 	}
 
+	i := utils.Installers{}
+	_, err := i.DetectK3s("k3s")
+	if err != nil {
+		assert.Fail(suite.T(), "Could not find k3s, failing.")
+	}
+
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", tmpFile.Name(), "--target", "local")
 
 	_ = out
@@ -68,7 +74,6 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateAndNoArgs() {
 
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create")
 	assert.Contains(suite.T(), string(out), "required flag(s) \"file\"")
-	assert.Equal(suite.T(), true, suite.fatal, "Expected to exit when no home directory found.")
 
 }
 
@@ -87,26 +92,18 @@ func (suite *ProgramCreateSuite) Test_NoHomeDir() {
 }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithFileAndNoKubectl() {
-	defer func() { log.StandardLogger().ExitFunc = nil }()
-	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
-
 	origPath := os.Getenv("PATH")
 	os.Setenv("PATH", "")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
 	assert.Contains(suite.T(), string(out), "Error: the 'kubectl' binary is not on your PATH")
-	assert.Equal(suite.T(), true, suite.fatal, "Expected to exit when no kubectl binary found.")
 	os.Setenv("PATH", origPath)
 }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
-	defer func() { log.StandardLogger().ExitFunc = nil }()
-	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
-
 	origKubeconfig := os.Getenv("KUBECONFIG")
 	os.Setenv("KUBECONFIG", "/dev/null/baddir")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml")
 	assert.Contains(suite.T(), string(out), "Could not set kubeconfig default context")
-	assert.Equal(suite.T(), true, suite.fatal, "Expected to exit when no kubeconfig found.")
 
 	if origKubeconfig != "" {
 		_ = os.Setenv("KUBECONFIG", origKubeconfig)
@@ -116,35 +113,21 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithBadFile() {
-	defer func() { log.StandardLogger().ExitFunc = nil }()
-	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
-
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "/dev/null/same.yaml")
 	assert.Contains(suite.T(), string(out), "could not find sameFile")
-	assert.Equal(suite.T(), true, suite.fatal, "Expected to exit when no home directory found.")
 
 }
 
 func (suite *ProgramCreateSuite) Test_GetRemoteBadURL() {
-	defer func() { log.StandardLogger().ExitFunc = nil }()
-	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
-
 	// Use a URL with a control character
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://\n")
 	assert.Contains(suite.T(), string(out), "unable to parse")
-	assert.Equal(suite.T(), true, suite.fatal, "Expected to exit when unable to parse URL.")
-
 }
 
 func (suite *ProgramCreateSuite) Test_GetRemoteNoSAME() {
-	defer func() { log.StandardLogger().ExitFunc = nil }()
-	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
-
 	// The URL 'https://github.com/dapr/dapr' does not have a 'same.yaml' file in it, so it should fail
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "https://github.com/dapr/dapr")
 	assert.Contains(suite.T(), string(out), "could not download SAME")
-
-	assert.Equal(suite.T(), true, suite.fatal, "Expected to exit when no SAME file found at remote URL")
 
 }
 

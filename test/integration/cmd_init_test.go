@@ -100,12 +100,13 @@ func (suite *InitSuite) Test_NotInDockerGroup() {
 	out := execute_target(suite, "local", true, "not-in-docker-group")
 	assert.Contains(suite.T(), string(out), "user not in the 'docker' group")
 }
+
 func (suite *InitSuite) Test_K3sInstallFailed() {
-	out := execute_target(suite, "local", true, "k3s-install-failed")
-	assert.Contains(suite.T(), string(out), "INSTALL K3S FAILED")
+	out := execute_target(suite, "local", true, "k3s-not-detected")
+	assert.Contains(suite.T(), string(out), "K3S NOT DETECTED")
 }
 
-func (suite *InitSuite) Test_KFPInstallFailed() {
+func (suite *InitSuite) Test_KFPLocalInstallFailed() {
 	out := execute_target(suite, "local", true, "kfp-install-failed")
 	assert.Contains(suite.T(), string(out), "INSTALL KFP FAILED")
 }

@@ -78,12 +78,11 @@ func (i *Installers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err erro
 		tmpK3sConfig, _ := ioutil.TempFile(os.TempDir(), "K3SCONFIG")
 		userKubeConfigLocation := fmt.Sprintf("%v/.kube/config", executingUser.HomeDir)
 
-		// defer func() { _ = os.Remove(tmpMergeConfig.Name()) }()
-		// defer func() { _ = os.Remove(tmpK3sConfig.Name()) }()
-		// defer func() {
-		// 	backupFileName := fmt.Sprintf("%v.bak", userKubeConfigLocation)
-		// 	_ = os.Remove(backupFileName)
-		// }()
+		defer func() { _ = os.Remove(tmpK3sConfig.Name()) }()
+		defer func() {
+			backupFileName := fmt.Sprintf("%v.bak", userKubeConfigLocation)
+			_ = os.Remove(backupFileName)
+		}()
 
 		_ = "https://github.com/rancher/k3s/releases/download/v1.19.2%2Bk3s1/k3s"
 		k3sDownloadAndInstallURL := "curl -sfL https://get.k3s.io | sh -"
@@ -143,91 +142,6 @@ sudo su %v
 		if err := ExecuteInlineBashScript(cmd, k3sMergeScript, "K3s failed merge configs."); err != nil {
 			return "", err
 		}
-
-		// 		k3sConfigMoveCommand := fmt.Sprintf("mv -f %v %v/.kube/config", tmpMergeConfig.Name(), executingUser.HomeDir)
-		// 		log.Tracef("k3sConfigMove:\n%v\n", k3sConfigMoveCommand)
-
-		// 		k3sConfigMoveScript := fmt.Sprintf(`
-		// #!/bin/bash
-		// set -e
-		// sudo su %v
-		// %v
-		// 		`, executingUserName, k3sConfigMoveCommand)
-
-		// 		cmd.Printf("About to execute the following:\n%v\n", k3sConfigMoveScript)
-		// 		// I wonder if the below code is right - you could remove the if statement, but then it's slightly less
-		// 		// readable, assuming that a user has to deduce that returning err could be nil
-		// 		if err := ExecuteInlineBashScript(cmd, k3sConfigMoveScript, "K3s failed to move to final .kube/config directory."); err != nil {
-		// 			return "", err
-		// 		}
-
-		// _ = serviceInstallCommand
-		// _ = serviceStartCommand
-		// k3sDownloadScript := fmt.Sprintf(`
-		// #!/bin/bash
-		// set -e
-		// curl -o /tmp/k3s  -sfL "%v"
-		// chmod +x /tmp/k3s
-		// mv -f /tmp/k3s /usr/local/bin
-
-		// %v && \
-		// %v && \
-		// %v
-
-		// # %v
-		// # %v
-		// `, k3sInstallURL, backupConfigCommand, mergeAndFlattenCommand, copyToHomeCommand, serviceInstallCommand, serviceStartCommand)
-
-		// cmd.Printf("About to execute the following:\n%v\n", k3sInstallScript)
-		// // I wonder if the below code is right - you could remove the if statement, but then it's slightly less
-		// // readable, assuming that a user has to deduce that returning err could be nil
-		// if err := ExecuteInlineBashScript(cmd, k3sInstallScript, "K3s failed to install locally."); err != nil {
-		// 	return "", err
-		// }
-
-		// k3sDownloadScript := fmt.Sprintf(`
-		// #!/bin/bash
-		// set -e
-		// curl -o /tmp/k3s  -sfL "%v"
-		// chmod +x /tmp/k3s
-		// mv -f /tmp/k3s /usr/local/bin
-
-		// %v && \
-		// %v && \
-		// %v
-
-		// # %v
-		// # %v
-		// `, k3sInstallURL, backupConfigCommand, mergeAndFlattenCommand, copyToHomeCommand, serviceInstallCommand, serviceStartCommand)
-
-		// cmd.Printf("About to execute the following:\n%v\n", k3sInstallScript)
-		// // I wonder if the below code is right - you could remove the if statement, but then it's slightly less
-		// // readable, assuming that a user has to deduce that returning err could be nil
-		// if err := ExecuteInlineBashScript(cmd, k3sInstallScript, "K3s failed to install locally."); err != nil {
-		// 	return "", err
-		// }
-
-		// k3sDownloadScript := fmt.Sprintf(`
-		// #!/bin/bash
-		// set -e
-		// curl -o /tmp/k3s  -sfL "%v"
-		// chmod +x /tmp/k3s
-		// mv -f /tmp/k3s /usr/local/bin
-
-		// %v && \
-		// %v && \
-		// %v
-
-		// # %v
-		// # %v
-		// `, k3sInstallURL, backupConfigCommand, mergeAndFlattenCommand, copyToHomeCommand, serviceInstallCommand, serviceStartCommand)
-
-		// cmd.Printf("About to execute the following:\n%v\n", k3sInstallScript)
-		// // I wonder if the below code is right - you could remove the if statement, but then it's slightly less
-		// // readable, assuming that a user has to deduce that returning err could be nil
-		// if err := ExecuteInlineBashScript(cmd, k3sInstallScript, "K3s failed to install locally."); err != nil {
-		// 	return "", err
-		// }
 
 	} else if detectErr != nil {
 		return "", fmt.Errorf("error looking for K3s in PATH: %v", err)

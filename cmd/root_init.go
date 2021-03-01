@@ -33,11 +33,29 @@ import (
 
 var cmdArgs []string
 
+type mockInstallers struct {
+}
+
+func (m *mockInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err error) {
+	return m.DetectK3s("k3s")
+}
+
+func (m *mockInstallers) StartK3s(cmd *cobra.Command) (k3sCommand string, err error) {
+	return m.DetectK3s("k3s")
+}
+func (m *mockInstallers) DetectK3s(s string) (string, error) {
+	if utils.ContainsString(cmdArgs, "k3s-not-detected") {
+		return "", fmt.Errorf("K3S NOT DETECTED")
+	}
+
+	return "VALID", nil
+}
+
 type mockDependencyCheckers struct {
 	mock.Mock
 	_cmd            *cobra.Command
 	_kubectlCommand string
-	_installers     *utils.Installers
+	_installers     utils.InstallerInterface
 }
 
 func (mockDC *mockDependencyCheckers) setCmd(cmd *cobra.Command) {
@@ -56,11 +74,11 @@ func (mockDC *mockDependencyCheckers) getKubectlCmd() string {
 	return mockDC._kubectlCommand
 }
 
-func (mockDC *mockDependencyCheckers) setInstallers(i *utils.Installers) {
+func (mockDC *mockDependencyCheckers) setInstallers(i utils.InstallerInterface) {
 	mockDC._installers = i
 }
 
-func (mockDC *mockDependencyCheckers) getInstallers() *utils.Installers {
+func (mockDC *mockDependencyCheckers) getInstallers() utils.InstallerInterface {
 	return mockDC._installers
 }
 
@@ -78,13 +96,6 @@ func (mockDC *mockDependencyCheckers) detectDockerGroup(s string) (*user.Group, 
 	}
 
 	return &user.Group{Gid: "1001", Name: "docker"}, nil
-}
-
-func (mockDC *mockDependencyCheckers) detectK3s(s string) (string, error) {
-	if utils.ContainsString(cmdArgs, "k3s-not-present") {
-		return "", fmt.Errorf("in your PATH")
-	}
-	return "VALID_PATH", nil
 }
 
 func (mockDC *mockDependencyCheckers) printError(s string, err error) (exit bool) {
@@ -123,20 +134,19 @@ type dependencyCheckers interface {
 	getUserGroups(*user.User) ([]string, error)
 	printError(string, error) bool
 	checkDepenciesInstalled(*cobra.Command) error
-	detectK3s(string) (string, error)
 	installKFP() error
 	getCmd() *cobra.Command
 	setCmd(*cobra.Command)
 	getKubectlCmd() string
 	setKubectlCmd(string)
-	getInstallers() *utils.Installers
-	setInstallers(*utils.Installers)
+	getInstallers() utils.InstallerInterface
+	setInstallers(utils.InstallerInterface)
 }
 
 type liveDependencyCheckers struct {
 	_cmd            *cobra.Command
 	_kubectlCommand string
-	_installers     *utils.Installers
+	_installers     utils.InstallerInterface
 }
 
 func (dc *liveDependencyCheckers) setCmd(cmd *cobra.Command) {
@@ -155,11 +165,11 @@ func (dc *liveDependencyCheckers) getKubectlCmd() string {
 	return dc._kubectlCommand
 }
 
-func (dc *liveDependencyCheckers) setInstallers(i *utils.Installers) {
+func (dc *liveDependencyCheckers) setInstallers(i utils.InstallerInterface) {
 	dc._installers = i
 }
 
-func (dc *liveDependencyCheckers) getInstallers() *utils.Installers {
+func (dc *liveDependencyCheckers) getInstallers() utils.InstallerInterface {
 	return dc._installers
 }
 
@@ -177,11 +187,6 @@ func (dc *liveDependencyCheckers) detectDockerBin(s string) (string, error) {
 
 func (dc *liveDependencyCheckers) detectDockerGroup(s string) (*user.Group, error) {
 	return user.LookupGroup("docker")
-}
-
-func (dc *liveDependencyCheckers) detectK3s(s string) (string, error) {
-	i := utils.Installers{}
-	return i.DetectK3s(s)
 }
 
 func (dc *liveDependencyCheckers) getUserGroups(u *user.User) ([]string, error) {
@@ -204,10 +209,11 @@ var initCmd = &cobra.Command{
 		var i = &initClusterMethods{}
 		cmdArgs = args
 		i.dc = &liveDependencyCheckers{}
+		i.dc.setInstallers(&utils.Installers{})
 
 		if utils.ContainsString(args, "--unittestmode") {
 			i.dc = &mockDependencyCheckers{}
-
+			i.dc.setInstallers(&mockInstallers{})
 		}
 
 		i.dc.setCmd(cmd)
@@ -245,7 +251,7 @@ var initCmd = &cobra.Command{
 			cmd.Println(message)
 			err = i.setup_aks(cmd)
 		default:
-			message := fmt.Errorf("Setup target '%v' not understood.", target)
+			message := fmt.Errorf("Setup target '%v' not understood.\n", target)
 			cmd.Printf(message.Error())
 			log.Fatalf(message.Error())
 			if os.Getenv("TEST_PASS") == "1" {
@@ -300,7 +306,7 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 	switch k8sType {
 	case "k3s":
 		k3sCommand, err := i.dc.getInstallers().DetectK3s("k3s")
-		if (err != nil) && (k3sCommand != "") {
+		if (err != nil) || (k3sCommand == "") {
 			if i.dc.printError("k3s not installed/detected on path. Please run 'sudo same install_k3s' to install: %v", err) {
 				return nil
 			}
@@ -323,19 +329,30 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 }
 
 func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
+	log.Info("Testing AZ Token")
+	err = hasValidAzureToken(cmd)
+	if err != nil {
+		return err
+	}
+	log.Info("Token passed, testing cluster exists.")
 	hasProvisionedNewResources := false
 	if !isClusterWithKubeflowCreated(cmd) {
+		log.Info("Cluster does not exist, creating.")
 		hasProvisionedNewResources = true
 		if err := createAKSwithKubeflow(cmd); err != nil {
 			return err
 		}
+		log.Info("Cluster created.")
 	}
 
+	log.Info("Cluster exists, testing to see if storage provisioned.")
 	if !isStorageConfigured(cmd) {
+		log.Info("Storage not provisioned, creating.")
 		hasProvisionedNewResources = true
 		if err := configureStorage(cmd); err != nil {
 			return err
 		}
+		log.Info("Storage provisioned.")
 	}
 
 	if hasProvisionedNewResources {
@@ -344,6 +361,15 @@ func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 		programCmd.Println("Using existing infrastructure. Ready to create programs.")
 	}
 
+	return nil
+}
+
+func hasValidAzureToken(cmd *cobra.Command) error {
+	output, err := exec.Command("/bin/bash", "-c", "az aks list").Output()
+	if (err != nil) || (strings.Contains(string(output), "refresh token has expired")) {
+		cmd.Println("Azure authentication token invalid. Please execute 'az login' and run again..")
+		return err
+	}
 	return nil
 }
 
@@ -405,6 +431,7 @@ func createAKSwithKubeflow(cmd *cobra.Command) error {
 	}
 	`
 
+	log.Info("Copying porter credential to local.")
 	_, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' > ~/.porter/credentials/aks-kubeflow-msi.json", credPORTER)).Output()
 	if err != nil {
 		cmd.Println("Porter Setup: Could not create AKS credential mapping for Kubeflow Installer")
@@ -425,6 +452,8 @@ func createAKSwithKubeflow(cmd *cobra.Command) error {
 		return err
 	}
 
+	log.Info("Tested login, working correctly.")
+
 	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
 	theDEMOINSTALL := `
 	#!/bin/bash
@@ -432,10 +461,13 @@ func createAKSwithKubeflow(cmd *cobra.Command) error {
 	export SAME_RESOURCE_GROUP="SAME-GROUP-$RANDOM"
 	export SAME_LOCATION="westus2"
 	export SAME_CLUSTER_NAME="SAME-CLUSTER-$RANDOM"
+	echo "export SAME_RESOURCE_GROUP=$SAME_RESOURCE_GROUP"
+	echo "export SAME_LOCATION=$SAME_LOCATION"
+	echo "export SAME_CLUSTER_NAME=$SAME_CLUSTER_NAME"
 	echo "Creating Resource group $SAME_RESOURCE_GROUP in $SAME_LOCATION"
 	az group create -n $SAME_RESOURCE_GROUP --location $SAME_LOCATION -onone
 	echo "Creating AKS cluster $SAME_CLUSTER_NAME"
-	az aks create --resource-group $SAME_RESOURCE_GROUP --name $SAME_CLUSTER_NAME --node-count 3 --generate-ssh-keys --node-vm-size Standard_DS4_v2 --location $SAME_LOCATION 1>/dev/null
+	az aks create --resource-group $SAME_RESOURCE_GROUP --name $SAME_CLUSTER_NAME --node-count 3 --generate-ssh-keys --node-vm-size Standard_D4s_v3 --location $SAME_LOCATION 1>/dev/null
 	echo "Downloading AKS Kubeconfig credentials"
 	az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP 1>/dev/null
 	AKS_RESOURCE_ID=$(az aks show -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP --query id -otsv)
@@ -444,6 +476,10 @@ func createAKSwithKubeflow(cmd *cobra.Command) error {
 	echo "Kubeflow installed."
 	echo "TODO: Set up storage account."
 	`
+
+	// TODO: Figure out how to check for quota violations. Example:
+	// Operation failed with status: 'Bad Request'. Details: Provisioning of resource(s) for container service SAME-CLUSTER-23542 in resource group SAME-GROUP-10482 failed. Message: Operation could not be completed as it results in exceeding approved standardDSv2Family Cores quota. Additional details - Deployment Model: Resource Manager, Location: westus2, Current Limit: 200, Current Usage: 194, Additional Required: 24, (Minimum) New Limit Required: 218. Submit a request for Quota increase at https://aka.ms/ProdportalCRP/?#create/Microsoft.Support/Parameters/%7B%22subId%22:%222865c7d1-29fa-485a-8862-717377bdbf1b%22,%22pesId%22:%2206bfd9d3-516b-d5c6-5802-169c800dec89%22,%22supportTopicId%22:%22e12e3d1d-7fa0-af33-c6d0-3c50df9658a3%22%7D by specifying parameters listed in the ‘Details’ section for deployment to succeed. Please read more about quota limits at https://docs.microsoft.com/en-us/azure/azure-supportability/per-vm-quota-requests.. Details:
+	cmd.Printf("About to execute: %v\n", theDEMOINSTALL)
 	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exsts."); err != nil {
 		return err
 	}
