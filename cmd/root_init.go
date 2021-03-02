@@ -23,217 +23,93 @@ import (
 	"os/user"
 	"strings"
 
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/mock"
 )
 
-var cmdArgs []string
-
-type mockInstallers struct {
-}
-
-func (m *mockInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	return m.DetectK3s("k3s")
-}
-
-func (m *mockInstallers) StartK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	return m.DetectK3s("k3s")
-}
-func (m *mockInstallers) DetectK3s(s string) (string, error) {
-	if utils.ContainsString(cmdArgs, "k3s-not-detected") {
-		return "", fmt.Errorf("K3S NOT DETECTED")
-	}
-
-	return "VALID", nil
-}
-
-type mockDependencyCheckers struct {
-	mock.Mock
-	_cmd            *cobra.Command
-	_kubectlCommand string
-	_installers     utils.InstallerInterface
-}
-
-func (mockDC *mockDependencyCheckers) setCmd(cmd *cobra.Command) {
-	mockDC._cmd = cmd
-}
-
-func (mockDC *mockDependencyCheckers) getCmd() *cobra.Command {
-	return mockDC._cmd
-}
-
-func (mockDC *mockDependencyCheckers) setKubectlCmd(s string) {
-	mockDC._kubectlCommand = s
-}
-
-func (mockDC *mockDependencyCheckers) getKubectlCmd() string {
-	return mockDC._kubectlCommand
-}
-
-func (mockDC *mockDependencyCheckers) setInstallers(i utils.InstallerInterface) {
-	mockDC._installers = i
-}
-
-func (mockDC *mockDependencyCheckers) getInstallers() utils.InstallerInterface {
-	return mockDC._installers
-}
-
-func (mockDC *mockDependencyCheckers) detectDockerBin(s string) (string, error) {
-	if utils.ContainsString(cmdArgs, "no-docker-path") {
-		return "", fmt.Errorf("not find docker in your PATH")
-	}
-
-	return "VALID_PATH", nil
-}
-
-func (mockDC *mockDependencyCheckers) detectDockerGroup(s string) (*user.Group, error) {
-	if utils.ContainsString(cmdArgs, "no-docker-group-on-system") {
-		return nil, user.UnknownGroupError("NOT_FOUND")
-	}
-
-	return &user.Group{Gid: "1001", Name: "docker"}, nil
-}
-
-func (mockDC *mockDependencyCheckers) printError(s string, err error) (exit bool) {
-	message := fmt.Errorf(s, err)
-	mockDC.getCmd().Printf(message.Error())
-	log.Fatalf(message.Error())
-
-	return true
-}
-
-func (mockDC *mockDependencyCheckers) getUserGroups(u *user.User) (returnGroups []string, err error) {
-	if utils.ContainsString(cmdArgs, "cannot-retrieve-groups") {
-		return nil, fmt.Errorf("CANNOT RETRIEVE GROUPS")
-	} else if utils.ContainsString(cmdArgs, "not-in-docker-group") {
-		return []string{}, nil
-	}
-
-	return []string{"docker"}, nil
-}
-
-func (mockDC *mockDependencyCheckers) hasValidAzureToken(*cobra.Command) (err error) {
-	if utils.ContainsString(cmdArgs, "invalid-azure-token") {
-		return fmt.Errorf("INVALID AZURE TOKEN")
-	}
-	return nil
-}
-
-func (mockDC *mockDependencyCheckers) isStorageConfigured(*cobra.Command) (err error) {
-	if utils.ContainsString(cmdArgs, "is-storage-configuration-failed") {
-		return fmt.Errorf("IS STORAGE CONFIGURATION FAILED")
-	}
-	return nil
-}
-
-func (mockDC *mockDependencyCheckers) configureStorage(*cobra.Command) (err error) {
-	if utils.ContainsString(cmdArgs, "storage-configuration-failed") {
-		return fmt.Errorf("STORAGE CONFIGURATION FAILED")
-	}
-	return nil
-}
-
-func (mockDC *mockDependencyCheckers) createAKSwithKubeflow(*cobra.Command) (err error) {
-	if utils.ContainsString(cmdArgs, "create-aks-with-kubeflow-failed") {
-		return fmt.Errorf("CREATE AKS WITH KUBEFLOW FAILED")
-	}
-	return nil
-}
-
-func (mockDC *mockDependencyCheckers) isClusterWithKubeflowCreated(*cobra.Command) (err error) {
-	if utils.ContainsString(cmdArgs, "is-cluster-with-kubeflow-created-failed") {
-		return fmt.Errorf("IS CLUSTER WITH KUBEFLOW CREATED FAILED")
-	}
-	return nil
-}
-
-func (mockDC *mockDependencyCheckers) installKFP() (err error) {
-	if utils.ContainsString(cmdArgs, "kfp-install-failed") {
-		return fmt.Errorf("INSTALL KFP FAILED")
-	}
-
-	return nil
-}
-
-func (mockDC *mockDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
-	if utils.ContainsString(cmdArgs, "dependencies-missing") {
-		return fmt.Errorf("DEPENDENCIES MISSING")
-	}
-
-	return nil
-}
-
 type dependencyCheckers interface {
-	detectDockerBin(string) (string, error)
-	detectDockerGroup(string) (*user.Group, error)
-	getUserGroups(*user.User) ([]string, error)
-	printError(string, error) bool
-	checkDepenciesInstalled(*cobra.Command) error
-	hasValidAzureToken(*cobra.Command) error
-	isClusterWithKubeflowCreated(*cobra.Command) error
-	createAKSwithKubeflow(*cobra.Command) error
-	isStorageConfigured(*cobra.Command) error
-	configureStorage(*cobra.Command) error
-	installKFP() error
-	getCmd() *cobra.Command
-	setCmd(*cobra.Command)
-	getKubectlCmd() string
-	setKubectlCmd(string)
-	getInstallers() utils.InstallerInterface
-	setInstallers(utils.InstallerInterface)
+	DetectDockerBin(string) (string, error)
+	DetectDockerGroup(string) (*user.Group, error)
+	GetUserGroups(*user.User) ([]string, error)
+	PrintError(string, error) bool
+	CheckDependenciesInstalled(*cobra.Command) error
+	HasValidAzureToken(*cobra.Command) error
+	IsClusterWithKubeflowCreated(*cobra.Command) error
+	CreateAKSwithKubeflow(*cobra.Command) error
+	IsStorageConfigured(*cobra.Command) error
+	ConfigureStorage(*cobra.Command) error
+	InstallKFP() error
+	GetCmd() *cobra.Command
+	SetCmd(*cobra.Command)
+	GetKubectlCmd() string
+	SetKubectlCmd(string)
+	GetInstallers() utils.InstallerInterface
+	SetInstallers(utils.InstallerInterface)
+	GetCmdArgs() []string
+	SetCmdArgs([]string)
 }
 
 type liveDependencyCheckers struct {
 	_cmd            *cobra.Command
 	_kubectlCommand string
 	_installers     utils.InstallerInterface
+	_cmdArgs        []string
 }
 
-func (dc *liveDependencyCheckers) setCmd(cmd *cobra.Command) {
+func (dc *liveDependencyCheckers) SetCmd(cmd *cobra.Command) {
 	dc._cmd = cmd
 }
 
-func (dc *liveDependencyCheckers) getCmd() *cobra.Command {
+func (dc *liveDependencyCheckers) GetCmd() *cobra.Command {
 	return dc._cmd
 }
 
-func (dc *liveDependencyCheckers) setKubectlCmd(kubectlCommand string) {
+func (dc *liveDependencyCheckers) SetCmdArgs(args []string) {
+	dc._cmdArgs = args
+}
+
+func (dc *liveDependencyCheckers) GetCmdArgs() []string {
+	return dc._cmdArgs
+}
+
+func (dc *liveDependencyCheckers) SetKubectlCmd(kubectlCommand string) {
 	dc._kubectlCommand = kubectlCommand
 }
 
-func (dc *liveDependencyCheckers) getKubectlCmd() string {
+func (dc *liveDependencyCheckers) GetKubectlCmd() string {
 	return dc._kubectlCommand
 }
 
-func (dc *liveDependencyCheckers) setInstallers(i utils.InstallerInterface) {
+func (dc *liveDependencyCheckers) SetInstallers(i utils.InstallerInterface) {
 	dc._installers = i
 }
 
-func (dc *liveDependencyCheckers) getInstallers() utils.InstallerInterface {
+func (dc *liveDependencyCheckers) GetInstallers() utils.InstallerInterface {
 	return dc._installers
 }
 
-func (dc *liveDependencyCheckers) printError(s string, err error) (exit bool) {
+func (dc *liveDependencyCheckers) PrintError(s string, err error) (exit bool) {
 	message := fmt.Errorf(s, err)
-	dc.getCmd().Printf(message.Error())
+	dc.GetCmd().Printf(message.Error())
 	log.Fatalf(message.Error())
 
 	return false
 }
 
-func (dc *liveDependencyCheckers) detectDockerBin(s string) (string, error) {
+func (dc *liveDependencyCheckers) DetectDockerBin(s string) (string, error) {
 	return exec.LookPath(s)
 }
 
-func (dc *liveDependencyCheckers) detectDockerGroup(s string) (*user.Group, error) {
+func (dc *liveDependencyCheckers) DetectDockerGroup(s string) (*user.Group, error) {
 	return user.LookupGroup("docker")
 }
 
-func (dc *liveDependencyCheckers) getUserGroups(u *user.User) ([]string, error) {
+func (dc *liveDependencyCheckers) GetUserGroups(u *user.User) ([]string, error) {
 	return u.GroupIds()
 }
 
@@ -251,16 +127,17 @@ var initCmd = &cobra.Command{
 		allSettings := viper.AllSettings()
 
 		var i = &initClusterMethods{}
-		cmdArgs = args
 		i.dc = &liveDependencyCheckers{}
-		i.dc.setInstallers(&utils.Installers{})
+		i.dc.SetInstallers(&utils.Installers{})
 
 		if utils.ContainsString(args, "--unittestmode") {
-			i.dc = &mockDependencyCheckers{}
-			i.dc.setInstallers(&mockInstallers{})
+			i.dc = &mocks.MockDependencyCheckers{}
+			i.dc.SetInstallers(&mocks.MockInstallers{})
 		}
 
-		i.dc.setCmd(cmd)
+		i.dc.SetCmdArgs(args)
+
+		i.dc.SetCmd(cmd)
 
 		// len in go checks for both nil and 0
 		if len(allSettings) == 0 {
@@ -270,7 +147,7 @@ var initCmd = &cobra.Command{
 			return nil
 		}
 
-		if err := i.dc.checkDepenciesInstalled(cmd); err != nil {
+		if err := i.dc.CheckDependenciesInstalled(cmd); err != nil {
 			return err
 		}
 
@@ -313,34 +190,34 @@ var initCmd = &cobra.Command{
 }
 
 func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
-	dockerPath, err := i.dc.detectDockerBin("docker")
+	dockerPath, err := i.dc.DetectDockerBin("docker")
 	if err != nil || dockerPath == "" {
-		if i.dc.printError("Could not find docker in your PATH: %v", err) {
+		if i.dc.PrintError("Could not find docker in your PATH: %v", err) {
 			return nil
 		}
 	}
 
-	dockerGroupId, err := i.dc.detectDockerGroup("docker")
+	dockerGroupId, err := i.dc.DetectDockerGroup("docker")
 
 	if _, ok := err.(user.UnknownGroupError); ok {
-		if i.dc.printError("could not find the group 'docker' on your system. This is required to run.", err) {
+		if i.dc.PrintError("could not find the group 'docker' on your system. This is required to run.", err) {
 			return nil
 		}
 	} else if err != nil {
-		if i.dc.printError("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err) {
+		if i.dc.PrintError("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err) {
 			return nil
 		}
 	}
 	u, _ := user.Current()
-	allGroups, err := i.dc.getUserGroups(u)
+	allGroups, err := i.dc.GetUserGroups(u)
 	if err != nil {
-		if i.dc.printError("could not retrieve a list of groups for the current user: %v", err) {
+		if i.dc.PrintError("could not retrieve a list of groups for the current user: %v", err) {
 			return nil
 		}
 	}
 
 	if !utils.ContainsString(allGroups, dockerGroupId.Gid) && !utils.ContainsString(allGroups, dockerGroupId.Name) {
-		if i.dc.printError("user not in the 'docker' group: %v", nil) {
+		if i.dc.PrintError("user not in the 'docker' group: %v", nil) {
 			return nil
 		}
 	}
@@ -349,22 +226,22 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 
 	switch k8sType {
 	case "k3s":
-		k3sCommand, err := i.dc.getInstallers().DetectK3s("k3s")
+		k3sCommand, err := i.dc.GetInstallers().DetectK3s("k3s")
 		if (err != nil) || (k3sCommand == "") {
-			if i.dc.printError("k3s not installed/detected on path. Please run 'sudo same install_k3s' to install: %v", err) {
+			if i.dc.PrintError("k3s not installed/detected on path. Please run 'sudo same install_k3s' to install: %v", err) {
 				return nil
 			}
 		}
-		i.dc.setKubectlCmd("kubectl")
+		i.dc.SetKubectlCmd("kubectl")
 	default:
-		if i.dc.printError("no local kubernetes type selected", nil) {
+		if i.dc.PrintError("no local kubernetes type selected", nil) {
 			return nil
 		}
 	}
 
-	err = i.dc.installKFP()
+	err = i.dc.InstallKFP()
 	if err != nil {
-		if i.dc.printError("kfp failed to install", err) {
+		if i.dc.PrintError("kfp failed to install", err) {
 			return nil
 		}
 	}
@@ -374,26 +251,26 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 
 func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 	log.Info("Testing AZ Token")
-	err = i.dc.hasValidAzureToken(cmd)
+	err = i.dc.HasValidAzureToken(cmd)
 	if err != nil {
 		return err
 	}
 	log.Info("Token passed, testing cluster exists.")
 	hasProvisionedNewResources := false
-	if i.dc.isClusterWithKubeflowCreated(cmd) != nil {
+	if i.dc.IsClusterWithKubeflowCreated(cmd) != nil {
 		log.Info("Cluster does not exist, creating.")
 		hasProvisionedNewResources = true
-		if err := i.dc.createAKSwithKubeflow(cmd); err != nil {
+		if err := i.dc.CreateAKSwithKubeflow(cmd); err != nil {
 			return err
 		}
 		log.Info("Cluster created.")
 	}
 
 	log.Info("Cluster exists, testing to see if storage provisioned.")
-	if i.dc.isStorageConfigured(cmd) != nil {
+	if i.dc.IsStorageConfigured(cmd) != nil {
 		log.Info("Storage not provisioned, creating.")
 		hasProvisionedNewResources = true
-		if err := i.dc.configureStorage(cmd); err != nil {
+		if err := i.dc.ConfigureStorage(cmd); err != nil {
 			return err
 		}
 		log.Info("Storage provisioned.")
@@ -408,7 +285,7 @@ func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 	return nil
 }
 
-func (dc *liveDependencyCheckers) hasValidAzureToken(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) error {
 	output, err := exec.Command("/bin/bash", "-c", "az aks list").Output()
 	if (err != nil) || (strings.Contains(string(output), "refresh token has expired")) {
 		cmd.Println("Azure authentication token invalid. Please execute 'az login' and run again..")
@@ -417,15 +294,15 @@ func (dc *liveDependencyCheckers) hasValidAzureToken(cmd *cobra.Command) error {
 	return nil
 }
 
-func (dc *liveDependencyCheckers) isClusterWithKubeflowCreated(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) IsClusterWithKubeflowCreated(cmd *cobra.Command) error {
 	return exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow").Run()
 }
 
-func (dc *liveDependencyCheckers) isStorageConfigured(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) IsStorageConfigured(cmd *cobra.Command) error {
 	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run()
 }
 
-func (dc *liveDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command) error {
 	_, err := exec.Command("/bin/bash", "-c", "az account list -otable").Output()
 	if err != nil {
 
@@ -457,7 +334,7 @@ func (dc *liveDependencyCheckers) checkDepenciesInstalled(cmd *cobra.Command) er
 	return nil
 }
 
-func (dc *liveDependencyCheckers) createAKSwithKubeflow(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) error {
 	credPORTER := `
 	{
 		"schemaVersion": "1.0.0-DRAFT+b6c701f",
@@ -530,7 +407,7 @@ func (dc *liveDependencyCheckers) createAKSwithKubeflow(cmd *cobra.Command) erro
 	return nil
 }
 
-func (dc *liveDependencyCheckers) configureStorage(cmd *cobra.Command) error {
+func (dc *liveDependencyCheckers) ConfigureStorage(cmd *cobra.Command) error {
 
 	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
 	theDEMOINSTALL := `
@@ -550,10 +427,10 @@ func (dc *liveDependencyCheckers) configureStorage(cmd *cobra.Command) error {
 	return nil
 }
 
-func (dc *liveDependencyCheckers) installKFP() (err error) {
+func (dc *liveDependencyCheckers) InstallKFP() (err error) {
 
-	kubectlCommand := dc.getKubectlCmd()
-	cmd := dc.getCmd()
+	kubectlCommand := dc.GetKubectlCmd()
+	cmd := dc.GetCmd()
 	kfpInstall := fmt.Sprintf(`
 	#!/bin/bash
 	set -e

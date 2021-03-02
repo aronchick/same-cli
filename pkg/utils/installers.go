@@ -18,9 +18,11 @@ type InstallerInterface interface {
 	InstallK3s(*cobra.Command) (string, error)
 	StartK3s(*cobra.Command) (string, error)
 	DetectK3s(string) (string, error)
+	SetCmdArgs([]string)
 }
 
 type Installers struct {
+	_cmdArgs []string
 }
 
 func (i *Installers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err error) {
@@ -189,4 +191,8 @@ func (i *Installers) StartK3s(cmd *cobra.Command) (k3sCommand string, err error)
 func (i *Installers) DetectK3s(s string) (string, error) {
 	log.Infof("Executing detect on: %v", s)
 	return exec.LookPath(s)
+}
+
+func (i *Installers) SetCmdArgs(args []string) {
+	i._cmdArgs = args
 }
