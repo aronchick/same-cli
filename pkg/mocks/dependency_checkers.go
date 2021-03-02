@@ -3,8 +3,6 @@ package mocks
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -74,11 +72,7 @@ func (mockDC *MockDependencyCheckers) GetInstallers() utils.InstallerInterface {
 }
 
 func (mockDC *MockDependencyCheckers) PrintError(s string, err error) (exit bool) {
-	message := fmt.Errorf(s, err)
-	mockDC.GetCmd().Printf(message.Error())
-	log.Fatalf(message.Error())
-
-	return true
+	return utils.PrintError(s, err)
 }
 
 func (mockDC *MockDependencyCheckers) HasValidAzureToken(*cobra.Command) (err error) {

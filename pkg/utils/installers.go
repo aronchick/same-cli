@@ -196,3 +196,10 @@ func (i *Installers) DetectK3s(s string) (string, error) {
 func (i *Installers) SetCmdArgs(args []string) {
 	i._cmdArgs = args
 }
+
+func PrintError(s string, err error) (exit bool) {
+	message := fmt.Errorf(s, err)
+	log.Fatalf(message.Error() + "\n")
+
+	return os.Getenv("TEST_PASS") != ""
+}
