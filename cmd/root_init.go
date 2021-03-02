@@ -33,9 +33,6 @@ import (
 )
 
 type dependencyCheckers interface {
-	DetectDockerBin(string) (string, error)
-	DetectDockerGroup(string) (*user.Group, error)
-	GetUserGroups(*user.User) ([]string, error)
 	PrintError(string, error) bool
 	CheckDependenciesInstalled(*cobra.Command) error
 	HasValidAzureToken(*cobra.Command) error
@@ -95,7 +92,7 @@ func (dc *liveDependencyCheckers) GetInstallers() utils.InstallerInterface {
 
 func (dc *liveDependencyCheckers) PrintError(s string, err error) (exit bool) {
 	message := fmt.Errorf(s, err)
-	dc.GetCmd().Printf(message.Error())
+	// dc.GetCmd().Printf(message.Error() + "\n")
 	log.Fatalf(message.Error())
 
 	return os.Getenv("TEST_PASS") != ""
@@ -190,37 +187,37 @@ var initCmd = &cobra.Command{
 }
 
 func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
-	dockerPath, err := i.dc.DetectDockerBin("docker")
-	if err != nil || dockerPath == "" {
-		if i.dc.PrintError("Could not find docker in your PATH: %v", err) {
-			return nil
-		}
-	}
+	// dockerPath, err := i.dc.DetectDockerBin("docker")
+	// if err != nil || dockerPath == "" {
+	// 	if i.dc.PrintError("Could not find docker in your PATH: %v", err) {
+	// 		return nil
+	// 	}
+	// }
 
-	dockerGroupId, err := i.dc.DetectDockerGroup("docker")
+	// dockerGroupId, err := i.dc.DetectDockerGroup("docker")
 
-	if _, ok := err.(user.UnknownGroupError); ok {
-		if i.dc.PrintError("could not find the group 'docker' on your system. This is required to run.", err) {
-			return nil
-		}
-	} else if err != nil {
-		if i.dc.PrintError("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err) {
-			return nil
-		}
-	}
-	u, _ := user.Current()
-	allGroups, err := i.dc.GetUserGroups(u)
-	if err != nil {
-		if i.dc.PrintError("could not retrieve a list of groups for the current user: %v", err) {
-			return nil
-		}
-	}
+	// if _, ok := err.(user.UnknownGroupError); ok {
+	// 	if i.dc.PrintError("could not find the group 'docker' on your system. This is required to run.", err) {
+	// 		return nil
+	// 	}
+	// } else if err != nil {
+	// 	if i.dc.PrintError("unknown error while trying to retrieve list of groups on your system. Sorry that's all we know: %v", err) {
+	// 		return nil
+	// 	}
+	// }
+	// u, _ := user.Current()
+	// allGroups, err := i.dc.GetUserGroups(u)
+	// if err != nil {
+	// 	if i.dc.PrintError("could not retrieve a list of groups for the current user: %v", err) {
+	// 		return nil
+	// 	}
+	// }
 
-	if !utils.ContainsString(allGroups, dockerGroupId.Gid) && !utils.ContainsString(allGroups, dockerGroupId.Name) {
-		if i.dc.PrintError("user not in the 'docker' group: %v", nil) {
-			return nil
-		}
-	}
+	// if !utils.ContainsString(allGroups, dockerGroupId.Gid) && !utils.ContainsString(allGroups, dockerGroupId.Name) {
+	// 	if i.dc.PrintError("user not in the 'docker' group: %v", nil) {
+	// 		return nil
+	// 	}
+	// }
 
 	k8sType := "k3s"
 

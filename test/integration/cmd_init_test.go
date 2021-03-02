@@ -87,33 +87,6 @@ func (suite *InitSuite) Test_LocalTarget() {
 	assert.Equal(suite.T(), false, suite.fatal)
 }
 
-// TODO: Don't need to test for docker any more.
-// func (suite *InitSuite) Test_NoDocker() {
-// 	out := execute_target(suite, "local", "no-docker-path")
-// 	assert.Contains(suite.T(), string(out), "not find docker in your PATH")
-// 	assert.Equal(suite.T(), true, suite.fatal)
-// }
-
-// func (suite *InitSuite) Test_NotDockerGroupOnSystem() {
-// 	out := execute_target(suite, "local", "no-docker-group-on-system")
-// 	assert.Contains(suite.T(), string(out), "could not find the group")
-// 	assert.Equal(suite.T(), true, suite.fatal)
-// }
-
-// func (suite *InitSuite) Test_CouldNotRetrieveGroups() {
-// 	out := execute_target(suite, "local", "cannot-retrieve-groups")
-// 	assert.Contains(suite.T(), string(out), "could not retrieve a list of groups")
-// 	assert.Equal(suite.T(), true, suite.fatal)
-
-// }
-
-// func (suite *InitSuite) Test_NotInDockerGroup() {
-// 	out := execute_target(suite, "local", "not-in-docker-group")
-// 	assert.Contains(suite.T(), string(out), "user not in the 'docker' group")
-// 	assert.Equal(suite.T(), true, suite.fatal)
-
-// }
-
 func (suite *InitSuite) Test_K3sInstallFailed() {
 	out := execute_target(suite, "local", "k3s-not-detected")
 	assert.Contains(suite.T(), string(out), "K3S NOT DETECTED")

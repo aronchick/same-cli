@@ -2,7 +2,6 @@ package mocks
 
 import (
 	"fmt"
-	"os/user"
 
 	log "github.com/sirupsen/logrus"
 
@@ -74,38 +73,12 @@ func (mockDC *MockDependencyCheckers) GetInstallers() utils.InstallerInterface {
 	return mockDC._installers
 }
 
-func (mockDC *MockDependencyCheckers) DetectDockerBin(s string) (string, error) {
-	if utils.ContainsString(mockDC.GetCmdArgs(), "no-docker-path") {
-		return "", fmt.Errorf("not find docker in your PATH")
-	}
-
-	return "VALID_PATH", nil
-}
-
-func (mockDC *MockDependencyCheckers) DetectDockerGroup(s string) (*user.Group, error) {
-	if utils.ContainsString(mockDC.GetCmdArgs(), "no-docker-group-on-system") {
-		return nil, user.UnknownGroupError("NOT_FOUND")
-	}
-
-	return &user.Group{Gid: "1001", Name: "docker"}, nil
-}
-
 func (mockDC *MockDependencyCheckers) PrintError(s string, err error) (exit bool) {
 	message := fmt.Errorf(s, err)
 	mockDC.GetCmd().Printf(message.Error())
 	log.Fatalf(message.Error())
 
 	return true
-}
-
-func (mockDC *MockDependencyCheckers) GetUserGroups(u *user.User) (returnGroups []string, err error) {
-	if utils.ContainsString(mockDC.GetCmdArgs(), "cannot-retrieve-groups") {
-		return nil, fmt.Errorf("CANNOT RETRIEVE GROUPS")
-	} else if utils.ContainsString(mockDC.GetCmdArgs(), "not-in-docker-group") {
-		return []string{}, nil
-	}
-
-	return []string{"docker"}, nil
 }
 
 func (mockDC *MockDependencyCheckers) HasValidAzureToken(*cobra.Command) (err error) {
