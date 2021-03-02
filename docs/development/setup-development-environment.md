@@ -23,42 +23,6 @@ go -v
 
   https://www.python.org/downloads/
 
-- Install Docker
-
-  On Windows/Mac: https://docs.docker.com/get-docker/
-
-  Test for rootless pre-requisites
-```
-id -u # 1001
-whoami # testuser
-grep ^$(whoami): /etc/subuid # testuser:231072:65536
-grep ^$(whoami): /etc/subgid # testuser:231072:65536
-```
-  Install Docker rootless
-```
-curl -fsSL https://get.docker.com/rootless | sh
-echo "export PATH=/home/$(whoami)/bin:$PATH" >> ~/.bashrc
-echo "export PATH=$PATH:/sbin" >> ~/.bashrc
-echo "export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock" >> ~/.bashrc
-echo "systemctl --user start docker" >> ~/.bashrc
-sudo loginctl enable-linger $(whoami)
-```
-  Install Docker client
-```
-sudo apt-get remove docker docker-engine docker.io containerd runc
-sudo apt-get install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg-agent \
-    software-properties-common -y
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable"
-sudo apt-get install docker-ce docker-ce-cli containerd.io -y 
-```
 - Log into Azure
 ```
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
