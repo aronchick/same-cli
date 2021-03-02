@@ -13,11 +13,15 @@ type MockInstallers struct {
 }
 
 func (mi *MockInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	return mi.DetectK3s("k3s")
+	// TODO: Should have a real failure to install k3s message
+	k3sCommand, err = mi.DetectK3s("k3s")
+	return k3sCommand, err
 }
 
 func (mi *MockInstallers) StartK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	return mi.DetectK3s("k3s")
+	// TODO: Should have a real failure to start k3s message
+	k3sCommand, err = mi.DetectK3s("k3s")
+	return k3sCommand, err
 }
 func (mi *MockInstallers) DetectK3s(s string) (string, error) {
 	if utils.ContainsString(mi._cmdArgs, "k3s-not-detected") {

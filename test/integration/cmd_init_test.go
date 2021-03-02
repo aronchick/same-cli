@@ -88,12 +88,14 @@ func (suite *InitSuite) Test_LocalTarget() {
 }
 
 func (suite *InitSuite) Test_K3sInstallFailed() {
+	os.Setenv("TEST_PASS", "1")
 	out := execute_target(suite, "local", "k3s-not-detected")
 	assert.Contains(suite.T(), string(out), "K3S NOT DETECTED")
 	assert.Equal(suite.T(), true, suite.fatal)
 }
 
 func (suite *InitSuite) Test_KFPLocalInstallFailed() {
+	os.Setenv("TEST_PASS", "1")
 	out := execute_target(suite, "local", "kfp-install-failed")
 	assert.Contains(suite.T(), string(out), "INSTALL KFP FAILED")
 	assert.Equal(suite.T(), true, suite.fatal)

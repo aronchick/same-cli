@@ -123,7 +123,7 @@ var initCmd = &cobra.Command{
 		i.dc = &liveDependencyCheckers{}
 		i.dc.SetInstallers(&utils.Installers{})
 
-		if utils.ContainsString(args, "--unittestmode") {
+		if os.Getenv("TEST_PASS") != "" {
 			i.dc = &mocks.MockDependencyCheckers{}
 			i.dc.SetInstallers(&mocks.MockInstallers{})
 		}
@@ -174,7 +174,9 @@ var initCmd = &cobra.Command{
 		}
 
 		if err != nil {
-			log.Fatalf("Error while setting up Kubernetes API: %v", err)
+			if i.dc.PrintError("Error while setting up Kubernetes API: %v", err) {
+				return err
+			}
 		}
 
 		return nil
@@ -191,20 +193,20 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 		k3sCommand, err := i.dc.GetInstallers().DetectK3s("k3s")
 		if (err != nil) || (k3sCommand == "") {
 			if i.dc.PrintError("k3s not installed/detected on path. Please run 'sudo same install_k3s' to install: %v", err) {
-				return nil
+				return err
 			}
 		}
 		i.dc.SetKubectlCmd("kubectl")
 	default:
 		if i.dc.PrintError("no local kubernetes type selected", nil) {
-			return nil
+			return err
 		}
 	}
 
 	err = i.dc.InstallKFP()
 	if err != nil {
 		if i.dc.PrintError("kfp failed to install", err) {
-			return nil
+			return err
 		}
 	}
 
