@@ -202,10 +202,12 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 			return err
 		}
 	}
+	log.Traceln("k3s detected, proceeding to install KFP.")
+	log.Tracef("k3s path: %v", i.dc.GetKubectlCmd())
 
 	err = i.dc.InstallKFP()
 	if err != nil {
-		if i.dc.PrintError("kfp failed to install", err) {
+		if i.dc.PrintError("kfp failed to install: ", err) {
 			return err
 		}
 	}
@@ -393,21 +395,25 @@ func (dc *liveDependencyCheckers) ConfigureStorage(cmd *cobra.Command) error {
 
 func (dc *liveDependencyCheckers) InstallKFP() (err error) {
 
+	log.Tracef("Inside InstallKFP()")
 	kubectlCommand := dc.GetKubectlCmd()
+	log.Tracef("kubectlCommand: %v\n", kubectlCommand)
 	cmd := dc.GetCmd()
 	kfpInstall := fmt.Sprintf(`
 	#!/bin/bash
 	set -e
 	export PIPELINE_VERSION=1.4.1
 	export KUBECTL_COMMAND=%v
-	$KUBECTL_COMMAND create namespace kubeflow
+	$KUBECTL_COMMAND create namespace kubeflow || true
 	$KUBECTL_COMMAND config set-context --current --namespace=kubeflow
 	$KUBECTL_COMMAND apply -k "github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=$PIPELINE_VERSION"
 	$KUBECTL_COMMAND wait --for condition=established --timeout=60s crd/applications.app.k8s.io
 	$KUBECTL_COMMAND apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic-pns?ref=$PIPELINE_VERSION"
 	`, kubectlCommand)
 
+	log.Tracef("About to execute: %v\n", kfpInstall)
 	if err := utils.ExecuteInlineBashScript(cmd, kfpInstall, "KFP failed to install."); err != nil {
+		log.Tracef("Error executing: %v\n", err.Error())
 		return err
 	}
 
