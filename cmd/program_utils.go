@@ -22,12 +22,29 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/viper"
 )
 
 // COMPILEDPIPELINE : Temporary placeholder
 var COMPILEDPIPELINE = "pipeline.tar.gz"
+var configWriter ConfigFileIO
+
+type ConfigFileIO interface {
+	ConfigWriter(viper.Viper) error
+}
+
+type LiveConfigFileIO struct {
+}
+
+func (lcfio *LiveConfigFileIO) ConfigWriter(viper viper.Viper) error {
+	err = viper.WriteConfig()
+	if err != nil {
+		log.Fatalf("error while writing file flag using viper as required: %v", err)
+	}
+	return err
+}
 
 // NewKFPConfig : Create Kubernetes API config compatible with Pipelines from KubeConfig
 func NewKFPConfig() *clientcmd.ClientConfig {
@@ -92,6 +109,11 @@ func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineN
 func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipeline_model.APIPipeline, err error) {
 	kfpconfig := *NewKFPConfig()
 
+	configWriter = &LiveConfigFileIO{}
+	if os.Getenv("TEST_PASS") == "1" {
+		configWriter = &mocks.MockConfigFileIO{}
+	}
+
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
 		log.Errorf("could not create API client for pipeline: %v", err)
@@ -138,10 +160,9 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	}
 
 	viper.Set("activepipeline", uploadedPipeline.ID)
-	err = viper.WriteConfig()
+	err = configWriter.ConfigWriter(viper.Viper{})
 	if err != nil {
-		log.Fatal(fmt.Sprintf("could not set file flag as required: %v", err))
-		os.Exit(1)
+		return nil, err
 	}
 
 	return uploadedPipeline, nil

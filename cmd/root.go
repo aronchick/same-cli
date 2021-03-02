@@ -17,7 +17,6 @@ limitations under the License.
 */
 
 import (
-	"fmt"
 	"os"
 	"path"
 
@@ -73,19 +72,22 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			message := fmt.Sprintf("could not find home directory: %v", err)
-			RootCmd.Println(message)
-			log.Fatalf(message)
-			return
+			if !utils.PrintErrorAndReturnExit(RootCmd, "could not find home directory: ", err) {
+				// Use the below to pass along that we've failed and we should exit at the first check
+				os.Setenv("TEST_EXIT", "1")
+				return
+			}
 		}
 
 		cfgFile = path.Join(home, ".same", "config.yaml")
 	}
-
-	err := utils.LoadConfig(cfgFile)
+	err = utils.LoadConfig(cfgFile)
 	if err != nil {
-		message := fmt.Sprintf("Error reading config file: %v", err)
-		RootCmd.Println(message)
-		log.Fatalf(message)
+		if !utils.PrintErrorAndReturnExit(RootCmd, "Error reading config file: ", err) {
+
+			// Use the below to pass along that we've failed and we should exit at the first check
+			os.Setenv("TEST_EXIT", "1")
+			return
+		}
 	}
 }

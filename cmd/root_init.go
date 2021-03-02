@@ -98,7 +98,7 @@ func (dc *liveDependencyCheckers) PrintError(s string, err error) (exit bool) {
 	dc.GetCmd().Printf(message.Error())
 	log.Fatalf(message.Error())
 
-	return false
+	return os.Getenv("TEST_PASS") != ""
 }
 
 func (dc *liveDependencyCheckers) DetectDockerBin(s string) (string, error) {
@@ -250,15 +250,15 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 }
 
 func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
-	log.Info("Testing AZ Token")
+	log.Trace("Testing AZ Token")
 	err = i.dc.HasValidAzureToken(cmd)
 	if err != nil {
 		return err
 	}
-	log.Info("Token passed, testing cluster exists.")
+	log.Trace("Token passed, testing cluster exists.")
 	hasProvisionedNewResources := false
 	if i.dc.IsClusterWithKubeflowCreated(cmd) != nil {
-		log.Info("Cluster does not exist, creating.")
+		log.Trace("Cluster does not exist, creating.")
 		hasProvisionedNewResources = true
 		if err := i.dc.CreateAKSwithKubeflow(cmd); err != nil {
 			return err
@@ -266,14 +266,14 @@ func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 		log.Info("Cluster created.")
 	}
 
-	log.Info("Cluster exists, testing to see if storage provisioned.")
+	log.Trace("Cluster exists, testing to see if storage provisioned.")
 	if i.dc.IsStorageConfigured(cmd) != nil {
-		log.Info("Storage not provisioned, creating.")
+		log.Trace("Storage not provisioned, creating.")
 		hasProvisionedNewResources = true
 		if err := i.dc.ConfigureStorage(cmd); err != nil {
 			return err
 		}
-		log.Info("Storage provisioned.")
+		log.Trace("Storage provisioned.")
 	}
 
 	if hasProvisionedNewResources {

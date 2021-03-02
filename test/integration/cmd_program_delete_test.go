@@ -2,7 +2,7 @@ package integration_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 
 	"testing"
@@ -31,6 +31,7 @@ type ProgramDeleteSuite struct {
 
 // Before all suite
 func (suite *ProgramDeleteSuite) SetupAllSuite() {
+	os.Setenv("TEST_PASS", "1")
 	suite.rootCmd = cmd.RootCmd
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml")
@@ -38,10 +39,12 @@ func (suite *ProgramDeleteSuite) SetupAllSuite() {
 		log.Printf("not sure if this is a bad thing, there's an output from creating the pipeline during setup: %v", string(out))
 	}
 	suite.logBuf = gbytes.NewBuffer()
+
 }
 
 // before each test
 func (suite *ProgramDeleteSuite) SetupTest() {
+	os.Setenv("TEST_PASS", "1")
 	suite.rootCmd = cmd.RootCmd
 
 	c, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/deletepipeline.yaml")
@@ -70,10 +73,12 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	// 	log.SetOutput(os.Stderr)
 	// }()
 
-	log.SetOutput(ioutil.Discard)
+	// log.SetOutput(ioutil.Discard)
 }
 
 func (suite *ProgramDeleteSuite) Test_DeletePipeline() {
+	os.Setenv("TEST_PASS", "1")
+
 	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "delete", "-i", suite.pipelineID)
 	assert.Contains(suite.T(), string(out), "Successfully deleted pipeline ID")
 	assert.NoError(suite.T(), err, fmt.Sprintf("Error found (non expected): %v", err))

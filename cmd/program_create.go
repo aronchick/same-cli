@@ -41,7 +41,13 @@ var CreateProgramCmd = &cobra.Command{
 	
 	This command configures the program but does not execute it.`,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		log.Debug("in create")
+		log.Tracef("In Create.RunE")
+
+		// There's probably a better way to do this, but need to figure out how to pass back a value from initConfig (when tests fail but panics are mocked)
+		if os.Getenv("TEST_EXIT") == "1" {
+			return
+		}
+
 		for _, arg := range args {
 			log.Debugf("arg: %v", arg)
 		}

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 
@@ -22,8 +23,16 @@ func ExecuteCommandC(t *testing.T, root *cobra.Command, args ...string) (c *cobr
 		os.Args[2] = ""
 	}
 
-	log.Infof("Command to execute: same %v", root.Flags())
+	log.Tracef("Command to execute: same %v", root.CalledAs())
 
 	c, err = root.ExecuteC()
 	return c, buf.String(), err
+}
+
+func PrintErrorAndReturnExit(cmd *cobra.Command, s string, err error) (exit bool) {
+	message := fmt.Errorf(s, err)
+	cmd.Printf(message.Error())
+	log.Fatalf(message.Error())
+
+	return os.Getenv("TEST_PASS") != ""
 }

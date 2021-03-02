@@ -24,7 +24,7 @@ func LoadConfig(path string) (err error) {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		log.Info("Using config file:", viper.ConfigFileUsed())
+		log.Tracef("Using config file: %v", viper.ConfigFileUsed())
 		return nil
 	} else {
 		_, notFound := err.(viper.ConfigFileNotFoundError)

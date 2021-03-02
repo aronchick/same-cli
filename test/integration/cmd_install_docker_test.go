@@ -1,12 +1,10 @@
 package integration_test
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -28,7 +26,7 @@ func (suite *InstallDockerSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.fatal = false
 	viper.Reset()
-	log.SetOutput(ioutil.Discard)
+	// log.SetOutput(ioutil.Discard)
 	os.Setenv("TEST_PASS", "1")
 }
 
