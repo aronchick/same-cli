@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strings"
 
 	"github.com/azure-octo/same-cli/pkg/mocks"
@@ -92,18 +91,6 @@ func (dc *liveDependencyCheckers) GetInstallers() utils.InstallerInterface {
 
 func (dc *liveDependencyCheckers) PrintError(s string, err error) (exit bool) {
 	return utils.PrintError(s, err)
-}
-
-func (dc *liveDependencyCheckers) DetectDockerBin(s string) (string, error) {
-	return exec.LookPath(s)
-}
-
-func (dc *liveDependencyCheckers) DetectDockerGroup(s string) (*user.Group, error) {
-	return user.LookupGroup("docker")
-}
-
-func (dc *liveDependencyCheckers) GetUserGroups(u *user.User) ([]string, error) {
-	return u.GroupIds()
 }
 
 type initClusterMethods struct {
