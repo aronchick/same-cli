@@ -42,9 +42,9 @@ workflow:
     #   - katib:3.1
     #   - feast:1.2
 pipeline:
-    name: "my_great_pipeline"
+    name: "my_new_great_pipeline"
     description: "a very good description goes here"
-    package: "/home/bverst/src/work/kubeflow-pipeline-compiled.zip"
+    package: "/Users/bverst/src/azure-octo/same-cli/examples/pipelines/irisclassification/compiled.tar.gz"
 datasets:
     - name: "DS1 name"
       type: remote
