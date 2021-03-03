@@ -17,10 +17,11 @@ import (
 
 // LoadConfig reads configuration from file or environment variables.
 func LoadConfig(path string) (err error) {
-	log.Trace("In utils.LoadConfig")
+	log.Trace("- In utils.LoadConfig")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	viper.SetConfigFile(path)
+	log.Tracef("Setting config file to: %v\n", path)
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

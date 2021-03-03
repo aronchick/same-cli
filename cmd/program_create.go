@@ -96,8 +96,8 @@ var CreateProgramCmd = &cobra.Command{
 		}
 
 		// for demo
-		log.Infof("File Location: %v\n", filePath)
-		log.Infof("File Name: %v\n", fileName)
+		log.Tracef("File Location: %v\n", filePath)
+		log.Tracef("File Name: %v\n", fileName)
 
 		sameConfigFilePath, err := getConfigFilePath(filePath)
 		if err != nil {
@@ -183,7 +183,7 @@ func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
 			corrected_url = "git::" + finalUrl.String()
 		}
 
-		log.Infof("Downloading from %v to %v", corrected_url, tempSameFile)
+		log.Infof("Downloading from %v to %v", corrected_url, tempSameFile.Name())
 		errGet := gogetter.GetFile(tempSameFile.Name(), corrected_url)
 		if errGet != nil {
 			return "", fmt.Errorf("could not download SAME file from URL '%v': %v", finalUrl.String(), errGet)
@@ -208,7 +208,7 @@ func kubectlExists() (kubectlDoesExist bool, err error) {
 		err := fmt.Errorf("the 'kubectl' binary is not on your PATH: %v", os.Getenv("PATH"))
 		return false, err
 	}
-	log.Infof("'kubectl' found at %v", path)
+	log.Tracef("'kubectl' found at %v", path)
 	return true, nil
 }
 

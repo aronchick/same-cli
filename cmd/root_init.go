@@ -116,7 +116,6 @@ var initCmd = &cobra.Command{
 	Short: "Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc)",
 	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// for simplicity we currently rely on Porter, Azure CLI and Kubectl
 		allSettings := viper.AllSettings()
 
 		var i = &initClusterMethods{}
@@ -153,6 +152,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 
+		log.Tracef("Target: %v\n", target)
 		switch target {
 		case "local":
 			message := "Executing local setup."

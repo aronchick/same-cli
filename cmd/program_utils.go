@@ -32,13 +32,14 @@ var COMPILEDPIPELINE = "pipeline.tar.gz"
 var configWriter ConfigFileIO
 
 type ConfigFileIO interface {
-	ConfigWriter(viper.Viper) error
+	ConfigWriter() error
 }
 
 type LiveConfigFileIO struct {
 }
 
-func (lcfio *LiveConfigFileIO) ConfigWriter(viper viper.Viper) error {
+func (lcfio *LiveConfigFileIO) ConfigWriter() error {
+	log.Tracef("Config file to write: %v", viper.ConfigFileUsed())
 	err = viper.WriteConfig()
 	if err != nil {
 		log.Fatalf("error while writing file flag using viper as required: %v", err)
@@ -107,10 +108,12 @@ func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineN
 }
 
 func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipeline_model.APIPipeline, err error) {
+	log.Traceln("- In program_utils.UploadPipeline")
 	kfpconfig := *NewKFPConfig()
 
 	configWriter = &LiveConfigFileIO{}
 	if os.Getenv("TEST_PASS") == "1" {
+		log.Info("Detected we're in a test pass - swapping out methods for mocks.")
 		configWriter = &mocks.MockConfigFileIO{}
 	}
 
@@ -159,8 +162,10 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 		return nil, err
 	}
 
+	log.Tracef("Getting ready to write to viper config file: %v", viper.GetViper().ConfigFileUsed())
+	log.Tracef("Active Pipeline: %v", uploadedPipeline.ID)
 	viper.Set("activepipeline", uploadedPipeline.ID)
-	err = configWriter.ConfigWriter(viper.Viper{})
+	err = configWriter.ConfigWriter()
 	if err != nil {
 		return nil, err
 	}
