@@ -44,6 +44,8 @@ var CreateProgramCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		log.Tracef("In Create.RunE")
 
+		var i = GetDependencyCheckers()
+
 		// There's probably a better way to do this, but need to figure out how to pass back a value from initConfig (when tests fail but panics are mocked)
 		if os.Getenv("TEST_EXIT") == "1" {
 			log.Traceln("Detected that we're in a test and TEST_EXIT is set, so returning.")
@@ -92,8 +94,7 @@ var CreateProgramCmd = &cobra.Command{
 		activecontext := viper.GetString("activecontext")
 
 		if activecontext == "" {
-			dc := LiveDependencyCheckers{}
-			output := dc.WriteCurrentContextToConfig()
+			output := i.WriteCurrentContextToConfig()
 			log.Infof("No active context set in your configation file. Set it to: %v", output)
 		} else {
 			setContextCommand := fmt.Sprintf("KUBECTL_BIN=%v; $KUBECTL_BIN config use-context %v", kubectlCommand, activecontext)
