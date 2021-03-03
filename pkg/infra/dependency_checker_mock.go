@@ -82,5 +82,5 @@ func (mockDC *MockDependencyCheckers) IsClusterWithKubeflowCreated(*cobra.Comman
 
 func (mockDC *MockDependencyCheckers) WriteCurrentContextToConfig() string {
 	//TODO: Build mock
-	return ""
+	return "MOCK CONFIG FILE"
 }

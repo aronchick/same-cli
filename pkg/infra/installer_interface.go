@@ -9,4 +9,6 @@ type InstallerInterface interface {
 	InstallKFP(*cobra.Command) error
 	GetKubectlCmd() string
 	SetKubectlCmd(string)
+	GetCmdArgs() []string
+	SetCmdArgs([]string)
 }
