@@ -198,8 +198,9 @@ func (i *Installers) SetCmdArgs(args []string) {
 }
 
 func PrintError(s string, err error) (exit bool) {
-	message := fmt.Errorf(s, err.Error())
-	log.Fatalf(message.Error() + "\n")
+	log.Tracef("Error output: %v", err.Error())
+	message := fmt.Sprintf(s, err.Error())
+	log.Fatalf(message + "\n")
 
 	return os.Getenv("TEST_PASS") != ""
 }

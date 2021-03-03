@@ -129,3 +129,8 @@ func (mockDC *MockDependencyCheckers) InstallKFP() (err error) {
 
 	return nil
 }
+
+func (mockDC *MockDependencyCheckers) WriteCurrentContextToConfig() string {
+	//TODO: Build mock
+	return ""
+}

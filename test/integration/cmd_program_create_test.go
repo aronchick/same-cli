@@ -58,7 +58,7 @@ func (suite *ProgramCreateSuite) SetupAllSuite() {
 // Before each test
 func (suite *ProgramCreateSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
-	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
+	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
 	// log.SetOutput(ioutil.Discard)
 	suite.kubectlCommand = "kubectl"
 }

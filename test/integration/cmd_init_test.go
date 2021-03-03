@@ -28,7 +28,7 @@ type InitSuite struct {
 // before each test
 func (suite *InitSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
-	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
+	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
 	suite.fatal = false
 	viper.Reset()
 	// log.SetOutput(ioutil.Discard)

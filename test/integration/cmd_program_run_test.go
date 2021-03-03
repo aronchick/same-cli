@@ -26,7 +26,7 @@ type ProgramRunSuite struct {
 // Before all suite
 func (suite *ProgramRunSuite) SetupAllSuite() {
 	suite.rootCmd = cmd.RootCmd
-	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
+	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml")
 	if out != "" {
 		log.Printf("not sure if this is a bad thing, there's an output from creating the pipeline during setup: %v", string(out))

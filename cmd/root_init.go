@@ -48,6 +48,7 @@ type dependencyCheckers interface {
 	SetInstallers(utils.InstallerInterface)
 	GetCmdArgs() []string
 	SetCmdArgs([]string)
+	WriteCurrentContextToConfig() string
 }
 
 type liveDependencyCheckers struct {
@@ -191,6 +192,9 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 	}
 	log.Traceln("k3s detected, proceeding to install KFP.")
 	log.Tracef("k3s path: %v", i.dc.GetKubectlCmd())
+
+	currentContext := i.dc.WriteCurrentContextToConfig()
+	log.Infof("Wrote kubectl current context as: %v", currentContext)
 
 	err = i.dc.InstallKFP()
 	if err != nil {
@@ -405,6 +409,37 @@ func (dc *liveDependencyCheckers) InstallKFP() (err error) {
 	}
 
 	return nil
+}
+
+func (dc *liveDependencyCheckers) WriteCurrentContextToConfig() string {
+	// TODO: This is the right way to do it, need to figure out why the struct didn't get the value set correctly
+	//	currentContextScript := fmt.Sprintf("%v config current-context", dc.GetKubectlCmd())
+
+	// HACK: Hard coded 'kubectl'
+	currentContextScript := "kubectl config current-context"
+
+	log.Tracef("About to set current context in config file: %v", currentContextScript)
+	outputBytes, err := exec.Command("/bin/bash", "-c", currentContextScript).Output()
+	if err != nil {
+		if dc.PrintError("error getting current context", err) {
+			return ""
+		}
+	}
+	output := strings.TrimSpace(string(outputBytes))
+
+	log.Tracef("Current config setting: %v\n", output)
+	viper.Set("activecontext", output)
+	err = viper.WriteConfig()
+	if err != nil {
+		if dc.PrintError(fmt.Sprintf("error writing activecontext ('%v') to config file: %v", output, viper.ConfigFileUsed()), err) {
+			return ""
+		}
+	}
+
+	log.Tracef("Wrote current context ('%v') as active context to file ('%v')\n", output, viper.ConfigFileUsed())
+
+	return output
+
 }
 
 func init() {

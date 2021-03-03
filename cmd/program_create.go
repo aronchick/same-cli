@@ -30,6 +30,7 @@ import (
 	"github.com/azure-octo/same-cli/pkg/utils"
 	gogetter "github.com/hashicorp/go-getter"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var CreateProgramCmd = &cobra.Command{
@@ -45,6 +46,7 @@ var CreateProgramCmd = &cobra.Command{
 
 		// There's probably a better way to do this, but need to figure out how to pass back a value from initConfig (when tests fail but panics are mocked)
 		if os.Getenv("TEST_EXIT") == "1" {
+			log.Traceln("Detected that we're in a test and TEST_EXIT is set, so returning.")
 			return
 		}
 
@@ -86,8 +88,26 @@ var CreateProgramCmd = &cobra.Command{
 			// Remove beginning and ending quotes if present
 			kubectlCommand = regexp.MustCompile(`['"]*([^'"]*)['"]*`).ReplaceAllString(kubectlCommand, `$1`)
 		}
+
+		activecontext := viper.GetString("activecontext")
+
+		if activecontext == "" {
+			dc := liveDependencyCheckers{}
+			output := dc.WriteCurrentContextToConfig()
+			log.Infof("No active context set in your configation file. Set it to: %v", output)
+		} else {
+			setContextCommand := fmt.Sprintf("KUBECTL_BIN=%v; $KUBECTL_BIN config use-context %v", kubectlCommand, activecontext)
+			log.Tracef("About to set active context to '%v': %v", activecontext, setContextCommand)
+
+			if err := exec.Command("/bin/bash", "-c", setContextCommand).Run(); err != nil {
+				message := fmt.Errorf("Could not set active context: %v", err)
+				log.Error(message.Error())
+				return message
+			}
+		}
+
 		// HACK: Currently Kubeconfig must define default namespace
-		commandToRun := fmt.Sprintf("%v config set 'contexts.'`%v config current-context`'.namespace' kubeflow", kubectlCommand, kubectlCommand)
+		commandToRun := fmt.Sprintf("KUBECTL_BIN=%v; $KUBECTL_BIN config set 'contexts.'`$KUBECTL_BIN config current-context`'.namespace' kubeflow", kubectlCommand)
 		log.Tracef("About to run: %v", commandToRun)
 		if err := exec.Command("/bin/bash", "-c", commandToRun).Run(); err != nil {
 			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
@@ -140,7 +160,7 @@ func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
 	// gogetter to weirdly reformats he URL (dropping the repo).
 	// E.g., gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
 	// Fails with a bad response code: 404
-	// and 	gogetter.GetFile(tempFile.Name(), "github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
+	// and 	gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo/same.yaml")
 	// Fails with fatal: repository 'https://github.com/SAME-Project/' not found
 
 	isRemoteFile, err := utils.IsRemoteFilePath(putativeFilePath)
