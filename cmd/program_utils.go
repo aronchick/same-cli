@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
@@ -137,13 +136,9 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	uploadedPipeline, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
 
 	if err != nil {
-		if strings.Contains(err.Error(), "can be resolved by supporting TextUnmarshaler interface") {
-			log.Warn("Skipping error on return due to lack of support in go-swagger for TextUnmarshaler interface (it doesn't support blank response.body)")
-		} else {
-			// It's not an error we know about, and we couldn't find the pipeline we uploaded, so assuming it didn't get uploaded
-			log.Errorf("deploy_or_update_a_pipeline.go: failed to upload pipeline: %v", err)
-			return nil, err
-		}
+		// It's not an error we know about, and we couldn't find the pipeline we uploaded, so assuming it didn't get uploaded
+		log.Errorf("deploy_or_update_a_pipeline.go: could not upload pipeline: %v", err)
+		return nil, err
 	} else {
 		if uploadedPipeline == nil {
 			log.Fatalf("both uploadedPipeline and err are nil, unclear how you got here.")
