@@ -92,7 +92,7 @@ var CreateProgramCmd = &cobra.Command{
 		activecontext := viper.GetString("activecontext")
 
 		if activecontext == "" {
-			dc := liveDependencyCheckers{}
+			dc := LiveDependencyCheckers{}
 			output := dc.WriteCurrentContextToConfig()
 			log.Infof("No active context set in your configation file. Set it to: %v", output)
 		} else {

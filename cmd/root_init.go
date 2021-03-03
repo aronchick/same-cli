@@ -22,7 +22,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/azure-octo/same-cli/pkg/mocks"
+	"github.com/azure-octo/same-cli/pkg/installers"
 	"github.com/azure-octo/same-cli/pkg/utils"
 
 	log "github.com/sirupsen/logrus"
@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type dependencyCheckers interface {
+type DependencyCheckers interface {
 	PrintError(string, error) bool
 	CheckDependenciesInstalled(*cobra.Command) error
 	HasValidAzureToken(*cobra.Command) error
@@ -44,58 +44,58 @@ type dependencyCheckers interface {
 	SetCmd(*cobra.Command)
 	GetKubectlCmd() string
 	SetKubectlCmd(string)
-	GetInstallers() utils.InstallerInterface
-	SetInstallers(utils.InstallerInterface)
+	GetInstallers() installers.InstallerInterface
+	SetInstallers(installers.InstallerInterface)
 	GetCmdArgs() []string
 	SetCmdArgs([]string)
 	WriteCurrentContextToConfig() string
 }
 
-type liveDependencyCheckers struct {
+type LiveDependencyCheckers struct {
 	_cmd            *cobra.Command
 	_kubectlCommand string
-	_installers     utils.InstallerInterface
+	_installers     installers.InstallerInterface
 	_cmdArgs        []string
 }
 
-func (dc *liveDependencyCheckers) SetCmd(cmd *cobra.Command) {
+func (dc *LiveDependencyCheckers) SetCmd(cmd *cobra.Command) {
 	dc._cmd = cmd
 }
 
-func (dc *liveDependencyCheckers) GetCmd() *cobra.Command {
+func (dc *LiveDependencyCheckers) GetCmd() *cobra.Command {
 	return dc._cmd
 }
 
-func (dc *liveDependencyCheckers) SetCmdArgs(args []string) {
+func (dc *LiveDependencyCheckers) SetCmdArgs(args []string) {
 	dc._cmdArgs = args
 }
 
-func (dc *liveDependencyCheckers) GetCmdArgs() []string {
+func (dc *LiveDependencyCheckers) GetCmdArgs() []string {
 	return dc._cmdArgs
 }
 
-func (dc *liveDependencyCheckers) SetKubectlCmd(kubectlCommand string) {
+func (dc *LiveDependencyCheckers) SetKubectlCmd(kubectlCommand string) {
 	dc._kubectlCommand = kubectlCommand
 }
 
-func (dc *liveDependencyCheckers) GetKubectlCmd() string {
+func (dc *LiveDependencyCheckers) GetKubectlCmd() string {
 	return dc._kubectlCommand
 }
 
-func (dc *liveDependencyCheckers) SetInstallers(i utils.InstallerInterface) {
+func (dc *LiveDependencyCheckers) SetInstallers(i installers.InstallerInterface) {
 	dc._installers = i
 }
 
-func (dc *liveDependencyCheckers) GetInstallers() utils.InstallerInterface {
+func (dc *LiveDependencyCheckers) GetInstallers() installers.InstallerInterface {
 	return dc._installers
 }
 
-func (dc *liveDependencyCheckers) PrintError(s string, err error) (exit bool) {
+func (dc *LiveDependencyCheckers) PrintError(s string, err error) (exit bool) {
 	return utils.PrintError(s, err)
 }
 
-type initClusterMethods struct {
-	dc dependencyCheckers
+type InitClusterMethods struct {
+	dc DependencyCheckers
 }
 
 // createCmd represents the create command
@@ -106,14 +106,7 @@ var initCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		allSettings := viper.AllSettings()
 
-		var i = &initClusterMethods{}
-		i.dc = &liveDependencyCheckers{}
-		i.dc.SetInstallers(&utils.Installers{})
-
-		if os.Getenv("TEST_PASS") != "" {
-			i.dc = &mocks.MockDependencyCheckers{}
-			i.dc.SetInstallers(&mocks.MockInstallers{})
-		}
+		var i = installers.GetInitClusterMethods()
 
 		i.dc.SetCmdArgs(args)
 
@@ -172,7 +165,7 @@ var initCmd = &cobra.Command{
 	},
 }
 
-func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
+func (i *InitClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 
 	k8sType := "k3s"
 
@@ -206,7 +199,7 @@ func (i *initClusterMethods) setup_local(cmd *cobra.Command) (err error) {
 	return nil
 }
 
-func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
+func (i *InitClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 	log.Trace("Testing AZ Token")
 	err = i.dc.HasValidAzureToken(cmd)
 	if err != nil {
@@ -242,7 +235,7 @@ func (i *initClusterMethods) setup_aks(cmd *cobra.Command) (err error) {
 	return nil
 }
 
-func (dc *liveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) error {
+func (dc *LiveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) error {
 	output, err := exec.Command("/bin/bash", "-c", "az aks list").Output()
 	if (err != nil) || (strings.Contains(string(output), "refresh token has expired")) {
 		cmd.Println("Azure authentication token invalid. Please execute 'az login' and run again..")
@@ -251,15 +244,15 @@ func (dc *liveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) error {
 	return nil
 }
 
-func (dc *liveDependencyCheckers) IsClusterWithKubeflowCreated(cmd *cobra.Command) error {
+func (dc *LiveDependencyCheckers) IsClusterWithKubeflowCreated(cmd *cobra.Command) error {
 	return exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow").Run()
 }
 
-func (dc *liveDependencyCheckers) IsStorageConfigured(cmd *cobra.Command) error {
+func (dc *LiveDependencyCheckers) IsStorageConfigured(cmd *cobra.Command) error {
 	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run()
 }
 
-func (dc *liveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command) error {
+func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command) error {
 	_, err := exec.Command("/bin/bash", "-c", "az account list -otable").Output()
 	if err != nil {
 
@@ -291,7 +284,7 @@ func (dc *liveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command)
 	return nil
 }
 
-func (dc *liveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) error {
+func (dc *LiveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) error {
 	credPORTER := `
 	{
 		"schemaVersion": "1.0.0-DRAFT+b6c701f",
@@ -364,7 +357,7 @@ func (dc *liveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) erro
 	return nil
 }
 
-func (dc *liveDependencyCheckers) ConfigureStorage(cmd *cobra.Command) error {
+func (dc *LiveDependencyCheckers) ConfigureStorage(cmd *cobra.Command) error {
 
 	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
 	theDEMOINSTALL := `
@@ -384,7 +377,7 @@ func (dc *liveDependencyCheckers) ConfigureStorage(cmd *cobra.Command) error {
 	return nil
 }
 
-func (dc *liveDependencyCheckers) InstallKFP() (err error) {
+func (dc *LiveDependencyCheckers) InstallKFP() (err error) {
 
 	log.Tracef("Inside InstallKFP()")
 	kubectlCommand := dc.GetKubectlCmd()
@@ -411,7 +404,7 @@ func (dc *liveDependencyCheckers) InstallKFP() (err error) {
 	return nil
 }
 
-func (dc *liveDependencyCheckers) WriteCurrentContextToConfig() string {
+func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
 	// TODO: This is the right way to do it, need to figure out why the struct didn't get the value set correctly
 	//	currentContextScript := fmt.Sprintf("%v config current-context", dc.GetKubectlCmd())
 

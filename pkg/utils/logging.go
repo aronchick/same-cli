@@ -3,6 +3,8 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,4 +19,12 @@ func PrettyPrint(value interface{}) string {
 		return fmt.Sprintf("%+v", value)
 	}
 	return string(valueJson)
+}
+
+func PrintError(s string, err error) (exit bool) {
+	log.Tracef("Error output: %v", err.Error())
+	message := fmt.Sprintf(s, err.Error())
+	log.Fatalf(message + "\n")
+
+	return os.Getenv("TEST_PASS") != ""
 }

@@ -1,4 +1,4 @@
-package utils
+package installers
 
 import (
 	"errors"
@@ -10,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/mocks"
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -100,7 +103,7 @@ chmod 0777 %v
 
 		// I wonder if the below code is right - you could remove the if statement, but then it's slightly less
 		// readable, assuming that a user has to deduce that returning err could be nil
-		if err := ExecuteInlineBashScript(cmd, k3sDownloadAndInstallScript, "K3s package failed to download and install."); err != nil {
+		if err := utils.ExecuteInlineBashScript(cmd, k3sDownloadAndInstallScript, "K3s package failed to download and install."); err != nil {
 			return "", err
 		}
 
@@ -120,7 +123,7 @@ chmod 0777 %v
 
 			cmd.Printf("About to execute the following:\n%v\n", backupConfigScript) // I wonder if the below code is right - you could remove the if statement, but then it's slightly less
 			// readable, assuming that a user has to deduce that returning err could be nil
-			if err := ExecuteInlineBashScript(cmd, backupConfigScript, "Kubeconfig failed to backup."); err != nil {
+			if err := utils.ExecuteInlineBashScript(cmd, backupConfigScript, "Kubeconfig failed to backup."); err != nil {
 				return "", err
 			}
 
@@ -141,7 +144,7 @@ sudo su %v
 		cmd.Printf("About to execute the following:\n%v\n", k3sMergeScript)
 		// I wonder if the below code is right - you could remove the if statement, but then it's slightly less
 		// readable, assuming that a user has to deduce that returning err could be nil
-		if err := ExecuteInlineBashScript(cmd, k3sMergeScript, "K3s failed merge configs."); err != nil {
+		if err := utils.ExecuteInlineBashScript(cmd, k3sMergeScript, "K3s failed merge configs."); err != nil {
 			return "", err
 		}
 
@@ -181,7 +184,7 @@ func (i *Installers) StartK3s(cmd *cobra.Command) (k3sCommand string, err error)
 
 		// I wonder if the below code is right - you could remove the if statement, but then it's slightly less
 		// readable, assuming that a user has to deduce that returning err could be nil
-		if err := ExecuteInlineBashScript(cmd, k3sStartScript, "K3s failed to start."); err != nil {
+		if err := utils.ExecuteInlineBashScript(cmd, k3sStartScript, "K3s failed to start."); err != nil {
 			return "", err
 		}
 	}
@@ -197,10 +200,14 @@ func (i *Installers) SetCmdArgs(args []string) {
 	i._cmdArgs = args
 }
 
-func PrintError(s string, err error) (exit bool) {
-	log.Tracef("Error output: %v", err.Error())
-	message := fmt.Sprintf(s, err.Error())
-	log.Fatalf(message + "\n")
+func GetInitClusterMethods() cmd.InitClusterMethods {
+	var i = &cmd.InitClusterMethods{}
+	i.dc = &cmd.LiveDependencyCheckers{}
+	i.dc.SetInstallers(&Installers{})
 
-	return os.Getenv("TEST_PASS") != ""
+	if os.Getenv("TEST_PASS") != "" {
+		i.dc = &mocks.MockDependencyCheckers{}
+		i.dc.SetInstallers(&mocks.MockInstallers{})
+	}
+	return i
 }
