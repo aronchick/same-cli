@@ -18,7 +18,6 @@ package cmd
 import (
 	"runtime"
 
-	"github.com/azure-octo/same-cli/pkg/installers"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +38,8 @@ to quickly create a Cobra application.`,
 			log.Fatalf("We're really sorry, we only support installation on Ubuntu right now. Please go here to install Docker. - https://docs.docker.com/get-docker/")
 		}
 
-		i := installers.Installers{}
+		var i = GetClusterInstallMethods()
+
 		_, err = i.InstallK3s(cmd)
 		if err != nil {
 			log.Fatalf("error installing k3s: %v", err)
