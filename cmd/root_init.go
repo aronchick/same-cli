@@ -43,6 +43,7 @@ var initCmd = &cobra.Command{
 		dc.SetCmd(cmd)
 
 		var i = GetClusterInstallMethods()
+		i.SetCmdArgs(args)
 
 		// len in go checks for both nil and 0
 		if len(allSettings) == 0 {

@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -140,12 +141,23 @@ var CreateProgramCmd = &cobra.Command{
 			programDescription = sameConfigFile.Spec.Pipeline.Description
 		}
 
-		uploadedPipeline, err := UploadPipeline(sameConfigFile, programName, programDescription)
+		pipeline, err := FindPipelineByName(programName)
 		if err != nil {
-			return err
-		}
+			uploadedPipeline, err := UploadPipeline(sameConfigFile, programName, programDescription)
+			if err != nil {
+				return err
+			}
 
-		cmd.Printf("Pipeline Uploaded.\nName: %v\nID: %v", uploadedPipeline.Name, uploadedPipeline.ID)
+			cmd.Printf("Pipeline Uploaded.\nName: %v\nID: %v", uploadedPipeline.Name, uploadedPipeline.ID)
+		} else {
+			newID, _ := uuid.NewRandom()
+			uploadedPipelineVersion, err := UpdatePipeline(sameConfigFile, pipeline.ID, newID.String())
+			if err != nil {
+				return err
+			}
+
+			cmd.Printf("Pipeline Updated.\nName: %v\nVersionID: %v\nID: %v", uploadedPipelineVersion.Name, uploadedPipelineVersion.ID, pipeline.ID)
+		}
 
 		return nil
 	},
@@ -252,9 +264,7 @@ func init() {
 		log.Errorf("could not set 'file' flag as required: %v", err)
 		return
 	}
-
 	CreateProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
-
 	CreateProgramCmd.PersistentFlags().StringP("name", "n", "SAME Program", "The program name")
 	CreateProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
 	CreateProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")

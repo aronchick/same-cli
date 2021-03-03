@@ -57,7 +57,7 @@ var deleteCmd = &cobra.Command{
 			pipelineID = cmd.Flag("id").Value.String()
 		} else {
 			pipelineName := cmd.Flag("name").Value.String()
-			pipeline, err := findPipeline(kfpconfig, pipelineName)
+			pipeline, err := FindPipelineByName(pipelineName)
 			if err != nil {
 				message := fmt.Errorf("error while searching for pipeline: %v", err)
 				log.Errorf("delete.go:" + message.Error())
