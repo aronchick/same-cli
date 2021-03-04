@@ -33,10 +33,9 @@ import (
 var installDockerCmd = &cobra.Command{
 	Use:   "install_docker",
 	Short: "Installs docker on your system. Requires running as sudo.",
-	Long:  `Installs docker on your system. Requires running as sudo. Longer description.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-			log.Fatalf("We're really sorry, we only support installation on Ubuntu right now. Please go here to install Docker. - https://docs.docker.com/get-docker/")
+			log.Fatalf("We're really sorry, we only support installation on Linux / AMD64 right now. Please go here to install Docker. - https://docs.docker.com/get-docker/")
 		}
 
 		if os.Geteuid() == 0 {
@@ -74,6 +73,7 @@ var installDockerCmd = &cobra.Command{
 			log.Fatalf("Failed to install Docker. That's all we know: %v", err)
 		}
 
+		// Instructions for installing Docker from here - https://docs.docker.com/engine/install/ubuntu/
 		logrus.Info("Updating docker packages")
 		updateDockerPackages := `
 		#!/bin/bash

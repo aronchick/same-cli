@@ -1,3 +1,6 @@
+// THIS FILE IS NOT FOR PRODUCTION USE OR INCLUSION IN ANY PACKAGE
+// It is a convient place to add libraries from the rest of the
+
 package main
 
 import (

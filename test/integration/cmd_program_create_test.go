@@ -26,7 +26,6 @@ type ProgramCreateSuite struct {
 	rootCmd        *cobra.Command
 	remoteSAMEURL  string
 	logBuf         *gbytes.Buffer
-	fatal          bool
 	kubectlCommand string
 	configFile     *os.File
 }
@@ -41,18 +40,6 @@ func (suite *ProgramCreateSuite) SetupAllSuite() {
 		log.Fatal("Failed to write to temporary file", err)
 	}
 	os.Setenv("TEST_PASS", "1")
-
-	// TODO: Commenting out - we'll use it during CI eventually
-	// i := utils.Installers{}
-	// _, err := i.DetectK3s("k3s")
-	// if err != nil {
-	// 	assert.Fail(suite.T(), "Could not find k3s, failing.")
-	// }
-
-	// _, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", suite.configFile.Name(), "--target", "local")
-
-	// _ = out
-
 }
 
 // Before each test
@@ -81,20 +68,6 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateAndNoArgs() {
 	assert.Contains(suite.T(), string(out), "required flag(s) \"file\"")
 
 }
-
-// TODO: Is a test where there's no home directory useful? I don't think so.
-// func (suite *ProgramCreateSuite) Test_NoHomeDir() {
-// 	origHome := os.Getenv("HOME")
-
-// 	defer func() { log.StandardLogger().ExitFunc = nil }()
-// 	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
-
-// 	// Set to bad home directory
-// 	os.Setenv("HOME", "/dev/null/bad_home")
-// 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml", "--config", "test/testdata/notarget.yaml")
-// 	assert.Contains(suite.T(), string(out), "No config file found")
-// 	os.Setenv("HOME", origHome)
-// }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithFileAndNoKubectl() {
 	os.Setenv("TEST_PASS", "1")
@@ -157,10 +130,7 @@ func (suite *ProgramCreateSuite) Test_GetRemoteSAMEGoodPipeline() {
 	os.Setenv("TEST_PASS", "1")
 
 	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml", "--config", "../testdata/config/notarget.yaml")
-	// TODO: Disabling the below test because it EITHER is uploaded or updated (both work)
-	// Need to fix
-	// assert.Contains(suite.T(), string(out), "Pipeline Uploaded")
-	// assert.Contains(suite.T(), string(out), "Pipeline Updated")
+
 	_ = out
 	assert.NoError(suite.T(), err, fmt.Sprintf("Error found (non expected): %v", err))
 }

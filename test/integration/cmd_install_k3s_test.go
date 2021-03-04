@@ -49,24 +49,6 @@ func (suite *InstallK3sSuite) Test_AssertPass() {
 	assert.True(suite.T(), true)
 }
 
-// TODO: Commenting out because we've got to figure out how to test under sudo
-// func (suite *InstallK3sSuite) Test_RunDefault() {
-// 	viper.Reset()
-// 	currentUser, _ := user.Current()
-// 	os.Setenv("SUDO_UID", currentUser.Uid)
-// 	defer func() { log.StandardLogger().ExitFunc = nil }()
-// 	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
-// 	viper.SetEnvPrefix("same") // will be uppercased automatically
-
-// 	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "installK3s", "--config", "../testdata/config/notarget.yaml", "--", "--unittestmode", "")
-
-// 	// Putting empty assignments here for debugging in the future
-// 	_ = command
-// 	_ = err
-
-// 	assert.Equal(suite.T(), false, suite.fatal)
-// 	assert.Contains(suite.T(), string(out), "user not in the 'docker' group")
-// }
 
 func TestInstallK3sSuite(t *testing.T) {
 	suite.Run(t, new(InstallK3sSuite))
