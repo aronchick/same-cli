@@ -40,6 +40,7 @@ var configCmd = &cobra.Command{
 
 		// len in go checks for both nil and 0
 		if len(allSettings) == 0 {
+			log.Trace("No settings found, assuming there is no config file (probably wrong)\n")
 			message := fmt.Sprintf("No SAME config file detected, initializing with default values in '%v'", defaultLocation)
 			cmd.Println(message)
 			viper.SetConfigFile(defaultLocation)
@@ -50,6 +51,7 @@ var configCmd = &cobra.Command{
 				log.Errorf(err_message.Error())
 				return err_message
 			}
+			log.Tracef("Wrote config to %v\n", defaultLocation)
 		}
 		return nil
 	},
@@ -59,7 +61,6 @@ func init() {
 	RootCmd.AddCommand(configCmd)
 
 	log.Tracef("In config init")
-	cobra.OnInitialize(initConfig)
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

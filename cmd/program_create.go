@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -30,6 +31,7 @@ import (
 	"github.com/azure-octo/same-cli/pkg/utils"
 	gogetter "github.com/hashicorp/go-getter"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var CreateProgramCmd = &cobra.Command{
@@ -41,7 +43,16 @@ var CreateProgramCmd = &cobra.Command{
 	
 	This command configures the program but does not execute it.`,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		log.Debug("in create")
+		log.Tracef("In Create.RunE")
+
+		var i = GetDependencyCheckers()
+
+		// There's probably a better way to do this, but need to figure out how to pass back a value from initConfig (when tests fail but panics are mocked)
+		if os.Getenv("TEST_EXIT") == "1" {
+			log.Traceln("Detected that we're in a test and TEST_EXIT is set, so returning.")
+			return
+		}
+
 		for _, arg := range args {
 			log.Debugf("arg: %v", arg)
 		}
@@ -65,21 +76,50 @@ var CreateProgramCmd = &cobra.Command{
 			return err
 		}
 
-		if _, err := kubectlExists(); err != nil {
-			log.Error(err.Error())
+		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
+		if err != nil {
 			return err
 		}
 
+		if kubectlCommand == "" {
+			if _, err := kubectlExists(); err != nil {
+				log.Error(err.Error())
+				return err
+			}
+			kubectlCommand = "kubectl"
+		} else {
+			// Remove beginning and ending quotes if present
+			kubectlCommand = regexp.MustCompile(`['"]*([^'"]*)['"]*`).ReplaceAllString(kubectlCommand, `$1`)
+		}
+
+		activecontext := viper.GetString("activecontext")
+
+		if activecontext == "" {
+			output := i.WriteCurrentContextToConfig()
+			log.Infof("No active context set in your configation file. Set it to: %v", output)
+		} else {
+			setContextCommand := fmt.Sprintf("KUBECTL_BIN=%v; $KUBECTL_BIN config use-context %v", kubectlCommand, activecontext)
+			log.Tracef("About to set active context to '%v': %v", activecontext, setContextCommand)
+
+			if err := exec.Command("/bin/bash", "-c", setContextCommand).Run(); err != nil {
+				message := fmt.Errorf("Could not set active context: %v", err)
+				log.Error(message.Error())
+				return message
+			}
+		}
+
 		// HACK: Currently Kubeconfig must define default namespace
-		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
+		commandToRun := fmt.Sprintf("KUBECTL_BIN=%v; $KUBECTL_BIN config set 'contexts.'`$KUBECTL_BIN config current-context`'.namespace' kubeflow", kubectlCommand)
+		log.Tracef("About to run: %v", commandToRun)
+		if err := exec.Command("/bin/bash", "-c", commandToRun).Run(); err != nil {
 			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
 			log.Error(message.Error())
 			return message
 		}
 
 		// for demo
-		log.Infof("File Location: %v\n", filePath)
-		log.Infof("File Name: %v\n", fileName)
+		log.Tracef("File Location: %v\n", filePath)
+		log.Tracef("File Name: %v\n", fileName)
 
 		sameConfigFilePath, err := getConfigFilePath(filePath)
 		if err != nil {
@@ -133,7 +173,7 @@ func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
 	// gogetter to weirdly reformats he URL (dropping the repo).
 	// E.g., gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
 	// Fails with a bad response code: 404
-	// and 	gogetter.GetFile(tempFile.Name(), "github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
+	// and 	gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo/same.yaml")
 	// Fails with fatal: repository 'https://github.com/SAME-Project/' not found
 
 	isRemoteFile, err := utils.IsRemoteFilePath(putativeFilePath)
@@ -176,7 +216,7 @@ func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
 			corrected_url = "git::" + finalUrl.String()
 		}
 
-		log.Infof("Downloading from %v to %v", corrected_url, tempSameFile)
+		log.Infof("Downloading from %v to %v", corrected_url, tempSameFile.Name())
 		errGet := gogetter.GetFile(tempSameFile.Name(), corrected_url)
 		if errGet != nil {
 			return "", fmt.Errorf("could not download SAME file from URL '%v': %v", finalUrl.String(), errGet)
@@ -201,7 +241,7 @@ func kubectlExists() (kubectlDoesExist bool, err error) {
 		err := fmt.Errorf("the 'kubectl' binary is not on your PATH: %v", os.Getenv("PATH"))
 		return false, err
 	}
-	log.Infof("'kubectl' found at %v", path)
+	log.Tracef("'kubectl' found at %v", path)
 	return true, nil
 }
 
@@ -227,4 +267,6 @@ func init() {
 	CreateProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
 	CreateProgramCmd.PersistentFlags().StringP("name", "n", "SAME Program", "The program name")
 	CreateProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
+	CreateProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
+
 }

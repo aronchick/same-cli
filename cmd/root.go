@@ -17,11 +17,12 @@ limitations under the License.
 */
 
 import (
-	"fmt"
+	"os"
 	"path"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/mitchellh/go-homedir"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -38,14 +39,27 @@ var RootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	log.Info("in base")
 	if err := RootCmd.Execute(); err != nil {
 		log.Error(err)
 	}
 }
 
 func init() {
-	log.Info("in root init")
+	lvl, ok := os.LookupEnv("LOG_LEVEL")
+	// LOG_LEVEL not set, let's default to debug
+	if !ok {
+		lvl = "debug"
+	}
+	// parse string, this is built-in feature of logrus
+	ll, err := logrus.ParseLevel(lvl)
+	if err != nil {
+		ll = logrus.InfoLevel
+	}
+	// set global log level
+	logrus.SetLevel(ll)
+
+	log.Tracef("Log Level: %v\n", logrus.GetLevel())
+	log.Traceln("Starting Root Init")
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -61,24 +75,33 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	log.Info("in initConfig")
+	log.Traceln("- in Root.initConfig")
+
 	if cfgFile == "" {
+
+		if (os.Geteuid() == 0) && (os.Getenv("SUDO_UID") != "") {
+			RootCmd.Println("Running as sudo, skipping over checking for configuration file in your root directory. If this is a mistake, please use the --config flag.")
+			return
+		}
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			message := fmt.Sprintf("could not find home directory: %v", err)
-			RootCmd.Println(message)
-			log.Fatalf(message)
-			return
+			if !utils.PrintErrorAndReturnExit(RootCmd, "could not find home directory: ", err) {
+				// Use the below to pass along that we've failed and we should exit at the first check
+				os.Setenv("TEST_EXIT", "1")
+				return
+			}
 		}
 
 		cfgFile = path.Join(home, ".same", "config.yaml")
 	}
-
-	err := utils.LoadConfig(cfgFile)
+	err = utils.LoadConfig(cfgFile)
 	if err != nil {
-		message := fmt.Sprintf("Error reading config file: %v", err)
-		RootCmd.Println(message)
-		log.Fatalf(message)
+		if !utils.PrintErrorAndReturnExit(RootCmd, "Error reading config file: ", err) {
+
+			// Use the below to pass along that we've failed and we should exit at the first check
+			os.Setenv("TEST_EXIT", "1")
+			return
+		}
 	}
 }

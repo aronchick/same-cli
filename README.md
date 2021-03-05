@@ -51,10 +51,3 @@ The above:
 
 
 With all this, we think we can make a breakthrough in the way that machine learning is reproduced across multiple environments.
-
-
-=====
-ICEBERGS:
-1. How do we run code in a cluster such that a data scientist doesn't need to know about containerization? How do they fork public repo and change code in as small a way as possible? How do we check your cluster is appropriate? Etc
-2. What do we do about pipelines? Kubeflow requires compilation which isn't great. Kedro does it all in python which feels right, how do we test/swap?
-3. Data versioning - how do we capture the data this ran on? How do we capture and verify data schema? Give errors when schema invalid? How do we trivially allow swapping of data sources for trying existing models in new organizations? (including access to the data)

@@ -38,8 +38,7 @@ var deleteCmd = &cobra.Command{
 
 		// len in go checks for both nil and 0
 		if len(allSettings) == 0 {
-			message := fmt.Errorf("Nil file or empty load config settings. Please run 'same config new' to initialize.")
-			cmd.PrintErr(message.Error())
+			message := fmt.Errorf("Nil file or empty load config settings. Please run 'same config new' to initialize.\n")
 			log.Fatalf(message.Error())
 			return message
 		}

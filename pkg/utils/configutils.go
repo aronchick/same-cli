@@ -17,14 +17,15 @@ import (
 
 // LoadConfig reads configuration from file or environment variables.
 func LoadConfig(path string) (err error) {
-	log.Info("in utils.LoadConfig")
+	log.Trace("- In utils.LoadConfig")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	viper.SetConfigFile(path)
+	log.Tracef("Setting config file to: %v\n", path)
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		log.Info("Using config file:", viper.ConfigFileUsed())
+		log.Tracef("Using config file: %v", viper.ConfigFileUsed())
 		return nil
 	} else {
 		_, notFound := err.(viper.ConfigFileNotFoundError)
@@ -37,4 +38,9 @@ func LoadConfig(path string) (err error) {
 			return message
 		}
 	}
+
+}
+
+func DetectRootless() (detected bool) {
+	return false
 }

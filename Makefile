@@ -199,6 +199,13 @@ check-licenses:
 test: build-same check-licenses
 	go test ./test/... -v
 
+################################################################################
+# Target: lint					                                               #
+################################################################################
+.PHONY: lint
+lint: build-same
+	golangci-lint run
+
 # Run the unittests and output a junit report for use with prow
 ################################################################################
 # Target: test-junit			                                               #

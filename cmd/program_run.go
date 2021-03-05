@@ -80,15 +80,23 @@ var runProgramCmd = &cobra.Command{
 			runParams[parts[0]] = parts[1]
 		}
 
-		if _, err := kubectlExists(); err != nil {
-			log.Errorf(err.Error())
+		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
+		if err != nil {
 			return err
 		}
 
+		if kubectlCommand == "" {
+			if _, err := kubectlExists(); err != nil {
+				log.Error(err.Error())
+				return err
+			}
+			kubectlCommand = "kubectl"
+		}
 		// HACK: Currently Kubeconfig must define default namespace
-		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
-			log.Errorf("Could not set kubeconfig default context to use kubeflow namespace.")
-			return err
+		if err := exec.Command("/bin/bash", "-c", fmt.Sprintf("%v config set 'contexts.'`%v config current-context`'.namespace' kubeflow", kubectlCommand, kubectlCommand)).Run(); err != nil {
+			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
+			log.Error(message.Error())
+			return message
 		}
 
 		// TODO: Use an existing experiment if name exists
@@ -106,6 +114,7 @@ func init() {
 
 	runProgramCmd.PersistentFlags().String("program-id", "", "The ID of a SAME Program")
 	runProgramCmd.PersistentFlags().String("experiment-name", "", "The name of a SAME Experiment to be created or reused.")
+	runProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
 	err := runProgramCmd.MarkPersistentFlagRequired("experiment-name")
 	if err != nil {
 		message := "'experiment-name' is required for this to run."
@@ -126,7 +135,5 @@ func init() {
 
 	runProgramCmd.PersistentFlags().String("run-description", "", "A description of the SAME program run.")
 	runProgramCmd.PersistentFlags().StringSlice("run-param", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
-
-	RootCmd.AddCommand(programCmd)
 
 }

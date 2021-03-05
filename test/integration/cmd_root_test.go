@@ -26,7 +26,7 @@ type RootSuite struct {
 // before each test
 func (suite *RootSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
-	suite.remoteSAMEURL = "https://github.com/SAME-Project/Sample-SAME-Data-Science"
+	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
 }
 
 // All methods that begin with "Test" are run as tests within a

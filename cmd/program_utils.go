@@ -22,12 +22,30 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/viper"
 )
 
 // COMPILEDPIPELINE : Temporary placeholder
 var COMPILEDPIPELINE = "pipeline.tar.gz"
+var configWriter ConfigFileIO
+
+type ConfigFileIO interface {
+	ConfigWriter() error
+}
+
+type LiveConfigFileIO struct {
+}
+
+func (lcfio *LiveConfigFileIO) ConfigWriter() error {
+	log.Tracef("Config file to write: %v", viper.ConfigFileUsed())
+	err = viper.WriteConfig()
+	if err != nil {
+		log.Fatalf("error while writing file flag using viper as required: %v", err)
+	}
+	return err
+}
 
 // NewKFPConfig : Create Kubernetes API config compatible with Pipelines from KubeConfig
 func NewKFPConfig() *clientcmd.ClientConfig {
@@ -90,7 +108,14 @@ func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineN
 }
 
 func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipelineuploadmodel.APIPipeline, err error) {
+	log.Traceln("- In program_utils.UploadPipeline")
 	kfpconfig := *NewKFPConfig()
+
+	configWriter = &LiveConfigFileIO{}
+	if os.Getenv("TEST_PASS") == "1" {
+		log.Info("Detected we're in a test pass - swapping out methods for mocks.")
+		configWriter = &mocks.MockConfigFileIO{}
+	}
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
@@ -119,11 +144,13 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 			log.Fatalf("both uploadedPipeline and err are nil, unclear how you got here.")
 		}
 	}
+
+	log.Tracef("Getting ready to write to viper config file: %v", viper.GetViper().ConfigFileUsed())
+	log.Tracef("Active Pipeline: %v", uploadedPipeline.ID)
 	viper.Set("activepipeline", uploadedPipeline.ID)
-	err = viper.WriteConfig()
+	err = configWriter.ConfigWriter()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("could not set file flag as required: %v", err))
-		os.Exit(1)
+		return nil, err
 	}
 
 	return uploadedPipeline, nil

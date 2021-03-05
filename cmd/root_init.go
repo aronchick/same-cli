@@ -17,9 +17,14 @@ limitations under the License.
 */
 
 import (
-	"bufio"
 	"fmt"
-	"os/exec"
+	"os"
+	"strings"
+
+	"github.com/azure-octo/same-cli/pkg/infra"
+	"github.com/azure-octo/same-cli/pkg/utils"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -31,40 +36,61 @@ var initCmd = &cobra.Command{
 	Short: "Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc)",
 	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// for simplicity we currently rely on Porter, Azure CLI and Kubectl
-
 		allSettings := viper.AllSettings()
+
+		var dc = GetDependencyCheckers()
+		dc.SetCmdArgs(args)
+		dc.SetCmd(cmd)
+
+		var i = GetClusterInstallMethods()
+		i.SetCmdArgs(args)
 
 		// len in go checks for both nil and 0
 		if len(allSettings) == 0 {
 			message := "Nil file or empty load config settings. Please run 'same config new' to initialize."
 			cmd.PrintErr(message)
+			log.Fatalf(message)
 			return nil
 		}
 
-		if err := checkDepenciesInstalled(); err != nil {
+		if err := dc.CheckDependenciesInstalled(cmd); err != nil {
 			return err
 		}
 
-		hasProvisionedNewResources := false
-		if !isClusterWithKubeflowCreated() {
-			hasProvisionedNewResources = true
-			if err := createAKSwithKubeflow(); err != nil {
-				return err
+		target := strings.ToLower(viper.GetString("target"))
+		if target == "" {
+			message := "No 'target' set for deployment - using 'local' as a default. To change this, please execute 'same config set target=XXXX'"
+			cmd.Print(message)
+			if os.Getenv("TEST_PASS") == "1" {
+				return nil
 			}
 		}
 
-		if !isStorageConfigured() {
-			hasProvisionedNewResources = true
-			if err := configureStorage(); err != nil {
-				return err
+		log.Tracef("Target: %v\n", target)
+		switch target {
+		case "local":
+			message := "Executing local setup."
+			log.Trace(message)
+			cmd.Println(message)
+			err = SetupLocal(cmd, dc, i)
+		case "aks":
+			message := "Executing AKS setup."
+			log.Trace(message)
+			cmd.Println(message)
+			err = SetupAKS(cmd, dc, i)
+		default:
+			message := fmt.Errorf("Setup target '%v' not understood.\n", target)
+			cmd.Printf(message.Error())
+			log.Fatalf(message.Error())
+			if os.Getenv("TEST_PASS") == "1" {
+				return nil
 			}
 		}
 
-		if hasProvisionedNewResources {
-			fmt.Println("Infrastructure Setup Complete. Ready to create programs.")
-		} else {
-			fmt.Println("Using existing infrastructure. Ready to create programs.")
+		if err != nil {
+			if utils.PrintError("Error while setting up Kubernetes API: %v", err) {
+				return err
+			}
 		}
 
 		return nil
@@ -72,165 +98,94 @@ var initCmd = &cobra.Command{
 	},
 }
 
-func isClusterWithKubeflowCreated() bool {
-	return exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow").Run() == nil
+func GetDependencyCheckers() infra.DependencyCheckers {
+	if os.Getenv("TEST_PASS") == "" {
+		return &infra.LiveDependencyCheckers{}
+	} else {
+		return &infra.MockDependencyCheckers{}
+	}
 }
 
-func isStorageConfigured() bool {
-	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run() == nil
+func GetClusterInstallMethods() infra.InstallerInterface {
+	if os.Getenv("TEST_PASS") == "" {
+		return &infra.LiveInstallers{}
+	} else {
+		return &infra.MockInstallers{}
+	}
 }
 
-func checkDepenciesInstalled() error {
-	_, err := exec.Command("/bin/bash", "-c", "az account list -otable").Output()
-	if err != nil {
+func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
 
-		println("Azure CLI not installed on PATH or not logged in.")
-		println("Install with https://aka.ms/getcli and run 'az login'")
-		return err
-	}
+	k8sType := "k3s"
 
-	_, err = exec.Command("/bin/bash", "-c", "porter").Output()
-	if err != nil {
-
-		println("Porter not installed or not on PATH")
-		println("Install porter at: https://porter.sh")
-		return err
-	}
-
-	_, err = exec.Command("/bin/bash", "-c", "kubectl").Output()
-	if err != nil {
-		// No Kubectl, let's install
-		println("Running az aks install-cli to install kubectl.")
-		_, err = exec.Command("/bin/bash", "-c", "az aks install-cli").Output()
-		if err != nil {
-
-			println("Porter not installed or not on PATH")
-			println("Install porter at: https://porter.sh")
+	switch k8sType {
+	case "k3s":
+		k3sCommand, err := i.DetectK3s("k3s")
+		if (err != nil) || (k3sCommand == "") {
+			if utils.PrintError("k3s not installed/detected on path. Please run 'sudo same install_k3s' to install: %v", err) {
+				return err
+			}
+		}
+		i.SetKubectlCmd("kubectl")
+	default:
+		if utils.PrintError("no local kubernetes type selected", nil) {
 			return err
 		}
 	}
-	return nil
-}
+	log.Traceln("k3s detected, proceeding to install KFP.")
+	log.Tracef("k3s path: %v", i.GetKubectlCmd())
 
-func createAKSwithKubeflow() error {
-	credPORTER := `
-	{
-		"schemaVersion": "1.0.0-DRAFT+b6c701f",
-		"name": "aks-kubeflow-msi",
-		"created": "2021-01-28T00:15:33.5682494-08:00",
-		"modified": "2021-01-28T00:15:33.5682494-08:00",
-		"credentials": [
-		  {
-			"name": "kubeconfig",
-			"source": {
-			  "path": "$HOME/.kube/config"
-			}
-		  }
-		]
-	}
-	`
+	currentContext := dc.WriteCurrentContextToConfig()
+	log.Infof("Wrote kubectl current context as: %v", currentContext)
 
-	_, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' > ~/.porter/credentials/aks-kubeflow-msi.json", credPORTER)).Output()
+	err = i.InstallKFP(cmd)
 	if err != nil {
-		fmt.Println("Porter Setup: Could not create AKS credential mapping for Kubeflow Installer")
-		return err
-	}
-
-	testLogin := `
-	#!/bin/bash
-	set -e
-	export CURRENT_LOGIN=` + "`" + `az account show -o json | jq '\''"\(.name) : \(.id)"'\''` + "`" + `
-	echo "You are logged in with the following credentials: $CURRENT_LOGIN"
-	echo "If this is not correct, please execute:"
-	echo "az account list -o json | jq '\''.[] | \"\(.name) : \(.id)\"'\''"
-	echo "az account set --subscription REPLACE_WITH_YOUR_SUBSCRIPTION_ID"
-	`
-
-	if err := executeInlineBashScript(testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account."); err != nil {
-		return err
-	}
-
-	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
-	theDEMOINSTALL := `
-	#!/bin/bash
-	set -e
-	export SAME_RESOURCE_GROUP="SAME-GROUP-$RANDOM"
-	export SAME_LOCATION="westus2"
-	export SAME_CLUSTER_NAME="SAME-CLUSTER-$RANDOM"
-	echo "Creating Resource group $SAME_RESOURCE_GROUP in $SAME_LOCATION"
-	az group create -n $SAME_RESOURCE_GROUP --location $SAME_LOCATION -onone
-	echo "Creating AKS cluster $SAME_CLUSTER_NAME"
-	az aks create --resource-group $SAME_RESOURCE_GROUP --name $SAME_CLUSTER_NAME --node-count 3 --generate-ssh-keys --node-vm-size Standard_DS4_v2 --location $SAME_LOCATION 1>/dev/null
-	echo "Downloading AKS Kubeconfig credentials"
-	az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP 1>/dev/null
-	AKS_RESOURCE_ID=$(az aks show -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP --query id -otsv)
-	echo "Installing Kubeflow into AKS Cluster via Porter"
-	porter install -c aks-kubeflow-msi --reference ghcr.io/squillace/aks-kubeflow-msi:v0.1.7 1>/dev/null
-	echo "Kubeflow installed."
-	echo "TODO: Set up storage account."
-	`
-	if err := executeInlineBashScript(theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exsts."); err != nil {
-		return err
-	}
-	return nil
-}
-
-func configureStorage() error {
-
-	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
-	theDEMOINSTALL := `
-	#!/bin/bash
-	set -e
-	echo "Installing Blob Storage Driver"
-	curl -skSL https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/install-driver.sh | bash -s master -- 1>/dev/null
-	echo "Enabling on demand storage provisioning."
-	kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/storageclass-blobfuse.yaml 1>/dev/null
-	`
-
-	// Note: To use the storage, create a PVC with spec.storageClassName: blob for dynamic provisioning
-
-	if err := executeInlineBashScript(theDEMOINSTALL, "Configuring Storage failed."); err != nil {
-		return err
-	}
-	return nil
-}
-
-func executeInlineBashScript(SCRIPT string, errorMessage string) error {
-	scriptCMD := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' | bash -s --", SCRIPT))
-	outPipe, err := scriptCMD.StdoutPipe()
-	errPipe, _ := scriptCMD.StderrPipe()
-	if err != nil {
-		fmt.Println(errorMessage)
-		return err
-	}
-	err = scriptCMD.Start()
-
-	if err != nil {
-		fmt.Println(errorMessage)
-		return err
-	}
-	errScanner := bufio.NewScanner(errPipe)
-	scanner := bufio.NewScanner(outPipe)
-	for scanner.Scan() {
-		m := scanner.Text()
-		fmt.Println(m)
-	}
-	err = scriptCMD.Wait()
-
-	if err != nil {
-		for errScanner.Scan() {
-			m := errScanner.Text()
-			println(m)
+		if utils.PrintError("kfp failed to install: ", err) {
+			return err
 		}
-		fmt.Println(errorMessage)
+	}
+
+	return nil
+}
+
+func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
+	log.Trace("Testing AZ Token")
+	err = dc.HasValidAzureToken(cmd)
+	if err != nil {
 		return err
 	}
+	log.Trace("Token passed, testing cluster exists.")
+	hasProvisionedNewResources := false
+	if dc.IsClusterWithKubeflowCreated(cmd) != nil {
+		log.Trace("Cluster does not exist, creating.")
+		hasProvisionedNewResources = true
+		if err := dc.CreateAKSwithKubeflow(cmd); err != nil {
+			return err
+		}
+		log.Info("Cluster created.")
+	}
+
+	log.Trace("Cluster exists, testing to see if storage provisioned.")
+	if dc.IsStorageConfigured(cmd) != nil {
+		log.Trace("Storage not provisioned, creating.")
+		hasProvisionedNewResources = true
+		if err := dc.ConfigureStorage(cmd); err != nil {
+			return err
+		}
+		log.Trace("Storage provisioned.")
+	}
+
+	if hasProvisionedNewResources {
+		cmd.Println("Infrastructure Setup Complete. Ready to create programs.")
+	} else {
+		cmd.Println("Using existing infrastructure. Ready to create programs.")
+	}
+
 	return nil
 }
 
 func init() {
 	RootCmd.AddCommand(initCmd)
-
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
