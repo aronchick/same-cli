@@ -20,7 +20,6 @@ import (
 	"log"
 	"os"
 	"os/user"
-	"runtime"
 	"strings"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
@@ -34,9 +33,6 @@ var installDockerCmd = &cobra.Command{
 	Use:   "install_docker",
 	Short: "Installs docker on your system. Requires running as sudo.",
 	Run: func(cmd *cobra.Command, args []string) {
-		if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-			log.Fatalf("We're really sorry, we only support installation on Linux / AMD64 right now. Please go here to install Docker. - https://docs.docker.com/get-docker/")
-		}
 
 		if os.Geteuid() == 0 {
 			if os.Getenv("SUDO_UID") == "" || os.Getenv("SUDO_UID") == "0" {
