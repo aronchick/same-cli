@@ -21,10 +21,10 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var runProgramCmd = &cobra.Command{
@@ -33,20 +33,19 @@ var runProgramCmd = &cobra.Command{
 	Long:  `Runs a SAME program that was already created.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		pipelineId, err := cmd.PersistentFlags().GetString("program-id")
+		pipelineID, err := cmd.PersistentFlags().GetString("program-id")
 		if err != nil {
-			pipelineId = ""
+			pipelineID = ""
 		}
-		if pipelineId == "" {
-			err = viper.ReadInConfig()
-			if err != nil {
-				log.Errorf(fmt.Sprintf("error loading configuration file: %v", err))
-				return err
-			}
-			pipelineId = viper.GetString("activepipeline")
-			if pipelineId == "" {
-				println("Must specify --program-id, or create new SAME program.")
-			}
+
+		filePath, err := cmd.PersistentFlags().GetString("file")
+		if err != nil {
+			return err
+		}
+
+		programName, err := cmd.PersistentFlags().GetString("name")
+		if err != nil {
+			programName = ""
 		}
 
 		runName, err := cmd.PersistentFlags().GetString("run-name")
@@ -60,24 +59,12 @@ var runProgramCmd = &cobra.Command{
 
 		experimentName, err := cmd.PersistentFlags().GetString("experiment-name")
 		if err != nil {
-			experimentName = "SAME Experiment"
+			return err
 		}
 
 		experimentDescription, err := cmd.PersistentFlags().GetString("experiment-description")
 		if err != nil {
-			experimentDescription = "A SAME Experiment Description"
-		}
-
-		params, _ := cmd.PersistentFlags().GetStringSlice("run-param")
-
-		runParams := make(map[string]string)
-
-		for _, param := range params {
-			parts := strings.Split(param, "=")
-			if len(parts) != 2 {
-				println(fmt.Sprintf("Invalid param format %s. Expect: key=value", param))
-			}
-			runParams[parts[0]] = parts[1]
+			experimentDescription = ""
 		}
 
 		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
@@ -99,9 +86,65 @@ var runProgramCmd = &cobra.Command{
 			return message
 		}
 
-		// TODO: Use an existing experiment if name exists
-		experimentId := CreateExperiment(experimentName, experimentDescription).ID
-		runDetails := CreateRun(runName, pipelineId, experimentId, runDescription, runParams)
+		// Load config file. Explicit parameters take precedent over config file.
+		sameConfigFilePath, err := getConfigFilePath(filePath)
+		if err != nil {
+			log.Errorf("could not resolve SAME config file path: %v", err)
+			return err
+		}
+
+		sameConfigFile, err := loaders.LoadSAME(sameConfigFilePath)
+		if err != nil {
+			log.Errorf("could not load SAME config file: %v", err)
+			return err
+		}
+
+		if pipelineID == "" {
+			if sameConfigFile.Spec.Pipeline.Name != "" && programName == "" {
+				programName = sameConfigFile.Spec.Pipeline.Name
+			}
+			pipeline, err := FindPipelineByName(programName)
+			if err == nil {
+				pipelineID = pipeline.ID
+			}
+
+			// if ID is still blank we must exit
+			if pipelineID == "" {
+				log.Errorf("Could not find pipeline ID. Did you create the program?")
+				return fmt.Errorf("Could not determine program ID for run.")
+			}
+		}
+
+		params, _ := cmd.PersistentFlags().GetStringSlice("run-param")
+
+		runParams := make(map[string]string)
+
+		if len(sameConfigFile.Spec.Run.Parameters) > 0 {
+			runParams = sameConfigFile.Spec.Run.Parameters
+		}
+
+		// override the explicitly set run parameters
+		for _, param := range params {
+			parts := strings.SplitN(param, "=", 2)
+			if len(parts) != 2 {
+				println(fmt.Sprintf("Invalid param format %q. Expect: key=value", param))
+			}
+			runParams[parts[0]] = parts[1]
+		}
+
+		experimentID := ""
+		experiment, err := FindExperimentByName(experimentName)
+		if experiment == nil || err != nil {
+			experimentID = CreateExperiment(experimentName, experimentDescription).ID
+		} else {
+			experimentID = experiment.ID
+		}
+
+		if runName == "" && sameConfigFile.Spec.Run.Name != "" {
+			runName = sameConfigFile.Spec.Run.Name
+		}
+
+		runDetails := CreateRun(runName, pipelineID, experimentID, runDescription, runParams)
 
 		fmt.Printf("Program run created with ID %s.", runDetails.Run.ID)
 
@@ -113,8 +156,18 @@ func init() {
 	programCmd.AddCommand(runProgramCmd)
 
 	runProgramCmd.PersistentFlags().String("program-id", "", "The ID of a SAME Program")
-	runProgramCmd.PersistentFlags().String("experiment-name", "", "The name of a SAME Experiment to be created or reused.")
+
 	runProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
+
+	runProgramCmd.PersistentFlags().StringP("file", "f", "", "a SAME program file")
+	err = runProgramCmd.MarkPersistentFlagRequired("file")
+	if err != nil {
+		log.Errorf("could not set 'file' flag as required: %v", err)
+		return
+	}
+	runProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
+
+	runProgramCmd.PersistentFlags().String("experiment-name", "", "The name of a SAME Experiment to be created or reused.")
 	err := runProgramCmd.MarkPersistentFlagRequired("experiment-name")
 	if err != nil {
 		message := "'experiment-name' is required for this to run."

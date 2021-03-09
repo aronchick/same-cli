@@ -17,19 +17,14 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	netUrl "net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
-	"github.com/azure-octo/same-cli/pkg/utils"
-	gogetter "github.com/hashicorp/go-getter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -121,6 +116,7 @@ var CreateProgramCmd = &cobra.Command{
 		log.Tracef("File Location: %v\n", filePath)
 		log.Tracef("File Name: %v\n", fileName)
 
+		// Load config file. Explicit parameters take precedent over config file.
 		sameConfigFilePath, err := getConfigFilePath(filePath)
 		if err != nil {
 			log.Errorf("could not resolve SAME config file path: %v", err)
@@ -133,11 +129,11 @@ var CreateProgramCmd = &cobra.Command{
 			return err
 		}
 
-		if sameConfigFile.Spec.Pipeline.Name != "" {
+		if sameConfigFile.Spec.Pipeline.Name != "" && programName == "" {
 			programName = sameConfigFile.Spec.Pipeline.Name
 		}
 
-		if sameConfigFile.Spec.Pipeline.Description != "" {
+		if sameConfigFile.Spec.Pipeline.Description != "" && programDescription == "" {
 			programDescription = sameConfigFile.Spec.Pipeline.Description
 		}
 
@@ -163,98 +159,6 @@ var CreateProgramCmd = &cobra.Command{
 	},
 }
 
-// getFilePath returns a file path to the local drive of the SAME config file, or error if invalid.
-// If the file is remote, it pulls from a GitHub repo.
-// Expects a full file path (including the file name)
-func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
-	// TODO: aronchick: This is all probably unnecessary. We could just swap everything out
-	// for gogetter.GetFile() and punt the whole problem at it.
-	// HOWEVER, that doesn't solve for when a github url has an https schema, which causes
-	// gogetter to weirdly reformats he URL (dropping the repo).
-	// E.g., gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/Sample-SAME-Data-Science/same.yaml")
-	// Fails with a bad response code: 404
-	// and 	gogetter.GetFile(tempFile.Name(), "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo/same.yaml")
-	// Fails with fatal: repository 'https://github.com/SAME-Project/' not found
-
-	isRemoteFile, err := utils.IsRemoteFilePath(putativeFilePath)
-
-	if err != nil {
-		log.Errorf("could not tell if the file was remote or not: %v", err)
-		return "", err
-	}
-
-	if isRemoteFile {
-		// Use the default system temp directory and a randomly generated name
-		tempSameDir, err := ioutil.TempDir("", "")
-		if err != nil {
-			log.Errorf("error creating a temporary directory to copy the file to (we're using the standard temporary directory from your system, so this could be an issue of the permissions this CLI is running under): %v", err)
-			return "", err
-		}
-
-		// Get path to store the file to
-		tempSameFile, err := ioutil.TempFile(tempSameDir, "")
-		if err != nil {
-			return "", fmt.Errorf("could not create temporary file in %v", tempSameDir)
-		}
-
-		configFileUri, err := netUrl.Parse(putativeFilePath)
-		if err != nil {
-			return "", fmt.Errorf("could not parse sameFile url: %v", err)
-		}
-
-		// TODO: Hard coding 'same.yaml' in now - should be optional
-		finalUrl, err := utils.UrlToRetrive(configFileUri.String(), "same.yaml")
-		if err != nil {
-			message := fmt.Errorf("unable to process the url to retrieve from the provided configFileUri(%v): %v", configFileUri.String(), err)
-			log.Error(message)
-			return "", message
-		}
-
-		corrected_url := finalUrl.String()
-		if (finalUrl.Scheme == "https") || (finalUrl.Scheme == "http") {
-			log.Info("currently only support http and https on github.com because we need to prefix with git")
-			corrected_url = "git::" + finalUrl.String()
-		}
-
-		log.Infof("Downloading from %v to %v", corrected_url, tempSameFile.Name())
-		errGet := gogetter.GetFile(tempSameFile.Name(), corrected_url)
-		if errGet != nil {
-			return "", fmt.Errorf("could not download SAME file from URL '%v': %v", finalUrl.String(), errGet)
-		}
-
-		filePath = tempSameFile.Name()
-	} else {
-		cwd, _ := os.Getwd()
-		absFilePath, _ := filepath.Abs(putativeFilePath)
-		filePath, _ = gogetter.Detect(absFilePath, cwd, []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.FileDetector)})
-
-		if !fileExists(filePath) {
-			return "", fmt.Errorf("could not find sameFile at: %v\nerror: %v", putativeFilePath, err)
-		}
-	}
-	return filePath, nil
-}
-
-func kubectlExists() (kubectlDoesExist bool, err error) {
-	path, err := exec.LookPath("kubectl")
-	if err != nil {
-		err := fmt.Errorf("the 'kubectl' binary is not on your PATH: %v", os.Getenv("PATH"))
-		return false, err
-	}
-	log.Tracef("'kubectl' found at %v", path)
-	return true, nil
-}
-
-func fileExists(path string) (fileDoesExist bool) {
-	resolvedPath, err := netUrl.Parse(path)
-	if err != nil {
-		log.Errorf("could not parse path '%v': %v", path, err)
-		return false
-	}
-	_, err = os.Stat(resolvedPath.Path)
-	return err == nil
-}
-
 func init() {
 	programCmd.AddCommand(CreateProgramCmd)
 
@@ -265,7 +169,7 @@ func init() {
 		return
 	}
 	CreateProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
-	CreateProgramCmd.PersistentFlags().StringP("name", "n", "SAME Program", "The program name")
+	CreateProgramCmd.PersistentFlags().StringP("name", "n", "", "The program name")
 	CreateProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
 	CreateProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
 

@@ -43,7 +43,7 @@ workflow:
 pipeline:
     name: "my_new_great_pipeline"
     description: "a very good description goes here"
-    package: "/Users/bverst/src/azure-octo/same-cli/examples/pipelines/irisclassification/compiled.tar.gz"
+    package: "examples/pipelines/irisclassification/compiled.tar.gz"
 datasets:
     - name: "DS1 name"
       type: remote

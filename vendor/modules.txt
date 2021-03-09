@@ -441,17 +441,13 @@ golang.org/x/mod/semver
 ## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
-golang.org/x/net/dns/dnsmessage
 golang.org/x/net/http/httpguts
-golang.org/x/net/http/httpproxy
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
-golang.org/x/net/lif
 golang.org/x/net/proxy
-golang.org/x/net/route
 golang.org/x/net/trace
 # golang.org/x/oauth2 v0.0.0-20210113205817-d3ed898aa8a3
 golang.org/x/oauth2
