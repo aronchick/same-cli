@@ -1,0 +1,39 @@
+name: Publish Tester
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    name: Publish binaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+      - run: 'echo "$PRIVATE_PEM" > private.pem'
+        shell: bash
+        env:
+          PRIVATE_PEM: ${{secrets.PRIVATE_PEM}}
+      - name: Build
+        run: |
+          echo ${{ github.sha }} > Release.txt
+          make build-same-tgz
+        env:
+          PRIVATE_KEY_PASSPHRASE: ${{secrets.PRIVATE_KEY_PASSPHRASE}}
+      - name: Generate Changelog
+        run: echo "# Release Notes" > ${{ github.workflow }}-CHANGELOG.txt
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ env.BINARY_TARBALL }}
+            ${{ env.BINARY_TARBALL_SIGNATURE }}
+          body_path: ${{ github.workflow }}-CHANGELOG.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: SAME-Project/SAMPLE-CLI-TESTER
