@@ -29,10 +29,32 @@ IMAGE_BUILDER ?= docker
 DOCKERFILE ?= Dockerfile
 OPERATOR_BINARY_NAME ?= $(shell basename ${PWD})
 
-TAG ?= $(eval TAG := $(shell git describe --tags --long --always))$(TAG)
+TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 ARCH = linux
+
+RELEASE_USER := SAME-Project
+RELEASE_REPO :=SAMPLE-CLI-TESTER
+
+TMPRELEASEWORKINGDIR := $(shell mktemp -d -t same-release-dir.XXXXXXX)
+TMPARTIFACTDIR := $(shell mktemp -d -t same-artifact-dir.XXXXXXX)
+PACKAGE := $(shell echo "same_$(TAG)_$(ARCH)")
+
+# Basic passphrase for testing
+PRIVATE_KEY_PASSPHRASE ?= "PASSPHRASE_FOR_TESTING"
+
+ifdef GITHUB_ACTIONS
+PRIVATE_KEY_FILE := private.pem
+else
+PRIVATE_KEY_FILE := test/testdata/signature_keys/private.pem
+endif
+
+ifdef GITHUB_ACTIONS
+PUBLIC_KEY_FILE := public.pem
+else
+PUBLIC_KEY_FILE := test/testdata/signature_keys/public.pem
+endif
 
 # Location of junit file
 JUNIT_FILE ?= /tmp/report.xml
@@ -100,22 +122,22 @@ build-same-fast: fmt vet
 ################################################################################
 .PHONY: build-same-tgz
 build-same-tgz: build-same
-	chmod a+rx ./bin/same
-	rm -f bin/*.tgz
-	cd bin/$(ARCH) && tar -cvzf same_$(TAG)_$(ARCH).tar.gz ./same
-
-# push the releases to a GitHub page
-################################################################################
-# Target: push-to-github-release                                               #
-################################################################################
-.PHONY: push-to-github-release
-push-to-github-release: build-same-tgz
-	github-release upload \
-	    --user same \
-	    --repo same \
-	    --tag $(TAG) \
-	    --name "same_$(TAG)_$(ARCH).tar.gz" \
-	    --file bin/$(ARCH)/same_$(TAG)_$(ARCH).tar.gz
+	@echo "CWD: $(shell pwd)"
+	@echo "RELEASE DIR: $(TMPRELEASEWORKINGDIR)"
+	@echo "ARTIFACT DIR: $(TMPARTIFACTDIR)"
+	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
+	cp bin/$(ARCH)/same $(TMPARTIFACTDIR)/$(PACKAGE)/same
+	cd $(TMPRELEASEWORKINGDIR)
+	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/sign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE)/same
+	openssl base64 -in $(TMPRELEASEWORKINGDIR)/sign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE)/same.signature.sha256
+	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
+	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
+	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
+	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
+	@echo "BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
+	@echo "BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
+	@echo "BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
+	@echo "BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
 
 ################################################################################
 # Target: build-same-container                                                 #
