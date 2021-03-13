@@ -17,8 +17,11 @@ package main
 
 import "github.com/azure-octo/same-cli/cmd"
 
-func main() {
-	cmd.Execute()
-}
+// Values for version and apiVersion are injected by the build.
+var (
+	VERSION = ""
+)
 
-// Adding a silly test
+func main() {
+	cmd.Execute(VERSION)
+}

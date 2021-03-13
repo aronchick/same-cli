@@ -57,18 +57,6 @@ func (suite *InitSuite) Test_EmptyConfig() {
 	assert.Contains(suite.T(), string(out), "Nil file or empty load config settings")
 }
 
-func (suite *InitSuite) Test_NoTargetSet() {
-	command, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", "../testdata/config/notarget.yaml")
-	os.Setenv("TEST_PASS", "1")
-
-	// Putting empty assignments here for debugging in the future
-	_ = command
-	_ = err
-
-	assert.Contains(suite.T(), string(out), "No 'target' set for deployment")
-	assert.Equal(suite.T(), false, suite.fatal)
-}
-
 func (suite *InitSuite) Test_BadTarget() {
 	out := execute_target(suite, "UNKNOWN", "")
 	assert.Contains(suite.T(), string(out), "Setup target 'unknown' not understood")

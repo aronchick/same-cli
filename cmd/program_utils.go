@@ -196,6 +196,10 @@ func FindPipelineByName(pipelineName string) (uploadedPipeline *pipeline_model.A
 
 	pipelineClientParams := pipeline_service.NewListPipelinesParams()
 
+	if pipelineClientParams == nil {
+		pipelineClientParams = &pipeline_service.ListPipelinesParams{}
+	}
+
 	listOfPipelines, _ := pClient.ListAll(pipelineClientParams, 100)
 	for _, thisPipeline := range listOfPipelines {
 		if pipelineName == thisPipeline.Name {

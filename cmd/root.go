@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import (
+	"fmt"
 	"os"
 	"path"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var cfgFile string
@@ -38,10 +40,21 @@ var RootCmd = &cobra.Command{
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(version string) {
+	RootCmd.Version = version
+
+	cobra.OnInitialize(initConfig)
+
+	setVersion()
+
 	if err := RootCmd.Execute(); err != nil {
 		log.Error(err)
 	}
+}
+
+func setVersion() {
+	template := fmt.Sprintf("SAME version: %s\n", RootCmd.Version)
+	RootCmd.SetVersionTemplate(template)
 }
 
 func init() {
@@ -75,6 +88,9 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.SetEnvPrefix("same")
+	viper.AutomaticEnv()
+
 	log.Traceln("- in Root.initConfig")
 
 	if cfgFile == "" {

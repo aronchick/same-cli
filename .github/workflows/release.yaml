@@ -22,6 +22,8 @@ jobs:
         shell: bash
         env:
           PRIVATE_PEM: ${{secrets.PRIVATE_PEM}}
+      - name: Parse release version and set REL_VERSION
+        run: python ./.github/scripts/get_release_version.py
       - name: Build
         run: |
           echo ${{ github.sha }} > Release.txt
