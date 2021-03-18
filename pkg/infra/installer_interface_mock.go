@@ -3,6 +3,7 @@ package infra
 import (
 	"fmt"
 
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -19,17 +20,20 @@ func (mi *MockInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err
 	return k3sCommand, err
 }
 
-func (mi *MockInstallers) StartK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	// TODO: Should have a real failure to start k3s message
-	k3sCommand, err = mi.DetectK3s("k3s")
-	return k3sCommand, err
-}
 func (mi *MockInstallers) DetectK3s(s string) (string, error) {
 	if utils.ContainsString(mi._cmdArgs, "k3s-not-detected") {
 		return "", fmt.Errorf("K3S NOT DETECTED")
 	}
 
 	return "VALID", nil
+}
+
+func (mi *MockInstallers) PostInstallK3sRunning(cmd *cobra.Command) error {
+	if utils.ContainsString(mi._cmdArgs, mocks.INIT_TEST_K3S_STARTED_BUT_SERVICES_FAILED_PROBE) {
+		return fmt.Errorf(mocks.INIT_TEST_K3S_STARTED_BUT_SERVICES_FAILED_RESULT)
+	}
+
+	return nil
 }
 
 func (mi *MockInstallers) InstallKFP(cmd *cobra.Command) (err error) {

@@ -37,18 +37,18 @@ func (mockDC *MockDependencyCheckers) GetKubectlCmd() string {
 	return mockDC._kubectlCommand
 }
 
-func (mockDC *MockDependencyCheckers) HasValidAzureToken(*cobra.Command) (err error) {
+func (mockDC *MockDependencyCheckers) HasValidAzureToken(*cobra.Command) (bool, error) {
 	if utils.ContainsString(mockDC.GetCmdArgs(), "invalid-azure-token") {
-		return fmt.Errorf("INVALID AZURE TOKEN")
+		return false, fmt.Errorf("INVALID AZURE TOKEN")
 	}
-	return nil
+	return true, nil
 }
 
-func (mockDC *MockDependencyCheckers) IsStorageConfigured(*cobra.Command) (err error) {
+func (mockDC *MockDependencyCheckers) IsStorageConfigured(*cobra.Command) (bool, error) {
 	if utils.ContainsString(mockDC.GetCmdArgs(), "is-storage-configuration-failed") {
-		return fmt.Errorf("IS STORAGE CONFIGURATION FAILED")
+		return false, fmt.Errorf("IS STORAGE CONFIGURATION FAILED")
 	}
-	return nil
+	return true, nil
 }
 
 func (mockDC *MockDependencyCheckers) ConfigureStorage(*cobra.Command) (err error) {
@@ -73,11 +73,17 @@ func (mockDC *MockDependencyCheckers) CheckDependenciesInstalled(*cobra.Command)
 	return nil
 }
 
-func (mockDC *MockDependencyCheckers) IsClusterWithKubeflowCreated(*cobra.Command) (err error) {
+func (mockDC *MockDependencyCheckers) IsClusterWithKubeflowCreated(*cobra.Command) (bool, error) {
 	if utils.ContainsString(mockDC.GetCmdArgs(), "is-cluster-with-kubeflow-created-failed") {
-		return fmt.Errorf("IS CLUSTER WITH KUBEFLOW CREATED FAILED")
+		return false, fmt.Errorf("IS CLUSTER WITH KUBEFLOW CREATED FAILED")
 	}
-	return nil
+	return true, nil
+}
+func (mockDC *MockDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, error) {
+	if utils.ContainsString(mockDC.GetCmdArgs(), "k3s-is-not-running") {
+		return false, fmt.Errorf("K3S NOT RUNNING")
+	}
+	return true, nil
 }
 
 func (mockDC *MockDependencyCheckers) WriteCurrentContextToConfig() string {

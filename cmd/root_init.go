@@ -36,8 +36,6 @@ var initCmd = &cobra.Command{
 	Short: "Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc)",
 	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		allSettings := viper.AllSettings()
-
 		var dc = GetDependencyCheckers()
 		dc.SetCmdArgs(args)
 		dc.SetCmd(cmd)
@@ -45,28 +43,20 @@ var initCmd = &cobra.Command{
 		var i = GetClusterInstallMethods()
 		i.SetCmdArgs(args)
 
-		// len in go checks for both nil and 0
-		if len(allSettings) == 0 {
-			message := "Nil file or empty load config settings. Please run 'same config new' to initialize."
-			cmd.PrintErr(message)
-			log.Fatalf(message)
-			return nil
-		}
-
 		if err := dc.CheckDependenciesInstalled(cmd); err != nil {
 			return err
 		}
 
 		target := strings.ToLower(viper.GetString("target"))
 		if target == "" {
-			message := "No 'target' set for deployment - using 'local' as a default. To change this, please execute 'same config set target=XXXX'"
+			message := "No 'target' set for deployment - using 'local' as a default. To change this, please execute 'same config set target=XXXX'\n"
+			target = "local"
 			cmd.Print(message)
 			if os.Getenv("TEST_PASS") == "1" {
 				return nil
 			}
 		}
 
-		log.Tracef("Target: %v\n", target)
 		switch target {
 		case "local":
 			message := "Executing local setup."
@@ -120,9 +110,18 @@ func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Install
 
 	switch k8sType {
 	case "k3s":
-		k3sCommand, err := i.DetectK3s("k3s")
-		if (err != nil) || (k3sCommand == "") {
-			if utils.PrintError("k3s not installed/detected on path. Please run 'sudo same install_k3s' to install: %v", err) {
+		_, err := i.DetectK3s("k3s")
+		k3sRunning, k3sRunningErr := utils.K3sRunning(cmd)
+		if err != nil {
+			if utils.PrintError("k3s not installed/detected on path. Please run 'sudo same installK3s' to install: %v", err) {
+				return err
+			}
+		} else if k3sRunningErr != nil {
+			if utils.PrintError("Error checking to see if k3s is running: %v", err) {
+				return err
+			}
+		} else if !k3sRunning {
+			if utils.PrintError("Core k3s services aren't running, but the server looks correct. You may want to check back in a few minutes.", nil) {
 				return err
 			}
 		}
@@ -140,7 +139,7 @@ func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Install
 
 	err = i.InstallKFP(cmd)
 	if err != nil {
-		if utils.PrintError("kfp failed to install: ", err) {
+		if utils.PrintError("kfp failed to install: %v", err) {
 			return err
 		}
 	}
@@ -150,13 +149,13 @@ func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Install
 
 func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
 	log.Trace("Testing AZ Token")
-	err = dc.HasValidAzureToken(cmd)
-	if err != nil {
+	hasToken, err := dc.HasValidAzureToken(cmd)
+	if !hasToken || err != nil {
 		return err
 	}
 	log.Trace("Token passed, testing cluster exists.")
 	hasProvisionedNewResources := false
-	if dc.IsClusterWithKubeflowCreated(cmd) != nil {
+	if clusterCreated, err := dc.IsClusterWithKubeflowCreated(cmd); !clusterCreated || err != nil {
 		log.Trace("Cluster does not exist, creating.")
 		hasProvisionedNewResources = true
 		if err := dc.CreateAKSwithKubeflow(cmd); err != nil {
@@ -166,7 +165,7 @@ func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Installer
 	}
 
 	log.Trace("Cluster exists, testing to see if storage provisioned.")
-	if dc.IsStorageConfigured(cmd) != nil {
+	if storageConfigured, err := dc.IsStorageConfigured(cmd); !storageConfigured || err != nil {
 		log.Trace("Storage not provisioned, creating.")
 		hasProvisionedNewResources = true
 		if err := dc.ConfigureStorage(cmd); err != nil {

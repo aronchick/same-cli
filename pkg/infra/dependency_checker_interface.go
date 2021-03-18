@@ -6,10 +6,11 @@ import (
 
 type DependencyCheckers interface {
 	CheckDependenciesInstalled(*cobra.Command) error
-	HasValidAzureToken(*cobra.Command) error
-	IsClusterWithKubeflowCreated(*cobra.Command) error
+	HasValidAzureToken(*cobra.Command) (bool, error)
+	IsClusterWithKubeflowCreated(*cobra.Command) (bool, error)
+	IsK3sRunning(*cobra.Command) (bool, error)
 	CreateAKSwithKubeflow(*cobra.Command) error
-	IsStorageConfigured(*cobra.Command) error
+	IsStorageConfigured(*cobra.Command) (bool, error)
 	ConfigureStorage(*cobra.Command) error
 	GetCmd() *cobra.Command
 	SetCmd(*cobra.Command)

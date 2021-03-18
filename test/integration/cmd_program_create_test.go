@@ -39,6 +39,12 @@ func (suite *ProgramCreateSuite) SetupAllSuite() {
 	if _, err := suite.configFile.Write(text); err != nil {
 		log.Fatal("Failed to write to temporary file", err)
 	}
+
+	running, err := utils.K3sRunning(suite.rootCmd)
+	if err != nil || !running {
+		log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+	}
+
 	os.Setenv("TEST_PASS", "1")
 }
 
@@ -95,7 +101,7 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithBadFile() {
 	os.Setenv("TEST_PASS", "1")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "/dev/null/same.yaml", "--config", "../testdata/config/notarget.yaml")
-	assert.Contains(suite.T(), string(out), "could not find sameFile")
+	assert.Contains(suite.T(), string(out), "could not find sameFile", "Attempting to start same create with a bad file did not fail (as expected).")
 
 }
 

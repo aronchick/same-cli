@@ -22,8 +22,12 @@ func PrettyPrint(value interface{}) string {
 }
 
 func PrintError(s string, err error) (exit bool) {
-	log.Tracef("Error output: %v", err.Error())
-	message := fmt.Sprintf(s, err.Error())
+	errorString := ""
+	if err != nil {
+		errorString = err.Error()
+	}
+	log.Tracef("Error output: %v", errorString)
+	message := fmt.Sprintf(s, errorString)
 	log.Fatalf(message + "\n")
 
 	return os.Getenv("TEST_PASS") != ""

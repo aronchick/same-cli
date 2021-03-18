@@ -2,7 +2,9 @@ package infra
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
@@ -42,51 +44,64 @@ func (dc *LiveDependencyCheckers) GetKubectlCmd() string {
 	return dc._kubectlCommand
 }
 
-func (dc *LiveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) error {
+func (dc *LiveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) (bool, error) {
 	output, err := exec.Command("/bin/bash", "-c", "az aks list").Output()
 	if (err != nil) || (strings.Contains(string(output), "refresh token has expired")) {
 		cmd.Println("Azure authentication token invalid. Please execute 'az login' and run again..")
-		return err
+		return false, err
 	}
-	return nil
+	return true, nil
 }
 
-func (dc *LiveDependencyCheckers) IsClusterWithKubeflowCreated(cmd *cobra.Command) error {
-	return exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow").Run()
+func (dc *LiveDependencyCheckers) IsClusterWithKubeflowCreated(cmd *cobra.Command) (bool, error) {
+	output, err := exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow -o yaml").CombinedOutput()
+	return strings.Contains(string(output), "name: kubeflow"), err
 }
 
-func (dc *LiveDependencyCheckers) IsStorageConfigured(cmd *cobra.Command) error {
-	return exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).Run()
+func (dc *LiveDependencyCheckers) IsStorageConfigured(cmd *cobra.Command) (bool, error) {
+	output, err := exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).CombinedOutput()
+	return (string(output) == ""), err
 }
 
 func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command) error {
-	_, err := exec.Command("/bin/bash", "-c", "az account list -otable").Output()
+	_, err := exec.LookPath("az")
 	if err != nil {
 
-		cmd.Println("Azure CLI not installed on PATH or not logged in.")
-		cmd.Println("Install with https://aka.ms/getcli and run 'az login'")
+		cmd.Println("The Azure CLI is not installed.")
+		cmd.Println("Install with https://aka.ms/getcli.")
 		return err
 	}
 
-	_, err = exec.Command("/bin/bash", "-c", "porter").Output()
+	_, err = exec.Command("/bin/bash", "-c", "az account list -otable").Output()
+	if err != nil {
+
+		cmd.Println("You are not logged in to Azure.")
+		cmd.Println("Please run 'az login'")
+		return err
+	}
+
+	_, err = exec.LookPath("porter")
 	if err != nil {
 
 		cmd.Println("Porter not installed or not on PATH")
-		cmd.Println("Install porter at: https://porter.sh")
+		cmd.Println("Read more how to install it here: https://porter.sh")
 		return err
 	}
 
-	_, err = exec.Command("/bin/bash", "-c", "kubectl").Output()
+	_, err = exec.LookPath("kubectl")
 	if err != nil {
-		// No Kubectl, let's install
-		cmd.Println("Running az aks install-cli to install kubectl.")
-		_, err = exec.Command("/bin/bash", "-c", "az aks install-cli").Output()
-		if err != nil {
 
-			cmd.Println("Porter not installed or not on PATH")
-			cmd.Println("Install porter at: https://porter.sh")
-			return err
-		}
+		cmd.Println("kubectl not installed or not on PATH")
+		cmd.Println("Read more how to install it here: https://kubernetes.io/docs/tasks/tools/")
+		return err
+
+	}
+
+	kubeconfigValue := os.Getenv("KUBECONFIG")
+	if kubeconfigValue == "" {
+		// From here: https://github.com/k3s-io/k3s/issues/3087
+		message := INIT_ERROR_KUBECONFIG_UNSET_WARN
+		cmd.Println(message)
 	}
 	return nil
 }
@@ -190,12 +205,41 @@ func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
 
 	// HACK: Hard coded 'kubectl'
 	currentContextScript := "kubectl config current-context"
+	u, _ := user.Current()
+	uidPlusGid := fmt.Sprintf("%v:%v", u.Username, u.Username)
 
 	log.Tracef("About to set current context in config file: %v", currentContextScript)
-	outputBytes, err := exec.Command("/bin/bash", "-c", currentContextScript).Output()
+	kubeConfigEnv := os.Getenv("KUBECONFIG")
+	log.Tracef("KUBECONFIG value: %v", kubeConfigEnv)
+	if kubeConfigEnv == "" {
+		log.Info(fmt.Sprintf("KUBECONFIG is unset, setting it to %v/.kube/config.", u.HomeDir))
+		err := os.Setenv("KUBECONFIG", fmt.Sprintf("%v/.kube/config", u.HomeDir))
+		if err != nil {
+			if utils.PrintError(fmt.Sprintf("Unable to set this user's ('%v') KUBECONFIG: ", u.Username)+"%v", err) {
+				return ""
+			}
+		}
+	}
+	outputBytes, err := exec.Command("/bin/bash", "-c", kubeConfigEnv+currentContextScript).CombinedOutput()
 	if err != nil {
-		if utils.PrintError("error getting current context", err) {
-			return ""
+		outputString := string(outputBytes)
+		log.Tracef("Output String: %v", outputString)
+		if strings.Contains(outputString, "/etc/rancher") {
+			if utils.PrintError(fmt.Sprintf(INIT_ERROR_KUBECONFIG_UNSET_FATAL, outputString)+"%v", err) {
+				return ""
+			}
+		} else if strings.Contains(outputString, ".kube/config") || strings.Contains(outputString, "permission denied") {
+			if utils.PrintError(fmt.Sprintf(INIT_ERROR_KUBECONFIG_PERMISSIONS, uidPlusGid, uidPlusGid)+"%v", err) {
+				return ""
+			}
+		} else if strings.Contains(outputString, "current-context is not set") {
+			if utils.PrintError(fmt.Sprintf(INIT_ERROR_CURRENT_CONTEXT_UNSET, currentContextScript, outputString)+": %v", err) {
+				return ""
+			}
+		} else {
+			if utils.PrintError(fmt.Sprintf(INIT_ERROR_CURRENT_CONTEXT_UNKNOWN_ERROR, currentContextScript, outputString)+": %v", err) {
+				return ""
+			}
 		}
 	}
 	output := strings.TrimSpace(string(outputBytes))
@@ -210,10 +254,52 @@ func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
 	}
 
 	log.Tracef("Wrote current context ('%v') as active context to file ('%v')\n", output, viper.ConfigFileUsed())
-
 	return output
 
 }
 
+func (dc *LiveDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, error) {
+	return utils.K3sRunning(cmd)
+}
+
 type InitClusterMethods struct {
 }
+
+var (
+	INIT_ERROR_KUBECONFIG_UNSET_WARN string = `
+Your KUBECONFIG variable is not explicitly set. This may cause issues when you run locally, such as 'error: open /etc/rancher/k3s/k3s.yaml.lock: permission denied'. While not critical, you can ensure the proper functioning of SAME by executing the following two commands.
+
+echo "export KUBECONFIG=$HOME\.kube\config" >> $HOME\.bashrc
+export KUBECONFIG=$HOME\.kube\config 
+`
+	INIT_ERROR_KUBECONFIG_UNSET_FATAL string = `
+Unable to set your current context because your KUBECONFIG is either unset, or pointing at '/etc/rancher/k3s/k3s.yaml' (to which you don't have permissions).
+Please set it (to make it easy, you can use the following command).
+
+export KUBECONFIG=$HOME/.kube/config
+
+Raw error: %v
+
+Cmd error: `
+	INIT_ERROR_KUBECONFIG_PERMISSIONS string = `
+It appears either your $HOME/.kube, $HOME/.kube/config don't exist or you don't have permissions to write them. Please execute the following commands:
+sudo chown %v $HOME/.kube
+sudo chown %v $HOME/.kube/config
+kubectl config view --flatten > $HOME/.kube/config
+
+Raw error: `
+	INIT_ERROR_CURRENT_CONTEXT_UNSET string = `
+Your current context is not set. This is often because it is empty. To set it, using your local k3s file, execute the following.
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml:$HOME/.kube/config sudo kubectl config view --flatten > $HOME/.kube/config
+
+command: %v
+output: %v
+
+Raw error: `
+	INIT_ERROR_CURRENT_CONTEXT_UNKNOWN_ERROR string = `
+error getting current context - 
+command: %v
+output: %v
+
+Raw error:`
+)

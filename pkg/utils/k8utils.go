@@ -15,12 +15,16 @@ package utils
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	gogetter "github.com/hashicorp/go-getter"
+	"github.com/spf13/cobra"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"io/ioutil"
@@ -160,4 +164,85 @@ func ResolveLocalFilePath(filePathToTest string) (returnFilePath string, err err
 	}
 	returnFilePath, _ = filepath.Abs(u.String())
 	return returnFilePath, nil
+}
+
+func HasContext(cmd *cobra.Command) (currentContext string, err error) {
+	// https://golang.org/pkg/os/exec/#example_Cmd_StdoutPipe
+	scriptCmd := exec.Command("kubectl", "config", "current-context")
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to current context for Kubernetes. That's all we know: %v", err)
+	}
+	currentContextString := string(scriptOutput)
+	if currentContextString != "" {
+		return strings.TrimSpace(currentContextString), nil
+	} else {
+		return "", fmt.Errorf("kubectl config current-context is empty.")
+	}
+}
+
+func HasClusters(cmd *cobra.Command) (clusters []string, err error) {
+	// strings.Split(result,`\n`)
+	scriptCmd := exec.Command("kubectl", "config", "get-clusters")
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to get current clusters. That's all we know: %v", err)
+	}
+	currentClusterString := string(scriptOutput)
+	clusters = strings.Split(currentClusterString, "\n")
+	if len(clusters) < 1 {
+		log.Fatal("Error when getting clusters, but we don't know anything more about it.")
+	} else if len(clusters) == 1 {
+		return []string{}, fmt.Errorf("We were able to get clusters, but there were none in the kubeconfig.")
+	}
+	return clusters[1:], nil
+}
+
+func K3sRunning(cmd *cobra.Command) (running bool, err error) {
+	_, err = exec.LookPath("/usr/local/bin/k3s")
+	if err != nil {
+		log.Tracef("K3s not found in path.")
+		return false, fmt.Errorf("K3s does not appear in your path: %v", err)
+	}
+
+	if !IsSudoer() {
+		log.Tracef("K3s not found in path.")
+		return false, fmt.Errorf("You must be part of sudoers in order to test for k3s: %v", err)
+	}
+	scriptCmd := exec.Command("/bin/bash", "-c", "sudo k3s kubectl get deployments --namespace=kube-system -o json")
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("Failed to test if k3s is running. That's all we know: %v", err)
+	}
+
+	// Declared an empty interface
+	//var result map[string]interface{}
+	var result v1.DeploymentList
+	_ = scriptOutput
+
+	//  waiting_pod_array=("k8s-app=kube-dns;kube-system"
+	// "k8s-app=metrics-server;kube-system"
+
+	// Unmarshal or Decode the JSON to the interface.
+	//err = json.Unmarshal([]byte(scriptOutput), &result)
+	err = json.Unmarshal(scriptOutput, &result)
+	if err != nil {
+		return false, fmt.Errorf("Failed to unmarshall result of k3s test: %v", err)
+	}
+
+	kubeDnsRunning := false
+	metricsServerRunning := false
+
+	for _, deployment := range result.Items {
+		if k8sLabel, ok := deployment.Spec.Selector.MatchLabels["k8s-app"]; ok {
+			switch k8sLabel {
+			case "metrics-server":
+				metricsServerRunning = (deployment.Status.ReadyReplicas > 0)
+			case "kube-dns":
+				kubeDnsRunning = (deployment.Status.ReadyReplicas > 0)
+			}
+		}
+	}
+
+	return kubeDnsRunning && metricsServerRunning, nil
 }

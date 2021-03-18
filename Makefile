@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-GOLANG_VERSION ?= 1.15.6
+GOLANG_VERSION ?= 1.16.2
 GOPATH ?= $(HOME)/go
 
 # set to -V

@@ -7,12 +7,15 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,8 +30,10 @@ func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err
 	executingUser, err := user.LookupId(os.Getenv("SUDO_UID"))
 
 	if err != nil {
-		log.Tracef("Current UID: %v", os.Getenv("SUDO_UID"))
 		log.Tracef("Error: %v", err)
+		u, _ := user.Current()
+		log.Tracef("Current UID: %v", u.Username)
+		log.Tracef("Current SUDO_UID: %v", os.Getenv("SUDO_UID"))
 		log.Fatalf("We only support running this command under sudo. Please reexecute.")
 	}
 
@@ -42,55 +47,47 @@ func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err
 	}
 
 	log.Tracef("Executing User Home: %v", executingUser.HomeDir)
-	log.Tracef("Executing User Name: %v", executingUserName)
 	k3sCommand, detectErr := li.DetectK3s("k3s")
 	log.Tracef("k3sCommand: %v", k3sCommand)
 	log.Tracef("Error: %v", detectErr)
 
 	if (k3sCommand == "") || (detectErr != nil && strings.Contains(detectErr.Error(), "file not found")) {
-		tmpMergeConfig, err := ioutil.TempFile(os.TempDir(), "KUBECONFIG_MERGE")
-		if err != nil {
-			log.Fatalf("Error creating temp kubeconfig merge file.: %v", err)
-		}
 		log.Tracef("SUDO_USER: %v", os.Getenv("SUDO_USER"))
 		log.Tracef("Executing User Name: %v", executingUserName)
-
-		var openMode os.FileMode = 0644
-		err = tmpMergeConfig.Chmod(openMode)
-		if err != nil {
-			log.Fatalf("Error changing perms of temp file to read write user: %v", err)
-		}
 
 		uid, err1 := strconv.Atoi(executingUser.Uid)
 		gid, err2 := strconv.Atoi(executingUser.Gid)
 		if err1 != nil || err2 != nil {
 			log.Fatalf("'%v' or '%v' could not be converted to int from strconv.Atoi: \n1: %v\n2: %v", executingUser.Uid, executingUser.Gid, err1, err2)
 		}
-		err = os.Chown(tmpMergeConfig.Name(), uid, gid)
-		if err != nil {
-			log.Fatalf("could not change ownership on file '%v': %v", tmpMergeConfig.Name(), err)
-		}
-		log.Tracef("Merge file: %v", tmpMergeConfig.Name())
-		log.Tracef("Executing User Name: %v", executingUserName)
 
-		tmpK3sConfig, _ := ioutil.TempFile(os.TempDir(), "K3SCONFIG")
+		kubeDir := path.Join(executingUser.HomeDir, ".kube")
+		if _, err := os.Stat(kubeDir); os.IsNotExist(err) {
+			logrus.Tracef("%v does not exist, creating it now.", kubeDir)
+			mkDirErr := os.Mkdir(kubeDir, 0700)
+			if mkDirErr != nil {
+				log.Fatalf("Unable to create the .kube directory at: %v", mkDirErr)
+			}
+			chownErr := os.Chown(kubeDir, uid, gid)
+			if chownErr != nil {
+				log.Fatalf("Unable to change %v to be owned by the current user.", kubeDir)
+			}
+		}
+
 		userKubeConfigLocation := fmt.Sprintf("%v/.kube/config", executingUser.HomeDir)
 
-		defer func() { _ = os.Remove(tmpK3sConfig.Name()) }()
-		defer func() {
-			backupFileName := fmt.Sprintf("%v.bak", userKubeConfigLocation)
-			_ = os.Remove(backupFileName)
-		}()
+		// defer func() { _ = os.Remove(tmpK3sConfig.Name()) }()
+		// defer func() {
+		// 	backupFileName := fmt.Sprintf("%v.bak", userKubeConfigLocation)
+		// 	_ = os.Remove(backupFileName)
+		// }()
 
-		_ = "https://github.com/rancher/k3s/releases/download/v1.19.2%2Bk3s1/k3s"
-		k3sDownloadAndInstallURL := "curl -sfL https://get.k3s.io | sh -"
+		k3sDownloadAndInstallURL := "curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644"
 		k3sDownloadAndInstallScript := fmt.Sprintf(`
 #!/bin/bash
 set -e
 %v
-yes | cp -rf /etc/rancher/k3s/k3s.yaml %v
-chmod 0777 %v
-`, k3sDownloadAndInstallURL, tmpK3sConfig.Name(), tmpK3sConfig.Name())
+`, k3sDownloadAndInstallURL)
 
 		cmd.Printf("About to execute the following:\n%v\n", k3sDownloadAndInstallScript)
 
@@ -110,8 +107,7 @@ chmod 0777 %v
 			backupConfigScript := fmt.Sprintf(`
 	#!/bin/bash
 	set -e
-	sudo su %v
-	%v
+	runuser -l %v -c "%v"
 			`, executingUserName, backupConfigCommand)
 
 			cmd.Printf("About to execute the following:\n%v\n", backupConfigScript) // I wonder if the below code is right - you could remove the if statement, but then it's slightly less
@@ -123,15 +119,44 @@ chmod 0777 %v
 			kubeConfigs = append(kubeConfigs, userKubeConfigLocation)
 		}
 
-		kubeConfigs = append(kubeConfigs, tmpK3sConfig.Name())
+		// Create our Temp File:  This will create a filename like /tmp/prefix-123456
+		// We can use a pattern of "pre-*.txt" to get an extension like: /tmp/pre-123456.txt
+		tmpFile, err := ioutil.TempFile(os.TempDir(), "K3S_CONFIG_TEMP-")
+		if err != nil {
+			log.Fatal("Cannot create temporary file for merging", err)
+		}
+
+		// Remember to clean up the file afterwards
+		defer os.Remove(tmpFile.Name())
+
+		log.Tracef("Created File: %v", tmpFile.Name())
+		_ = tmpFile.Chmod(0666)
+
+		k3s_default_config, err := ioutil.ReadFile("/etc/rancher/k3s/k3s.yaml")
+
+		if err != nil {
+			log.Fatal("Unable to read from /etc/rancher/k3s/k3s.yaml", err)
+		}
+		if _, err = tmpFile.Write(k3s_default_config); err != nil {
+			log.Fatal("Failed to write to temporary file", err)
+		}
+
+		log.Tracef("Wrote to: %v", tmpFile.Name())
+
+		// Close the file
+		if err := tmpFile.Close(); err != nil {
+			log.Fatal(err)
+		}
+
+		kubeConfigs = append(kubeConfigs, tmpFile.Name())
 		mergeAndFlattenCommand := fmt.Sprintf("KUBECONFIG=%v kubectl config view --flatten > %v/.kube/config", strings.Join(kubeConfigs, ":"), executingUser.HomeDir)
 		log.Tracef("mergeAndFlattenCommand:\n%v\n", mergeAndFlattenCommand)
 
 		k3sMergeScript := fmt.Sprintf(`
 #!/bin/bash
 set -e
-sudo su %v
-%v 
+runuser -l %v -c "%v"
+export KUBECONFIG=$HOME/.kube/config
 		`, executingUserName, mergeAndFlattenCommand)
 
 		cmd.Printf("About to execute the following:\n%v\n", k3sMergeScript)
@@ -140,49 +165,38 @@ sudo su %v
 		if err := utils.ExecuteInlineBashScript(cmd, k3sMergeScript, "K3s failed merge configs."); err != nil {
 			return "", err
 		}
-
 	} else if detectErr != nil {
 		return "", fmt.Errorf("error looking for K3s in PATH: %v", err)
 	}
 
 	log.Trace("Finished installing, detecting again.")
 
-	return li.DetectK3s("k3s")
+	return "k3s", li.PostInstallK3sRunning(cmd)
 }
 
-func (li *LiveInstallers) StartK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	k3sCommand, err = li.DetectK3s("k3s")
-	log.Infof("finished detecting:\nCommand: %v\nError: %v\n", k3sCommand, err)
-	if err != nil {
-		return "", fmt.Errorf("error looking for K3s in PATH")
-	} else if k3sCommand == "" {
-		k3sStartScript := `
-		#!/bin/bash
-		set -e
-		curl -o /tmp/startk3s -sfL https://raw.githubusercontent.com/kf5i/k3ai-plugins/main/plugin_wsl_start/startk3s  
-		$SUDO mv /tmp/startk3s /usr/local/bin
-		chmod +x /usr/local/bin/startk3s
-		/usr/local/bin/startk3s
-		waiting_pod_array=( "k8s-app=kube-dns;kube-system" 
-							"k8s-app=metrics-server;kube-system"
-						  )
+func (i *LiveInstallers) PostInstallK3sRunning(cmd *cobra.Command) (err error) {
 
-		for i in "${waiting_pod_array[@]}"; do 
-			echo "$i"; 
-			IFS=';' read -ra VALUES <<< "$i"
-			wait "${VALUES[0]}" "${VALUES[1]}"
-		done`
-
-		cmd.Printf("About to execute the following:\n%v\n", k3sStartScript)
-
-		// I wonder if the below code is right - you could remove the if statement, but then it's slightly less
-		// readable, assuming that a user has to deduce that returning err could be nil
-		if err := utils.ExecuteInlineBashScript(cmd, k3sStartScript, "K3s failed to start."); err != nil {
-			return "", err
+	cmd.Println("Waiting up to 120 seconds for k3s to become ready...")
+	elapsedTime := 0
+	for {
+		cmd.Printf("%v...", elapsedTime)
+		if isRunning, _ := utils.K3sRunning(cmd); isRunning {
+			cmd.Println("k3s is running locally.")
+			return nil
 		}
+		if elapsedTime >= 120 {
+			message := "k3s did not start in a timely manner."
+			cmd.Println(message)
+			return fmt.Errorf(message)
+
+		}
+		time.Sleep(5 * time.Second)
+
+		// Printed after sleep is over
+		elapsedTime += 5
+
 	}
 
-	return li.DetectK3s("k3s")
 }
 
 func (i *LiveInstallers) DetectK3s(s string) (string, error) {
@@ -201,7 +215,7 @@ func (i *LiveInstallers) InstallKFP(cmd *cobra.Command) (err error) {
 	export PIPELINE_VERSION=1.4.1
 	export KUBECTL_COMMAND=%v
 	$KUBECTL_COMMAND create namespace kubeflow || true
-	$KUBECTL_COMMAND config set-context --current --namespace=kubeflow
+	$KUBECTL_COMMAND config set-context --current --namespace=kubeflow || true 
 	$KUBECTL_COMMAND apply -k "github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=$PIPELINE_VERSION"
 	$KUBECTL_COMMAND wait --for condition=established --timeout=60s crd/applications.app.k8s.io
 	$KUBECTL_COMMAND apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic-pns?ref=$PIPELINE_VERSION"

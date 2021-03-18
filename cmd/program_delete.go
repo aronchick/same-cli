@@ -24,7 +24,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // deleteCmd represents the delete command
@@ -33,16 +32,6 @@ var deleteCmd = &cobra.Command{
 	Short: "Deletes a pipeline.",
 	Long:  `Deletes a pipeline. Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// for simplicity we currently rely on Porter, Azure CLI and Kubectl
-		allSettings := viper.AllSettings()
-
-		// len in go checks for both nil and 0
-		if len(allSettings) == 0 {
-			message := fmt.Errorf("Nil file or empty load config settings. Please run 'same config new' to initialize.\n")
-			log.Fatalf(message.Error())
-			return message
-		}
-
 		if cmd.Flag("name").Value == nil && cmd.Flag("id").Value == nil {
 			message := fmt.Errorf("'name' or 'id' must be set to delete a flag.")
 			cmd.PrintErr(message.Error())

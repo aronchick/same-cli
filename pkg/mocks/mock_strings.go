@@ -1,0 +1,6 @@
+package mocks
+
+var (
+	INIT_TEST_K3S_STARTED_BUT_SERVICES_FAILED_PROBE  string = "k3s-started-but-services-failed"
+	INIT_TEST_K3S_STARTED_BUT_SERVICES_FAILED_RESULT string = "K3S STARTED BUT SERVICES FAILED"
+)

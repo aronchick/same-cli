@@ -5,7 +5,10 @@ package main
 
 import (
 	"fmt"
-	"runtime"
+	"os/exec"
+
+	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/utils"
 )
 
 // // Settings default user setting
@@ -125,5 +128,22 @@ func main() {
 	// 	message := fmt.Errorf("could not retrieve a list of groups for the current user: %v", err)
 	// 	log.Fatal(message)
 	// }
-	fmt.Printf("Runtime: %v - %v", runtime.GOOS, runtime.GOARCH)
+	// fmt.Printf("Runtime: %v - %v", runtime.GOOS, runtime.GOARCH)
+
+	// u, _ := user.Current()
+	// kDir := path.Join(u.HomeDir, ".kube")
+	// if _, err := os.Stat(kDir); os.IsNotExist(err) {
+	// 	logrus.Tracef("%v does not exist, creating it now.", kDir)
+	// 	os.Mkdir(kDir, 0755)
+	// 	uid, _ := strconv.Atoi(u.Uid)
+	// 	gid, _ := strconv.Atoi(u.Gid)
+	// 	os.Chown(kDir, uid, gid)
+	// }
+
+	cmd := cmd.RootCmd
+	a, _ := exec.LookPath("/usr/local/bin/k3s")
+	fmt.Printf("Cmd: %v", a)
+
+	b, _ := utils.K3sRunning(cmd)
+	fmt.Printf("Cmd B: %v", b)
 }

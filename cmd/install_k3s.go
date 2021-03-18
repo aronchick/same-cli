@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -33,14 +34,17 @@ var installK3sCmd = &cobra.Command{
 			log.Fatalf("error installing k3s: %v", err)
 		}
 		cmd.Println("K3s installed.")
-		k3sCommand, err := i.StartK3s(cmd)
-		if err != nil {
-			log.Fatalf("Error starting k3s: %v", err)
+		k3sRunning, _ := utils.K3sRunning(cmd)
+		if err == nil && k3sRunning {
+			cmd.Println("K3s started.")
+		} else {
+			log.Fatalf("K3s installed with no error, but is not running. Error: %v", err)
 		}
-		cmd.Println("K3s started.")
-		_, err = i.DetectK3s(k3sCommand)
+
+		// Need explicit path to detect
+		_, err = i.DetectK3s("/usr/local/bin/k3s")
 		if err != nil {
-			log.Fatalf("Error detecting k3s: %v", err)
+			log.Fatalf("error detecting k3s: %v", err)
 		}
 		cmd.Println("K3s detected.")
 

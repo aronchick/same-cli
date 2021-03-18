@@ -113,7 +113,7 @@ func initConfig() {
 	}
 	err = utils.LoadConfig(cfgFile)
 	if err != nil {
-		if !utils.PrintErrorAndReturnExit(RootCmd, "Error reading config file: ", err) {
+		if !utils.PrintErrorAndReturnExit(RootCmd, "Error reading config file: %v", err) {
 
 			// Use the below to pass along that we've failed and we should exit at the first check
 			os.Setenv("TEST_EXIT", "1")

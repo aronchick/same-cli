@@ -38,6 +38,12 @@ func (suite *ProgramDeleteSuite) SetupAllSuite() {
 	if out != "" {
 		log.Printf("not sure if this is a bad thing, there's an output from creating the pipeline during setup: %v", string(out))
 	}
+
+	running, err := utils.K3sRunning(suite.rootCmd)
+	if err != nil || !running {
+		log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+	}
+
 	suite.logBuf = gbytes.NewBuffer()
 
 }
@@ -66,14 +72,6 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	suite.rootCmd.Printf("%#v\n", rs[2])
 	suite.pipelineName = rs[1]
 	suite.pipelineID = rs[2]
-
-	// suite.logBuf = gbytes.NewBuffer()
-	// log.SetOutput(suite.logBuf)
-	// defer func() {
-	// 	log.SetOutput(os.Stderr)
-	// }()
-
-	// log.SetOutput(ioutil.Discard)
 }
 
 func (suite *ProgramDeleteSuite) Test_DeletePipeline() {
