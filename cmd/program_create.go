@@ -25,6 +25,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
+	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -71,6 +72,12 @@ var CreateProgramCmd = &cobra.Command{
 		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
 		if err != nil {
 			return err
+		}
+
+		if err := GetDependencyCheckers().CheckDependenciesInstalled(cmd); err != nil {
+			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
+				return nil
+			}
 		}
 
 		if kubectlCommand == "" {

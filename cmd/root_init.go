@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
@@ -36,6 +37,23 @@ var initCmd = &cobra.Command{
 	Short: "Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc)",
 	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if checkIfReady, _ := cmd.Flags().GetBool("ready"); checkIfReady {
+			isReady, err := utils.KFPReady(cmd)
+			if err != nil {
+				message := fmt.Sprintf("Error checking for SAME readiness: %v", err)
+				cmd.Println(message)
+				if utils.PrintErrorAndReturnExit(cmd, message, nil) {
+					return nil
+				}
+			} else {
+				if isReady {
+					cmd.Println("SAME is ready to deploy programs.")
+				} else {
+					cmd.Println("SAME is NOT ready yet. For more information you can execute 'kubectl get deployments --namespace=kubeflow'")
+				}
+				return nil
+			}
+		}
 		var dc = GetDependencyCheckers()
 		dc.SetCmdArgs(args)
 		dc.SetCmd(cmd)
@@ -81,6 +99,27 @@ var initCmd = &cobra.Command{
 			if utils.PrintError("Error while setting up Kubernetes API: %v", err) {
 				return err
 			}
+		}
+
+		cmd.Println("Your installation is complete and running!")
+		shouldWait, _ := cmd.PersistentFlags().GetBool("wait")
+		if shouldWait {
+			cmd.Println("Waiting for SAME to become ready... often takes > 5 minutes. \n You can cancel at any time and it will not affect setup. Use 'same init --ready' to check manually.")
+			elapsedTime := 0
+			for {
+				cmd.Printf("%v...", elapsedTime)
+				if isReady, _ := utils.KFPReady(cmd); isReady {
+					cmd.Println("SAME pipeline is ready.")
+					return nil
+				}
+				time.Sleep(5 * time.Second)
+
+				// Printed after sleep is over
+				elapsedTime += 5
+
+			}
+		} else {
+			cmd.Println("SAME deployed but we did not check to see if everything is running. Please do so using 'kubectl get deployments namespace=kubeflow'.")
 		}
 
 		return nil
@@ -175,7 +214,7 @@ func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Installer
 	}
 
 	if hasProvisionedNewResources {
-		cmd.Println("Infrastructure Setup Complete. Ready to create programs.")
+		cmd.Println("Infrastructure Setup Complete.")
 	} else {
 		cmd.Println("Using existing infrastructure. Ready to create programs.")
 	}
@@ -184,7 +223,10 @@ func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Installer
 }
 
 func init() {
+	initCmd.PersistentFlags().BoolP("wait", "w", true, "Wait for SAME to be ready before exiting. Can be run or quit with no impact.")
+	initCmd.PersistentFlags().BoolP("ready", "r", false, "Run a check to see if all SAME components are ready in the cluster.")
 	RootCmd.AddCommand(initCmd)
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

@@ -54,6 +54,10 @@ func (suite *ProgramCreateSuite) SetupTest() {
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
 	// log.SetOutput(ioutil.Discard)
 	suite.kubectlCommand = "kubectl"
+
+	if ok, _ := utils.KFPReady(suite.rootCmd); !ok {
+		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
+	}
 }
 
 func (suite *ProgramCreateSuite) TearDownAllSuite() {

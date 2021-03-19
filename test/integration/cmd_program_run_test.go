@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
@@ -43,7 +42,10 @@ func (suite *ProgramRunSuite) SetupAllSuite() {
 // Before each test
 func (suite *ProgramRunSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
-	log.SetOutput(ioutil.Discard)
+	if ok, _ := utils.KFPReady(suite.rootCmd); !ok {
+		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
+	}
+
 }
 
 // After test

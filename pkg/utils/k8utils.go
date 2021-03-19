@@ -232,7 +232,6 @@ func K3sRunning(cmd *cobra.Command) (running bool, err error) {
 	// Declared an empty interface
 	//var result map[string]interface{}
 	var result v1.DeploymentList
-	_ = scriptOutput
 
 	//  waiting_pod_array=("k8s-app=kube-dns;kube-system"
 	// "k8s-app=metrics-server;kube-system"
@@ -259,4 +258,34 @@ func K3sRunning(cmd *cobra.Command) (running bool, err error) {
 	}
 
 	return kubeDnsRunning && metricsServerRunning, nil
+}
+
+func KFPReady(cmd *cobra.Command) (running bool, err error) {
+	scriptCmd := exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kubeflow -o json")
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("Failed to test if k3s is running. That's all we know: %v", err)
+	}
+
+	// Declared an empty interface
+	//var result map[string]interface{}
+	var result v1.DeploymentList
+
+	//  waiting_pod_array=("k8s-app=kube-dns;kube-system"
+	// "k8s-app=metrics-server;kube-system"
+
+	// Unmarshal or Decode the JSON to the interface.
+	//err = json.Unmarshal([]byte(scriptOutput), &result)
+	err = json.Unmarshal(scriptOutput, &result)
+	if err != nil {
+		return false, fmt.Errorf("Failed to unmarshall result of kubeflow test: %v", err)
+	}
+
+	all_ready := true
+
+	for _, deployment := range result.Items {
+		all_ready = all_ready && (deployment.Status.ReadyReplicas > 0)
+	}
+
+	return all_ready, nil
 }

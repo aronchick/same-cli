@@ -81,6 +81,7 @@ func (suite *InitSuite) Test_LocalTarget() {
 
 func (suite *InitSuite) Test_KFPLocalInstallFailed() {
 	os.Setenv("TEST_PASS", "1")
+	// The below will fail if k3s is not installed. Need to fix once utils are mocked out.
 	out := execute_target(suite, "local", "kfp-install-failed")
 	assert.Contains(suite.T(), string(out), "INSTALL KFP FAILED")
 	assert.Equal(suite.T(), true, suite.fatal)

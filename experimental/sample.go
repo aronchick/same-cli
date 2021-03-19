@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/azure-octo/same-cli/cmd"
 	"github.com/azure-octo/same-cli/pkg/utils"
@@ -140,10 +139,13 @@ func main() {
 	// 	os.Chown(kDir, uid, gid)
 	// }
 
-	cmd := cmd.RootCmd
-	a, _ := exec.LookPath("/usr/local/bin/k3s")
-	fmt.Printf("Cmd: %v", a)
+	// cmd := cmd.RootCmd
+	// a, _ := exec.LookPath("/usr/local/bin/k3s")
+	// fmt.Printf("Cmd: %v", a)
 
-	b, _ := utils.K3sRunning(cmd)
-	fmt.Printf("Cmd B: %v", b)
+	// b, _ := utils.K3sRunning(cmd)
+	// fmt.Printf("Cmd B: %v", b)
+
+	isReady, _ := utils.KFPReady(cmd.RootCmd)
+	fmt.Printf("KFP ready: %v", isReady)
 }

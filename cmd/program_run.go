@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -78,6 +79,12 @@ var runProgramCmd = &cobra.Command{
 				return err
 			}
 			kubectlCommand = "kubectl"
+		}
+
+		if err := GetDependencyCheckers().CheckDependenciesInstalled(cmd); err != nil {
+			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
+				return nil
+			}
 		}
 		// HACK: Currently Kubeconfig must define default namespace
 		if err := exec.Command("/bin/bash", "-c", fmt.Sprintf("%v config set 'contexts.'`%v config current-context`'.namespace' kubeflow", kubectlCommand, kubectlCommand)).Run(); err != nil {

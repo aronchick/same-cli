@@ -53,6 +53,10 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	os.Setenv("TEST_PASS", "1")
 	suite.rootCmd = cmd.RootCmd
 
+	if ok, _ := utils.KFPReady(suite.rootCmd); !ok {
+		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
+	}        
+
 	c, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/deletepipeline.yaml")
 	_ = c
 	_ = out

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -36,6 +37,11 @@ var listProgramCmd = &cobra.Command{
 			return err
 		}
 
+		if err := GetDependencyCheckers().CheckDependenciesInstalled(cmd); err != nil {
+			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
+				return nil
+			}
+		}
 		// HACK: Currently Kubeconfig must define default namespace
 		if err := exec.Command("/bin/bash", "-c", "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow").Run(); err != nil {
 			log.Errorf("Could not set kubeconfig default context to use kubeflow namespace.")

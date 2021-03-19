@@ -220,7 +220,7 @@ func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
 			}
 		}
 	}
-	outputBytes, err := exec.Command("/bin/bash", "-c", kubeConfigEnv+currentContextScript).CombinedOutput()
+	outputBytes, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("KUBECONFIG=%v ", kubeConfigEnv)+currentContextScript).CombinedOutput()
 	if err != nil {
 		outputString := string(outputBytes)
 		log.Tracef("Output String: %v", outputString)
@@ -282,10 +282,12 @@ Raw error: %v
 
 Cmd error: `
 	INIT_ERROR_KUBECONFIG_PERMISSIONS string = `
-It appears either your $HOME/.kube, $HOME/.kube/config don't exist or you don't have permissions to write them. Please execute the following commands:
+It appears either your $HOME/.kube, $HOME/.kube/config don't exist, it is empty or you don't have permissions to write to it. Please execute the following commands:
 sudo chown %v $HOME/.kube
 sudo chown %v $HOME/.kube/config
-kubectl config view --flatten > $HOME/.kube/config
+
+# If using k3s - 
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml:$HOME/.kube/config kubectl config view --flatten > $HOME/.kube/config
 
 Raw error: `
 	INIT_ERROR_CURRENT_CONTEXT_UNSET string = `

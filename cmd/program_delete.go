@@ -19,6 +19,7 @@ limitations under the License.
 import (
 	"fmt"
 
+	"github.com/azure-octo/same-cli/pkg/utils"
 	pipelineClientParams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 	log "github.com/sirupsen/logrus"
@@ -37,6 +38,12 @@ var deleteCmd = &cobra.Command{
 			cmd.PrintErr(message.Error())
 			log.Fatalf(message.Error())
 			return message
+		}
+
+		if err := GetDependencyCheckers().CheckDependenciesInstalled(cmd); err != nil {
+			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
+				return nil
+			}
 		}
 
 		kfpconfig := *NewKFPConfig()
