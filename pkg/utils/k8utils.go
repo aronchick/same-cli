@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	gogetter "github.com/hashicorp/go-getter"
@@ -200,16 +201,29 @@ func HasClusters(cmd *cobra.Command) (clusters []string, err error) {
 
 func K3sRunning(cmd *cobra.Command) (running bool, err error) {
 	_, err = exec.LookPath("/usr/local/bin/k3s")
+	var scriptCmd *exec.Cmd
+
 	if err != nil {
-		log.Tracef("K3s not found in path.")
-		return false, fmt.Errorf("K3s does not appear in your path: %v", err)
+		if runtime.GOOS == "darwin" {
+			_, err := exec.LookPath("k3d")
+			if err == nil {
+				scriptCmd = exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kube-system -o json")
+			} else {
+				log.Tracef("Neither K3s nor K3d found in path.")
+				return false, fmt.Errorf("Neither K3s nor K3d appear in your path: %v", err)
+			}
+		} else {
+			log.Tracef("K3s not found in path.")
+			return false, fmt.Errorf("K3s does not appear in your path: %v", err)
+		}
+	} else {
+		if !IsSudoer() {
+			log.Tracef("K3s not found in path.")
+			return false, fmt.Errorf("You must be part of sudoers in order to test for k3s: %v", err)
+		}
+		scriptCmd = exec.Command("/bin/bash", "-c", "sudo k3s kubectl get deployments --namespace=kube-system -o json")
 	}
 
-	if !IsSudoer() {
-		log.Tracef("K3s not found in path.")
-		return false, fmt.Errorf("You must be part of sudoers in order to test for k3s: %v", err)
-	}
-	scriptCmd := exec.Command("/bin/bash", "-c", "sudo k3s kubectl get deployments --namespace=kube-system -o json")
 	scriptOutput, err := scriptCmd.CombinedOutput()
 	if err != nil {
 		return false, fmt.Errorf("Failed to test if k3s is running. That's all we know: %v", err)

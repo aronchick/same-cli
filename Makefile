@@ -32,7 +32,7 @@ OPERATOR_BINARY_NAME ?= $(shell basename ${PWD})
 TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
-ARCH = linux
+ARCH ?= $(shell go env GOOS)_$(shell go env GOARCH)
 
 RELEASE_USER := SAME-Project
 RELEASE_REPO :=SAMPLE-CLI-TESTER
@@ -104,7 +104,7 @@ build: build-same
 ################################################################################
 .PHONY: build-same
 build-same: fmt vet
-	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
+	CGO_ENABLED=0 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 	cp bin/$(ARCH)/same bin/same
 
 # Fast rebuilds useful for development.
@@ -114,7 +114,7 @@ build-same: fmt vet
 ################################################################################
 .PHONY: build-same-fast
 build-same-fast: fmt vet
-	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
+	CGO_ENABLED=0 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/same main.go
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -226,7 +226,7 @@ test: build-same check-licenses
 ################################################################################
 .PHONY: lint
 lint: build-same
-	golangci-lint run
+	golangci-lint run --timeout 10m
 
 # Run the unittests and output a junit report for use with prow
 ################################################################################

@@ -28,22 +28,17 @@ jobs:
       GOPROXY: https://proxy.golang.org
       ARCHIVE_OUTDIR: dist/archives
     strategy:
+      fail-fast: false
       matrix:
-        go-version: [1.16.x]
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-        target_arch: [arm, arm64, amd64]
+        go-version: [1.16.2]
+        os: [ubuntu-latest, macOS-latest]
+        target_arch: [arm64, amd64]
         include:
           - os: ubuntu-latest
             target_os: linux
-          - os: windows-latest
-            target_os: windows
           - os: macOS-latest
             target_os: darwin
         exclude:
-          - os: windows-latest
-            target_arch: arm
-          - os: windows-latest
-            target_arch: arm64
           - os: macOS-latest
             target_arch: arm
           - os: macOS-latest
@@ -76,14 +71,27 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.37
+          args: --timeout 10m
       - name: Run go mod tidy check diff
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: make modtidy check-diff
+      - name: Install Kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${{ matrix.target_os }}/${{ matrix.target_arch }}/kubectl"
+          mkdir -p $HOME/.local/bin
+          mv ./kubectl $HOME/.local/bin/kubectl
+          echo "$HOME/.local/bin/kubectl" >> $GITHUB_PATH
+      - name: Set up Kubeconfig from Github Secret
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.CORE_TEAM_CLUSTER_KUBECONFIG }}" > $HOME/.kube/config
       - name: Run make test
         env:
           COVERAGE_OPTS: "-coverprofile=coverage.txt -covermode=atomic"
         if: matrix.target_arch == 'amd64'
-        run: make test
+        run: |
+          export PATH=$PATH:$HOME/.local/bin
+          make test
       - name: Codecov
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         uses: codecov/codecov-action@v1

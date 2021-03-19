@@ -26,7 +26,6 @@ import (
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var CreateProgramCmd = &cobra.Command{
@@ -39,8 +38,6 @@ var CreateProgramCmd = &cobra.Command{
 	This command configures the program but does not execute it.`,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		log.Tracef("In Create.RunE")
-
-		var i = GetDependencyCheckers()
 
 		// There's probably a better way to do this, but need to figure out how to pass back a value from initConfig (when tests fail but panics are mocked)
 		if os.Getenv("TEST_EXIT") == "1" {
@@ -85,22 +82,6 @@ var CreateProgramCmd = &cobra.Command{
 		} else {
 			// Remove beginning and ending quotes if present
 			kubectlCommand = regexp.MustCompile(`['"]*([^'"]*)['"]*`).ReplaceAllString(kubectlCommand, `$1`)
-		}
-
-		activecontext := viper.GetString("activecontext")
-
-		if activecontext == "" {
-			output := i.WriteCurrentContextToConfig()
-			log.Infof("No active context set in your configation file. Set it to: %v", output)
-		} else {
-			setContextCommand := fmt.Sprintf("KUBECTL_BIN=%v; $KUBECTL_BIN config use-context %v", kubectlCommand, activecontext)
-			log.Tracef("About to set active context to '%v': %v", activecontext, setContextCommand)
-
-			if err := exec.Command("/bin/bash", "-c", setContextCommand).Run(); err != nil {
-				message := fmt.Errorf("Could not set active context: %v", err)
-				log.Error(message.Error())
-				return message
-			}
 		}
 
 		// HACK: Currently Kubeconfig must define default namespace
