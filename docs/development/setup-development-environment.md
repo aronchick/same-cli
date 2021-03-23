@@ -87,9 +87,10 @@ mkdir ~/.same
 touch ~/.same/config.yaml
 echo "activepipeline: nil" >> ~/.same/config.yaml
 ```
-- Create your first Kubeflow cluster
+- Create your first Kubeflow cluster (this will create a local k3s cluster and then install kubeflow on it)
 ```
-bin/same create
+sudo bin/same installK3s
+bin/same init
 ```
 
 - Run the full tests
