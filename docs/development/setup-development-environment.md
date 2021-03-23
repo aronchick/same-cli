@@ -79,7 +79,7 @@ curl https://cdn.porter.sh/latest/install-linux.sh | bash
 echo "export PATH=$PATH:~/.porter" >> ~/.bashrc
 ```
 
-- # How to build
+# How to build
 Just run `make build`
 ```
 # The below will go away soon
@@ -92,6 +92,22 @@ echo "activepipeline: nil" >> ~/.same/config.yaml
 sudo bin/same installK3s
 bin/same init
 ```
+
+To create a sample pipeline:
+```
+bin/same program create -f same.yaml
+```
+
+(Note that `same program create` only creates the pipeline, it doesn't run it.)
+
+To access the ml pipeline UI:
+```
+kubectl port-forward svc/ml-pipeline-ui 8080:80
+```
+Then go to [http://localhost:8080](http://localhost:8080)
+
+(Note the sample pipeline doesn't current work on k3s.)
+
 
 - Run the full tests
 
