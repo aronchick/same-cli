@@ -3,6 +3,7 @@ package infra
 import (
 	"fmt"
 
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -68,6 +69,8 @@ func (mockDC *MockDependencyCheckers) CreateAKSwithKubeflow(*cobra.Command) (err
 func (mockDC *MockDependencyCheckers) CheckDependenciesInstalled(*cobra.Command) (err error) {
 	if utils.ContainsString(mockDC.GetCmdArgs(), "dependencies-missing") {
 		return fmt.Errorf("DEPENDENCIES MISSING")
+	} else if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE) {
+		return fmt.Errorf(mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_RESULT)
 	}
 
 	return nil
@@ -84,6 +87,13 @@ func (mockDC *MockDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, er
 		return false, fmt.Errorf("K3S NOT RUNNING")
 	}
 	return true, nil
+}
+
+func (mockDC *MockDependencyCheckers) IsKubectlOnPath(cmd *cobra.Command) (string, error) {
+	if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE) {
+		return "", fmt.Errorf(mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE)
+	}
+	return "VALID_KUBECTL", nil
 }
 
 func (mockDC *MockDependencyCheckers) WriteCurrentContextToConfig() string {

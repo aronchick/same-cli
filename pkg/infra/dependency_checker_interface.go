@@ -1,11 +1,15 @@
 package infra
 
 import (
+	"os"
+
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 type DependencyCheckers interface {
 	CheckDependenciesInstalled(*cobra.Command) error
+	IsKubectlOnPath(*cobra.Command) (string, error)
 	HasValidAzureToken(*cobra.Command) (bool, error)
 	IsClusterWithKubeflowCreated(*cobra.Command) (bool, error)
 	IsK3sRunning(*cobra.Command) (bool, error)
@@ -17,4 +21,15 @@ type DependencyCheckers interface {
 	GetCmdArgs() []string
 	SetCmdArgs([]string)
 	WriteCurrentContextToConfig() string
+}
+
+func GetDependencyCheckers(cmd *cobra.Command, args []string) DependencyCheckers {
+	logrus.Tracef("Current TEST_PASS value: %v", os.Getenv("TEST_PASS"))
+	var i DependencyCheckers = &LiveDependencyCheckers{}
+	if os.Getenv("TEST_PASS") != "" {
+		i = &MockDependencyCheckers{}
+	}
+	i.SetCmd(cmd)
+	i.SetCmdArgs(args)
+	return i
 }

@@ -37,26 +37,7 @@ var initCmd = &cobra.Command{
 	Short: "Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc)",
 	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if checkIfReady, _ := cmd.Flags().GetBool("ready"); checkIfReady {
-			isReady, err := utils.KFPReady(cmd)
-			if err != nil {
-				message := fmt.Sprintf("Error checking for SAME readiness: %v", err)
-				cmd.Println(message)
-				if utils.PrintErrorAndReturnExit(cmd, message, nil) {
-					return nil
-				}
-			} else {
-				if isReady {
-					cmd.Println("SAME is ready to deploy programs.")
-				} else {
-					cmd.Println("SAME is NOT ready yet. For more information you can execute 'kubectl get deployments --namespace=kubeflow'")
-				}
-				return nil
-			}
-		}
-		var dc = GetDependencyCheckers()
-		dc.SetCmdArgs(args)
-		dc.SetCmd(cmd)
+		var dc = infra.GetDependencyCheckers(cmd, args)
 
 		var i = GetClusterInstallMethods()
 		i.SetCmdArgs(args)
@@ -127,14 +108,6 @@ var initCmd = &cobra.Command{
 	},
 }
 
-func GetDependencyCheckers() infra.DependencyCheckers {
-	if os.Getenv("TEST_PASS") == "" {
-		return &infra.LiveDependencyCheckers{}
-	} else {
-		return &infra.MockDependencyCheckers{}
-	}
-}
-
 func GetClusterInstallMethods() infra.InstallerInterface {
 	if os.Getenv("TEST_PASS") == "" {
 		return &infra.LiveInstallers{}
@@ -144,34 +117,28 @@ func GetClusterInstallMethods() infra.InstallerInterface {
 }
 
 func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
-
-	k8sType := "k3s"
-
-	switch k8sType {
-	case "k3s":
-		_, err := i.DetectK3s("k3s")
-		k3sRunning, k3sRunningErr := utils.K3sRunning(cmd)
-		if err != nil {
-			if utils.PrintError("k3s not installed/detected on path. Please run 'sudo same installK3s' to install: %v", err) {
-				return err
-			}
-		} else if k3sRunningErr != nil {
-			if utils.PrintError("Error checking to see if k3s is running: %v", err) {
-				return err
-			}
-		} else if !k3sRunning {
-			if utils.PrintError("Core k3s services aren't running, but the server looks correct. You may want to check back in a few minutes.", nil) {
-				return err
-			}
+	clusters, err := utils.HasClusters(cmd)
+	if err != nil {
+		if utils.PrintErrorAndReturnExit(cmd, "error while checking for active clusters using the following command 'kubectl config get-clusters': %v", err) {
+			return nil
 		}
-		i.SetKubectlCmd("kubectl")
-	default:
-		if utils.PrintError("no local kubernetes type selected", nil) {
-			return err
+	} else if len(clusters) < 1 {
+		if utils.PrintErrorAndReturnExit(cmd, "We were able to check for current clusters, but you don't have any. Please create a k8s cluster. %v", fmt.Errorf("")) {
+			return nil
 		}
 	}
-	log.Traceln("k3s detected, proceeding to install KFP.")
-	log.Tracef("k3s path: %v", i.GetKubectlCmd())
+	context, err := utils.HasContext(cmd)
+	if err != nil {
+		if utils.PrintErrorAndReturnExit(cmd, "error while checking for current context - using the following command 'kubectl config current-context': %v", err) {
+			return nil
+		}
+	} else if context == "" {
+		if utils.PrintErrorAndReturnExit(cmd, "We were able to check for current context, but you don't have any. %v", fmt.Errorf("")) {
+			return nil
+		}
+	}
+	log.Traceln("K8s cluster and context detected, proceeding to install KFP.")
+	log.Tracef("kubectl path: %v", i.GetKubectlCmd())
 
 	currentContext := dc.WriteCurrentContextToConfig()
 	log.Infof("Wrote kubectl current context as: %v", currentContext)

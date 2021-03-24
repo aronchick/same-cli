@@ -39,8 +39,6 @@ func (suite *InitSuite) TearDownTest() {
 
 }
 
-// All methods that begin with "Test" are run as tests within a
-// suite.
 func (suite *InitSuite) Test_EmptyConfig() {
 	viper.Reset()
 	os.Unsetenv("SAME_TARGET")
@@ -50,7 +48,8 @@ func (suite *InitSuite) Test_EmptyConfig() {
 
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", "../testdata/config/emptyconfig.yaml")
 
-	assert.Contains(suite.T(), string(out), "as a default")
+	assert.Equal(suite.T(), false, suite.fatal)
+	assert.Contains(suite.T(), string(out), "using 'local' as a default")
 }
 
 func (suite *InitSuite) Test_BadTarget() {
@@ -66,6 +65,9 @@ func (suite *InitSuite) Test_AKSTarget() {
 }
 
 func (suite *InitSuite) Test_LocalTarget() {
+	if os.Getenv("TEST_K3S") != "true" {
+		suite.T().Skip()
+	}
 	out := execute_target(suite, "local", "")
 	assert.Contains(suite.T(), string(out), "Executing local setup")
 	assert.Equal(suite.T(), false, suite.fatal)
@@ -81,6 +83,9 @@ func (suite *InitSuite) Test_LocalTarget() {
 
 func (suite *InitSuite) Test_KFPLocalInstallFailed() {
 	os.Setenv("TEST_PASS", "1")
+	if os.Getenv("TEST_K3S") != "true" {
+		suite.T().Skip()
+	}
 	// The below will fail if k3s is not installed. Need to fix once utils are mocked out.
 	out := execute_target(suite, "local", "kfp-install-failed")
 	assert.Contains(suite.T(), string(out), "INSTALL KFP FAILED")

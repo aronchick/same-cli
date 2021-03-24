@@ -180,7 +180,7 @@ func (i *LiveInstallers) PostInstallK3sRunning(cmd *cobra.Command) (err error) {
 	elapsedTime := 0
 	for {
 		cmd.Printf("%v...", elapsedTime)
-		if isRunning, _ := utils.K3sRunning(cmd); isRunning {
+		if isRunning, _ := utils.GetUtils().K3sRunning(cmd); isRunning {
 			cmd.Println("k3s is running locally.")
 			return nil
 		}

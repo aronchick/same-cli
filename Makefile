@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-GOLANG_VERSION ?= 1.16.2
+GOLANG_VERSION ?= 1.15.6
 GOPATH ?= $(HOME)/go
 
 # set to -V
@@ -25,11 +25,7 @@ export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = same-cli
 
-IMAGE_BUILDER ?= docker
-DOCKERFILE ?= Dockerfile
-OPERATOR_BINARY_NAME ?= $(shell basename ${PWD})
-
-TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
+TAG ?= $(eval TAG := $(shell git describe --tags --long --always))$(TAG)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 ARCH ?= $(shell go env GOOS)_$(shell go env GOARCH)
@@ -55,6 +51,13 @@ PUBLIC_KEY_FILE := public.pem
 else
 PUBLIC_KEY_FILE := test/testdata/signature_keys/public.pem
 endif
+
+RELEASE_USER := SAME-Project
+RELEASE_REPO :=SAMPLE-CLI-TESTER
+
+TMPRELEASEWORKINGDIR := $(shell mktemp -d -t same-release-dir.XXXXXXX)
+TMPARTIFACTDIR := $(shell mktemp -d -t same-artifact-dir.XXXXXXX)
+PACKAGE := $(shell echo "same_$(TAG)_$(ARCH)")
 
 # Location of junit file
 JUNIT_FILE ?= /tmp/report.xml
@@ -114,7 +117,7 @@ build-same: fmt vet
 ################################################################################
 .PHONY: build-same-fast
 build-same-fast: fmt vet
-	CGO_ENABLED=0 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/same main.go
+	CGO_ENABLED=0 ARCH=linux GOARCH=amd64 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################
@@ -128,16 +131,26 @@ build-same-tgz: build-same
 	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
 	cp bin/$(ARCH)/same $(TMPARTIFACTDIR)/$(PACKAGE)/same
 	cd $(TMPRELEASEWORKINGDIR)
-	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/sign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE)/same
+	openssl dgst -sha256 -sign private.pem -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/sign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE)/same
 	openssl base64 -in $(TMPRELEASEWORKINGDIR)/sign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE)/same.signature.sha256
 	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
-	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
+	openssl dgst -sha256 -sign private.pem -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
 	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
 	@echo "BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
 	@echo "BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
 	@echo "BINARY_TARBALL_SIGNATURE=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
 	@echo "BINARY_TARBALL_SIGNATURE_NAME=$(PACKAGE).tar.gz.signature.sha256" >> $(GITHUB_ENV)
+
+# Build but don't attach the latest tag. This allows manual testing/inspection of the image
+# first.
+################################################################################
+# Target: push                                                                 #
+################################################################################
+.PHONY: push
+push: build
+	docker push $(BOOTSTRAPPER_IMG):$(TAG)
+	@echo Pushed $(BOOTSTRAPPER_IMG):$(TAG)
 
 ################################################################################
 # Target: build-same-container                                                 #
@@ -159,16 +172,6 @@ build-same-container:
 	docker cp temp_same_container:/usr/local/bin/same ./bin/same
 	docker rm temp_same_container
 	@echo Exported same binary to bin/same
-
-# Build but don't attach the latest tag. This allows manual testing/inspection of the image
-# first.
-################################################################################
-# Target: push                                                                 #
-################################################################################
-.PHONY: push
-push: build
-	docker push $(BOOTSTRAPPER_IMG):$(TAG)
-	@echo Pushed $(BOOTSTRAPPER_IMG):$(TAG)
 
 ################################################################################
 # Target: install                                                              #

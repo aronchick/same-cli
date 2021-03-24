@@ -88,14 +88,13 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command)
 		return err
 	}
 
-	_, err = exec.LookPath("kubectl")
-	if err != nil {
-
-		cmd.Println("kubectl not installed or not on PATH")
-		cmd.Println("Read more how to install it here: https://kubernetes.io/docs/tasks/tools/")
+	kubectlPath, err := dc.IsKubectlOnPath(cmd)
+	if err != nil || kubectlPath == "" {
+		cmd.Printf("Could not find Kubectl on your path: %v", err.Error())
 		return err
-
 	}
+
+	log.Tracef("Error")
 
 	kubeconfigValue := os.Getenv("KUBECONFIG")
 	if kubeconfigValue == "" {
@@ -259,7 +258,17 @@ func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
 }
 
 func (dc *LiveDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, error) {
-	return utils.K3sRunning(cmd)
+	return utils.GetUtils().K3sRunning(cmd)
+}
+
+func (dc *LiveDependencyCheckers) IsKubectlOnPath(cmd *cobra.Command) (string, error) {
+	kubectlPath, err := exec.LookPath("kubectl")
+	if kubectlPath == "" || err != nil {
+		if utils.PrintError("could not find kubectl on your path: %v", err) {
+			return "", err
+		}
+	}
+	return kubectlPath, nil
 }
 
 type InitClusterMethods struct {

@@ -39,9 +39,11 @@ func (suite *ProgramDeleteSuite) SetupAllSuite() {
 		log.Printf("not sure if this is a bad thing, there's an output from creating the pipeline during setup: %v", string(out))
 	}
 
-	running, err := utils.K3sRunning(suite.rootCmd)
-	if err != nil || !running {
-		log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+	if os.Getenv("TEST_K3S") == "true" {
+		running, err := utils.GetUtils().K3sRunning(suite.rootCmd)
+		if err != nil || !running {
+			log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+		}
 	}
 
 	suite.logBuf = gbytes.NewBuffer()

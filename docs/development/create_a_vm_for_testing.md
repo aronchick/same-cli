@@ -1,0 +1,11 @@
+az vm create \
+--resource-group <YOUR_USER_GROUP> \
+--image UbuntuLTS \
+--admin-username <YOUR_USER_NAME> \
+--vnet-name <YOUR_VNET_NAME> \
+--size Standard_D8s_v3 \
+--ssh-key-values @~/.ssh/id_rsa.pub \
+--location <YOUR_LOCATION> \
+--subscription <YOUR_SUBSCRIPTION_ID> \
+--subnet <YOUR_SUBNET_NAME> \
+--name <VM_NAME>

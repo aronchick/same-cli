@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
+	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -69,30 +69,14 @@ var CreateProgramCmd = &cobra.Command{
 			return err
 		}
 
-		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
-		if err != nil {
-			return err
-		}
-
-		if err := GetDependencyCheckers().CheckDependenciesInstalled(cmd); err != nil {
-			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
+		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
+			if utils.PrintErrorAndReturnExit(cmd, "Error while checking dependencies: %v", err) {
 				return nil
 			}
 		}
 
-		if kubectlCommand == "" {
-			if _, err := kubectlExists(); err != nil {
-				log.Error(err.Error())
-				return err
-			}
-			kubectlCommand = "kubectl"
-		} else {
-			// Remove beginning and ending quotes if present
-			kubectlCommand = regexp.MustCompile(`['"]*([^'"]*)['"]*`).ReplaceAllString(kubectlCommand, `$1`)
-		}
-
 		// HACK: Currently Kubeconfig must define default namespace
-		commandToRun := fmt.Sprintf("KUBECTL_BIN=%v; $KUBECTL_BIN config set 'contexts.'`$KUBECTL_BIN config current-context`'.namespace' kubeflow", kubectlCommand)
+		commandToRun := "kubectl config set 'contexts.'`kubectl config current-context`'.namespace' kubeflow"
 		log.Tracef("About to run: %v", commandToRun)
 		if err := exec.Command("/bin/bash", "-c", commandToRun).Run(); err != nil {
 			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
@@ -159,6 +143,5 @@ func init() {
 	CreateProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
 	CreateProgramCmd.PersistentFlags().StringP("name", "n", "", "The program name")
 	CreateProgramCmd.PersistentFlags().String("description", "", "Brief description of the program")
-	CreateProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
 
 }

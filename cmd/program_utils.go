@@ -348,6 +348,7 @@ func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
 		filePath = tempSameFile.Name()
 	} else {
 		cwd, _ := os.Getwd()
+		log.Tracef("CWD: %v", cwd)
 		absFilePath, _ := filepath.Abs(putativeFilePath)
 		filePath, _ = gogetter.Detect(absFilePath, cwd, []gogetter.Detector{new(gogetter.GitHubDetector), new(gogetter.FileDetector)})
 

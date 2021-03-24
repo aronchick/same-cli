@@ -19,6 +19,7 @@ limitations under the License.
 import (
 	"fmt"
 
+	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	pipelineClientParams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
@@ -40,7 +41,7 @@ var deleteCmd = &cobra.Command{
 			return message
 		}
 
-		if err := GetDependencyCheckers().CheckDependenciesInstalled(cmd); err != nil {
+		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
 			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
 				return nil
 			}
@@ -67,6 +68,7 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
+		kfpconfig := *NewKFPConfig()
 		deleteClient, err := apiclient.NewPipelineClient(kfpconfig, false)
 		if err != nil {
 			message := fmt.Errorf("could not create API client for deleting a pipeline pipeline: %v", err)

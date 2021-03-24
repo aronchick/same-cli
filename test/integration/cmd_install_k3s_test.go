@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
-	"github.com/azure-octo/same-cli/pkg/infra"
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -32,8 +32,7 @@ func (suite *InstallK3sSuite) SetupTest() {
 	// log.SetOutput(ioutil.Discard)
 	os.Setenv("TEST_PASS", "1")
 
-	i := infra.MockInstallers{}
-	_, err := i.DetectK3s("k3s")
+	_, err := utils.GetUtils().DetectK3s()
 	if err == nil {
 		log.Warn("k3s detected, please uninstall with\n./pkg/infra/k3s-uninstall.sh")
 	}
@@ -48,7 +47,6 @@ func (suite *InstallK3sSuite) Test_AssertPass() {
 	// Just a placeholder test until we figure out what to test for real.
 	assert.True(suite.T(), true)
 }
-
 
 func TestInstallK3sSuite(t *testing.T) {
 	suite.Run(t, new(InstallK3sSuite))

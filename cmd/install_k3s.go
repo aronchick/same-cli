@@ -34,7 +34,7 @@ var installK3sCmd = &cobra.Command{
 			log.Fatalf("error installing k3s: %v", err)
 		}
 		cmd.Println("K3s installed.")
-		k3sRunning, _ := utils.K3sRunning(cmd)
+		k3sRunning, _ := utils.GetUtils().K3sRunning(cmd)
 		if err == nil && k3sRunning {
 			cmd.Println("K3s started.")
 		} else {
@@ -42,7 +42,7 @@ var installK3sCmd = &cobra.Command{
 		}
 
 		// Need explicit path to detect
-		_, err = i.DetectK3s("/usr/local/bin/k3s")
+		_, err = utils.GetUtils().DetectK3s()
 		if err != nil {
 			log.Fatalf("error detecting k3s: %v", err)
 		}

@@ -15,14 +15,8 @@ type MockInstallers struct {
 }
 
 func (mi *MockInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	// TODO: Should have a real failure to install k3s message
-	k3sCommand, err = mi.DetectK3s("k3s")
-	return k3sCommand, err
-}
-
-func (mi *MockInstallers) DetectK3s(s string) (string, error) {
-	if utils.ContainsString(mi._cmdArgs, "k3s-not-detected") {
-		return "", fmt.Errorf("K3S NOT DETECTED")
+	if utils.ContainsString(mi.GetCmdArgs(), "k3s-install-failed") {
+		return "", fmt.Errorf("INSTALL K3S FAILED")
 	}
 
 	return "VALID", nil

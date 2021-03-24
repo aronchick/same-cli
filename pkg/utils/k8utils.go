@@ -20,7 +20,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	gogetter "github.com/hashicorp/go-getter"
@@ -170,11 +169,12 @@ func ResolveLocalFilePath(filePathToTest string) (returnFilePath string, err err
 func HasContext(cmd *cobra.Command) (currentContext string, err error) {
 	// https://golang.org/pkg/os/exec/#example_Cmd_StdoutPipe
 	scriptCmd := exec.Command("kubectl", "config", "current-context")
+	log.Tracef("About to execute: %v", scriptCmd)
 	scriptOutput, err := scriptCmd.CombinedOutput()
 	if err != nil {
 		log.Fatalf("Failed to current context for Kubernetes. That's all we know: %v", err)
 	}
-	currentContextString := string(scriptOutput)
+	currentContextString := strings.TrimSpace(string(scriptOutput))
 	if currentContextString != "" {
 		return strings.TrimSpace(currentContextString), nil
 	} else {
@@ -199,31 +199,8 @@ func HasClusters(cmd *cobra.Command) (clusters []string, err error) {
 	return clusters[1:], nil
 }
 
-func K3sRunning(cmd *cobra.Command) (running bool, err error) {
-	_, err = exec.LookPath("/usr/local/bin/k3s")
-	var scriptCmd *exec.Cmd
-
-	if err != nil {
-		if runtime.GOOS == "darwin" {
-			_, err := exec.LookPath("k3d")
-			if err == nil {
-				scriptCmd = exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kube-system -o json")
-			} else {
-				log.Tracef("Neither K3s nor K3d found in path.")
-				return false, fmt.Errorf("Neither K3s nor K3d appear in your path: %v", err)
-			}
-		} else {
-			log.Tracef("K3s not found in path.")
-			return false, fmt.Errorf("K3s does not appear in your path: %v", err)
-		}
-	} else {
-		if !IsSudoer() {
-			log.Tracef("K3s not found in path.")
-			return false, fmt.Errorf("You must be part of sudoers in order to test for k3s: %v", err)
-		}
-		scriptCmd = exec.Command("/bin/bash", "-c", "sudo k3s kubectl get deployments --namespace=kube-system -o json")
-	}
-
+func KFPReady(cmd *cobra.Command) (running bool, err error) {
+	scriptCmd := exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kubeflow -o json")
 	scriptOutput, err := scriptCmd.CombinedOutput()
 	if err != nil {
 		return false, fmt.Errorf("Failed to test if k3s is running. That's all we know: %v", err)
@@ -240,24 +217,36 @@ func K3sRunning(cmd *cobra.Command) (running bool, err error) {
 	//err = json.Unmarshal([]byte(scriptOutput), &result)
 	err = json.Unmarshal(scriptOutput, &result)
 	if err != nil {
-		return false, fmt.Errorf("Failed to unmarshall result of k3s test: %v", err)
+		return false, fmt.Errorf("Failed to unmarshall result of kubeflow test: %v", err)
 	}
 
-	kubeDnsRunning := false
-	metricsServerRunning := false
+	all_ready := true
 
 	for _, deployment := range result.Items {
-		if k8sLabel, ok := deployment.Spec.Selector.MatchLabels["k8s-app"]; ok {
-			switch k8sLabel {
-			case "metrics-server":
-				metricsServerRunning = (deployment.Status.ReadyReplicas > 0)
-			case "kube-dns":
-				kubeDnsRunning = (deployment.Status.ReadyReplicas > 0)
-			}
+		all_ready = all_ready && (deployment.Status.ReadyReplicas > 0)
+	}
+
+	return all_ready, nil
+}
+
+func IsK3sHealthy(cmd *cobra.Command) (kubectlCommand string, err error) {
+	_, err = GetUtils().DetectK3s()
+	k3sRunning, k3sRunningErr := GetUtils().K3sRunning(cmd)
+	if err != nil {
+		if PrintError("k3s not installed/detected on path. Please run 'sudo same installK3s' to install: %v", err) {
+			return "", err
+		}
+	} else if k3sRunningErr != nil {
+		if PrintError("Error checking to see if k3s is running: %v", err) {
+			return "", err
+		}
+	} else if !k3sRunning {
+		if PrintError("Core k3s services aren't running, but the server looks correct. You may want to check back in a few minutes.", nil) {
+			return "", err
 		}
 	}
 
-	return kubeDnsRunning && metricsServerRunning, nil
+	return "kubectl", nil
 }
 
 func KFPReady(cmd *cobra.Command) (running bool, err error) {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -28,6 +29,7 @@ type ProgramCreateSuite struct {
 	logBuf         *gbytes.Buffer
 	kubectlCommand string
 	configFile     *os.File
+	fatal          bool
 }
 
 // Before all suite
@@ -40,9 +42,11 @@ func (suite *ProgramCreateSuite) SetupAllSuite() {
 		log.Fatal("Failed to write to temporary file", err)
 	}
 
-	running, err := utils.K3sRunning(suite.rootCmd)
-	if err != nil || !running {
-		log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+	if os.Getenv("TEST_K3S") == "true" {
+		running, err := utils.GetUtils().K3sRunning(suite.rootCmd)
+		if err != nil || !running {
+			log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+		}
 	}
 
 	os.Setenv("TEST_PASS", "1")
@@ -52,8 +56,8 @@ func (suite *ProgramCreateSuite) SetupAllSuite() {
 func (suite *ProgramCreateSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
-	// log.SetOutput(ioutil.Discard)
 	suite.kubectlCommand = "kubectl"
+	suite.fatal = false
 
 	if ok, _ := utils.KFPReady(suite.rootCmd); !ok {
 		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
@@ -81,18 +85,17 @@ func (suite *ProgramCreateSuite) Test_ExecuteWithCreateAndNoArgs() {
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithFileAndNoKubectl() {
 	os.Setenv("TEST_PASS", "1")
-	origPath := os.Getenv("PATH")
-	os.Setenv("PATH", "")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml", "--config", "../testdata/config/notarget.yaml")
-	assert.Contains(suite.T(), string(out), "Error: the 'kubectl' binary is not on your PATH")
-	os.Setenv("PATH", origPath)
+	defer func() { log.StandardLogger().ExitFunc = nil }()
+	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/same.yaml", "--config", "../testdata/config/notarget.yaml", "--", mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE)
+	assert.Contains(suite.T(), string(out), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_RESULT)
 }
 
 func (suite *ProgramCreateSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 	os.Setenv("TEST_PASS", "1")
 	origKubeconfig := os.Getenv("KUBECONFIG")
 	os.Setenv("KUBECONFIG", "/dev/null/baddir")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "same.yaml", "--config", "../testdata/config/notarget.yaml")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/same.yaml", "--config", "../testdata/config/notarget.yaml")
 	assert.Contains(suite.T(), string(out), "Could not set kubeconfig default context")
 
 	if origKubeconfig != "" {
