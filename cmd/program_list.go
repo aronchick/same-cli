@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/azure-octo/same-cli/pkg/infra"
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -54,6 +55,4 @@ var listProgramCmd = &cobra.Command{
 
 func init() {
 	programCmd.AddCommand(listProgramCmd)
-	RootCmd.AddCommand(programCmd)
-
 }

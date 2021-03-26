@@ -11,6 +11,8 @@ type DependencyCheckers interface {
 	CheckDependenciesInstalled(*cobra.Command) error
 	IsKubectlOnPath(*cobra.Command) (string, error)
 	HasValidAzureToken(*cobra.Command) (bool, error)
+	CanConnectToKubernetes(*cobra.Command) (bool, error)
+	HasKubeflowNamespace(*cobra.Command) (bool, error)
 	IsClusterWithKubeflowCreated(*cobra.Command) (bool, error)
 	IsK3sRunning(*cobra.Command) (bool, error)
 	CreateAKSwithKubeflow(*cobra.Command) error

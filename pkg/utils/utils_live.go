@@ -22,7 +22,7 @@ func (u *UtilsLive) DetectK3s() (string, error) {
 	return exec.LookPath("k3s")
 }
 
-func (u *UtilsLive) K3sRunning(cmd *cobra.Command) (running bool, err error) {
+func (u *UtilsLive) IsK3sRunning(cmd *cobra.Command) (running bool, err error) {
 	_, err = exec.LookPath("/usr/local/bin/k3s")
 	var scriptCmd *exec.Cmd
 

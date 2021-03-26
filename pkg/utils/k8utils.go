@@ -26,6 +26,9 @@ import (
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 
 	"io/ioutil"
 
@@ -199,7 +202,8 @@ func HasClusters(cmd *cobra.Command) (clusters []string, err error) {
 	return clusters[1:], nil
 }
 
-func KFPReady(cmd *cobra.Command) (running bool, err error) {
+func IsKFPReady(cmd *cobra.Command) (running bool, err error) {
+
 	scriptCmd := exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kubeflow -o json")
 	scriptOutput, err := scriptCmd.CombinedOutput()
 	if err != nil {
@@ -231,7 +235,7 @@ func KFPReady(cmd *cobra.Command) (running bool, err error) {
 
 func IsK3sHealthy(cmd *cobra.Command) (kubectlCommand string, err error) {
 	_, err = GetUtils().DetectK3s()
-	k3sRunning, k3sRunningErr := GetUtils().K3sRunning(cmd)
+	k3sRunning, k3sRunningErr := GetUtils().IsK3sRunning(cmd)
 	if err != nil {
 		if PrintError("k3s not installed/detected on path. Please run 'sudo same installK3s' to install: %v", err) {
 			return "", err
@@ -249,32 +253,49 @@ func IsK3sHealthy(cmd *cobra.Command) (kubectlCommand string, err error) {
 	return "kubectl", nil
 }
 
-func KFPReady(cmd *cobra.Command) (running bool, err error) {
-	scriptCmd := exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kubeflow -o json")
-	scriptOutput, err := scriptCmd.CombinedOutput()
+// NewKFPConfig : Create Kubernetes API config compatible with Pipelines from KubeConfig
+func NewKFPConfig() *clientcmd.ClientConfig {
+	// Load kubeconfig
+	var kubeconfig string
+	if home := homedir.HomeDir(); home != "" {
+		kubeconfig = filepath.Join(home, ".kube", "config")
+	} else {
+		panic("Could not find kube config!")
+	}
+
+	kubebytes, err := ioutil.ReadFile(kubeconfig)
 	if err != nil {
-		return false, fmt.Errorf("Failed to test if k3s is running. That's all we know: %v", err)
+		panic(err)
 	}
-
-	// Declared an empty interface
-	//var result map[string]interface{}
-	var result v1.DeploymentList
-
-	//  waiting_pod_array=("k8s-app=kube-dns;kube-system"
-	// "k8s-app=metrics-server;kube-system"
-
-	// Unmarshal or Decode the JSON to the interface.
-	//err = json.Unmarshal([]byte(scriptOutput), &result)
-	err = json.Unmarshal(scriptOutput, &result)
+	// uses kubeconfig current context
+	config, err := clientcmd.NewClientConfigFromBytes(kubebytes)
 	if err != nil {
-		return false, fmt.Errorf("Failed to unmarshall result of kubeflow test: %v", err)
+		panic(err)
 	}
 
-	all_ready := true
+	return &config
+}
 
-	for _, deployment := range result.Items {
-		all_ready = all_ready && (deployment.Status.ReadyReplicas > 0)
+type k8sClient struct {
+	clientset kubernetes.Interface
+}
+
+func GetKubernetesClient() (*k8sClient, error) {
+	var err error
+	client := k8sClient{}
+	clientConfig := *NewKFPConfig()
+	restConfig, _ := clientConfig.ClientConfig()
+	client.clientset, err = kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, err
 	}
+	return &client, nil
+}
 
-	return all_ready, nil
+func (k *k8sClient) GetVersion() (string, error) {
+	version, err := k.clientset.Discovery().ServerVersion()
+	if err != nil {
+		return "", err
+	}
+	return version.String(), nil
 }

@@ -11,9 +11,7 @@ import (
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	gogetter "github.com/hashicorp/go-getter"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
-	experimentparams "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_model"
-	experimentmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_model"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_model"
 	pipelineuploadparams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
@@ -55,46 +53,9 @@ func NewKFPConfig() *clientcmd.ClientConfig {
 	return &config
 }
 
-// CreateRunFromCompiledPipeline : Create and run a pipeline
-func CreateRunFromCompiledPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string, experimentName string, experimentDescription string, runName string, runDescription string, runParams map[string]string) string {
-
-	if pipelineName == "" {
-		pipelineName = "New pipeline"
-	}
-
-	if pipelineDescription == "" {
-		pipelineDescription = "Description of a new pipeline."
-	}
-
-	if experimentName == "" {
-		experimentName = "Default"
-	}
-
-	if experimentDescription == "" {
-		experimentDescription = "Description of a new experiment."
-	}
-
-	if runName == "" {
-		runName = "New run"
-	}
-
-	if runDescription == "" {
-		runDescription = "Description of a new run."
-	}
-
-	uploadedPipeline, _ := UploadPipeline(sameConfigFile, pipelineName, pipelineDescription)
-	createdExperiment := CreateExperiment(experimentName, experimentDescription)
-	runDetails := CreateRun(runName, uploadedPipeline.ID, createdExperiment.ID, runDescription, runParams)
-
-	fmt.Println("Pipeline ID: " + uploadedPipeline.ID)
-	fmt.Println("Run: " + runDetails.Run.ID + ":" + runDetails.Run.Status)
-
-	return runDetails.Run.ID
-}
-
 func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipelineuploadmodel.APIPipeline, err error) {
 	log.Traceln("- In program_utils.UploadPipeline")
-	kfpconfig := *NewKFPConfig()
+	kfpconfig := *utils.NewKFPConfig()
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
@@ -127,7 +88,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 }
 
 func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string) (uploadedPipelineVersion *pipelineuploadmodel.APIPipelineVersion, err error) {
-	kfpconfig := *NewKFPConfig()
+	kfpconfig := *utils.NewKFPConfig()
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
@@ -171,7 +132,7 @@ func FindPipelineByName(pipelineName string) (uploadedPipeline *pipeline_model.A
 }
 
 func ListPipelines() []*pipeline_model.APIPipeline {
-	kfpconfig := *NewKFPConfig()
+	kfpconfig := *utils.NewKFPConfig()
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)
 	pipelineClientParams := pipeline_service.NewListPipelinesParams()
 	listOfPipelines, _ := pClient.ListAll(pipelineClientParams, 10000)
@@ -179,7 +140,7 @@ func ListPipelines() []*pipeline_model.APIPipeline {
 }
 
 func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersion, error) {
-	kfpconfig := *NewKFPConfig()
+	kfpconfig := *utils.NewKFPConfig()
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)
 	listPipelineVersionParams := pipeline_service.NewListPipelineVersionsParams()
 	pipelineType := pipeline_model.APIResourceTypePIPELINE
@@ -191,8 +152,8 @@ func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersi
 	return listOfPipelineVersions, vErr
 }
 
-func FindExperimentByName(experimentName string) (experiment *experimentmodel.APIExperiment, err error) {
-	kfpconfig := *NewKFPConfig()
+func FindExperimentByName(experimentName string) (experiment *experiment_model.APIExperiment, err error) {
+	kfpconfig := *utils.NewKFPConfig()
 	eClient, _ := apiclient.NewExperimentClient(kfpconfig, false)
 	experimentClientParams := experiment_service.NewListExperimentParams()
 	apiExperimentType := experiment_model.APIResourceTypeEXPERIMENT
@@ -209,14 +170,14 @@ func FindExperimentByName(experimentName string) (experiment *experimentmodel.AP
 	return nil, fmt.Errorf("could not find an experiment with the name: %v", experimentName)
 }
 
-func CreateExperiment(experimentName string, experimentDescription string) *experimentmodel.APIExperiment {
-	kfpconfig := *NewKFPConfig()
+func CreateExperiment(experimentName string, experimentDescription string) *experiment_model.APIExperiment {
+	kfpconfig := *utils.NewKFPConfig()
 	experimentclient, err := apiclient.NewExperimentClient(kfpconfig, false)
 	if err != nil {
 		panic(err)
 	}
-	createExperimentParams := experimentparams.NewCreateExperimentParams()
-	expBody := experimentmodel.APIExperiment{
+	createExperimentParams := experiment_service.NewCreateExperimentParams()
+	expBody := experiment_model.APIExperiment{
 		Name:        experimentName,
 		Description: experimentDescription,
 	}
@@ -230,8 +191,8 @@ func CreateExperiment(experimentName string, experimentDescription string) *expe
 	return createdExperiment
 }
 
-func CreateRun(runName string, pipelineID string, experimentID string, runDescription string, runParameters map[string]string) *runmodel.APIRunDetail {
-	kfpconfig := *NewKFPConfig()
+func CreateRun(runName string, pipelineID string, pipelineVersionID string, experimentID string, runDescription string, runParameters map[string]string) *runmodel.APIRunDetail {
+	kfpconfig := *utils.NewKFPConfig()
 
 	runParams := make([]*runmodel.APIParameter, 0)
 
@@ -263,18 +224,14 @@ func CreateRun(runName string, pipelineID string, experimentID string, runDescri
 	}
 	createRunParams.Body.ResourceReferences = append(createRunParams.Body.ResourceReferences, &resourceRef)
 
-	// fetch and specify latest pipeline version
-	listOfPipelineVersions, vErr := ListPipelineVersions(pipelineID)
-
-	if vErr != nil {
-		// We found a pipeline version, so let us specify it
-		latestPipelineVersionID := listOfPipelineVersions[0].ID
-		resourceKey = runmodel.APIResourceKey{ID: latestPipelineVersionID, Type: runmodel.APIResourceTypePIPELINEVERSION}
-		resourceRef = runmodel.APIResourceReference{
-			Key:          &resourceKey,
-			Relationship: runmodel.APIRelationship(runmodel.APIRelationshipOWNER),
+	if pipelineVersionID != "" {
+		// We want to run a specific pipeline version, so let us specify it
+		versionResourceKey := runmodel.APIResourceKey{ID: pipelineVersionID, Type: runmodel.APIResourceTypePIPELINEVERSION}
+		versionResourceRef := runmodel.APIResourceReference{
+			Key:          &versionResourceKey,
+			Relationship: runmodel.APIRelationship(runmodel.APIRelationshipCREATOR),
 		}
-		createRunParams.Body.ResourceReferences = append(createRunParams.Body.ResourceReferences, &resourceRef)
+		createRunParams.Body.ResourceReferences = append(createRunParams.Body.ResourceReferences, &versionResourceRef)
 	}
 
 	runDetail, _, err := runclient.Create(createRunParams)

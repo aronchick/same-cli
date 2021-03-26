@@ -8,7 +8,7 @@ import (
 
 type UtilsInterface interface {
 	DetectK3s() (string, error)
-	K3sRunning(*cobra.Command) (bool, error)
+	IsK3sRunning(*cobra.Command) (bool, error)
 	GetCmd() *cobra.Command
 	SetCmd(*cobra.Command)
 	GetCmdArgs() []string

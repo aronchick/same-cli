@@ -22,7 +22,7 @@ func (u *UtilsMock) DetectK3s() (string, error) {
 	return "VALID", nil
 }
 
-func (u *UtilsMock) K3sRunning(cmd *cobra.Command) (bool, error) {
+func (u *UtilsMock) IsK3sRunning(cmd *cobra.Command) (bool, error) {
 	if ContainsString(u.GetCmdArgs(), mocks.UTILS_TEST_K3S_RUNNING_FAILED_PROBE) {
 		return false, fmt.Errorf(mocks.UTILS_TEST_K3S_RUNNING_FAILED_RESULT)
 	}

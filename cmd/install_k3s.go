@@ -34,7 +34,7 @@ var installK3sCmd = &cobra.Command{
 			log.Fatalf("error installing k3s: %v", err)
 		}
 		cmd.Println("K3s installed.")
-		k3sRunning, _ := utils.GetUtils().K3sRunning(cmd)
+		k3sRunning, _ := utils.GetUtils().IsK3sRunning(cmd)
 		if err == nil && k3sRunning {
 			cmd.Println("K3s started.")
 		} else {

@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
@@ -43,16 +44,15 @@ func (suite *K8sUtilsSuite) Test_HasCluster() {
 	assert.Nil(suite.T(), err, "Error requesting kubernetes context")
 }
 
-// COMMENTING OUT TEST UNTIL UTILS.MOCKS COMPLETE - may not be necessary at all
-// func (suite *K8sUtilsSuite) Test_K3sRunning() {
-// 	if os.Getenv("GITHUB_ACTIONS") != "" {
-// 		suite.T().Skip()
-// 	}
+func (suite *K8sUtilsSuite) Test_K3sRunning() {
+	if os.Getenv("TEST_K3S") != "true" {
+		suite.T().Skip()
+	}
 
-// 	running, err := utils.GetUtils().K3sRunning(suite.rootCmd)
-// 	assert.True(suite.T(), running, "K3s is not running.")
-// 	assert.Nil(suite.T(), err, "Error requesting testing for k3s cluster: %v", err)
-// }
+	running, err := utils.GetUtils().IsK3sRunning(suite.rootCmd)
+	assert.True(suite.T(), running, "K3s is not running.")
+	assert.Nil(suite.T(), err, "Error requesting testing for k3s cluster: %v", err)
+}
 
 func TestK8sUtilsSuite(t *testing.T) {
 	suite.Run(t, new(K8sUtilsSuite))

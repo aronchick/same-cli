@@ -6,7 +6,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/azure-octo/same-cli/cmd"
 	"github.com/azure-octo/same-cli/pkg/utils"
 )
 
@@ -146,6 +145,15 @@ func main() {
 	// b, _ := utils.K3sRunning(cmd)
 	// fmt.Printf("Cmd B: %v", b)
 
-	isReady, _ := utils.KFPReady(cmd.RootCmd)
-	fmt.Printf("KFP ready: %v", isReady)
+	k8s, err := utils.GetKubernetesClient()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	v, err := k8s.GetVersion()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(v)
 }

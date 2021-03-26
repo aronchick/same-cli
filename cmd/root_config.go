@@ -33,7 +33,7 @@ var configCmd = &cobra.Command{
 		defaultLocation := "~/.same/config.yaml"
 		err = utils.LoadConfig(defaultLocation)
 		if err != nil {
-			message := fmt.Errorf("Error loading config file from '%v': %v", defaultLocation, err)
+			message := fmt.Errorf("error loading config file from '%v': %v", defaultLocation, err)
 			return message
 		}
 		allSettings := viper.AllSettings()
@@ -47,7 +47,7 @@ var configCmd = &cobra.Command{
 			viper.Set("METADATA_STORE", nil)
 			err := viper.SafeWriteConfig()
 			if err != nil {
-				err_message := fmt.Errorf("Error writing to SAME config file '%v': %v", defaultLocation, err)
+				err_message := fmt.Errorf("error writing to SAME config file '%v': %v", defaultLocation, err)
 				log.Errorf(err_message.Error())
 				return err_message
 			}

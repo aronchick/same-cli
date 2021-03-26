@@ -3,9 +3,11 @@ package integration_test
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -23,6 +25,7 @@ type InitSuite struct {
 	rootCmd       *cobra.Command
 	remoteSAMEURL string
 	fatal         bool
+	dc            infra.DependencyCheckers
 }
 
 // before each test
@@ -30,8 +33,11 @@ func (suite *InitSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
 	suite.fatal = false
+	suite.dc = &infra.LiveDependencyCheckers{}
+	if ok, err := suite.dc.CanConnectToKubernetes(suite.rootCmd); !ok && (err != nil) {
+		assert.Fail(suite.T(), "Cannot run tests because we cannot connect to a live cluster. Test this with: kubectl version")
+	}
 	viper.Reset()
-	// log.SetOutput(ioutil.Discard)
 	os.Setenv("TEST_PASS", "1")
 }
 
@@ -54,11 +60,21 @@ func (suite *InitSuite) Test_EmptyConfig() {
 
 func (suite *InitSuite) Test_BadTarget() {
 	out := execute_target(suite, "UNKNOWN", "")
-	assert.Contains(suite.T(), string(out), "Setup target 'unknown' not understood")
+	assert.Contains(suite.T(), string(out), "setup target 'unknown' not understood")
 	assert.Equal(suite.T(), true, suite.fatal)
 }
 
 func (suite *InitSuite) Test_AKSTarget() {
+	kubeconfig := *utils.NewKFPConfig()
+	if kubeconfig != nil {
+		currentConfig, _ := kubeconfig.ClientConfig()
+		if !strings.Contains(currentConfig.Host, "azmk8s.io") {
+			log.Warnf("Because we're testing against live AKS, we need the kubeconfig to point to the AKS cluster. It's pointing at: %v", currentConfig.Host)
+			suite.T().Skip()
+		}
+	} else {
+		assert.Fail(suite.T(), "Cannot run test because the test cannot access any kubeconfig.")
+	}
 	out := execute_target(suite, "aks", "")
 	assert.Contains(suite.T(), string(out), "Executing AKS setup.")
 	assert.Equal(suite.T(), false, suite.fatal)

@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/google/uuid"
 	"github.com/onsi/gomega/gbytes"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -22,30 +24,29 @@ import (
 // returns the current testing context
 type ProgramDeleteSuite struct {
 	suite.Suite
-	rootCmd       *cobra.Command
-	pipelineID    string
-	pipelineName  string
-	logBuf        *gbytes.Buffer
-	remoteSAMEURL string
+	rootCmd      *cobra.Command
+	pipelineID   string
+	pipelineName string
+	logBuf       *gbytes.Buffer
+	dc           infra.DependencyCheckers
 }
 
 // Before all suite
 func (suite *ProgramDeleteSuite) SetupAllSuite() {
 	os.Setenv("TEST_PASS", "1")
-	suite.rootCmd = cmd.RootCmd
-	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/goodpipeline.yaml")
-	if out != "" {
-		log.Printf("not sure if this is a bad thing, there's an output from creating the pipeline during setup: %v", string(out))
-	}
 
 	if os.Getenv("TEST_K3S") == "true" {
-		running, err := utils.GetUtils().K3sRunning(suite.rootCmd)
+		running, err := utils.GetUtils().IsK3sRunning(suite.rootCmd)
 		if err != nil || !running {
 			log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
 		}
 	}
 
+	dc := infra.GetDependencyCheckers(suite.rootCmd, []string{})
+	if err := dc.CheckDependenciesInstalled(suite.rootCmd); err != nil {
+		log.Warnf("Failed one or more dependencies - skipping this test: %v", err.Error())
+		suite.T().Skip()
+	}
 	suite.logBuf = gbytes.NewBuffer()
 
 }
@@ -55,11 +56,17 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	os.Setenv("TEST_PASS", "1")
 	suite.rootCmd = cmd.RootCmd
 
-	if ok, _ := utils.KFPReady(suite.rootCmd); !ok {
-		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
-	}        
+	suite.dc = &infra.LiveDependencyCheckers{}
+	if ok, err := suite.dc.CanConnectToKubernetes(suite.rootCmd); !ok && (err != nil) {
+		assert.Fail(suite.T(), `Cannot run tests because we cannot connect to a live cluster. Test your cluster with:  kubectl version`)
+	}
 
-	c, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "create", "-f", "../testdata/samefiles/deletepipeline.yaml")
+	if ok, _ := utils.IsKFPReady(suite.rootCmd); !ok {
+		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
+	}
+
+	runID, _ := uuid.NewRandom()
+	c, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/samefiles/deletepipeline.yaml", "-e", "test-experiment", "-r", runID.String())
 	_ = c
 	_ = out
 

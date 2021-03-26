@@ -35,7 +35,7 @@ var deleteCmd = &cobra.Command{
 	Long:  `Deletes a pipeline. Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cmd.Flag("name").Value == nil && cmd.Flag("id").Value == nil {
-			message := fmt.Errorf("'name' or 'id' must be set to delete a flag.")
+			message := fmt.Errorf("'name' or 'id' must be set to delete a flag")
 			cmd.PrintErr(message.Error())
 			log.Fatalf(message.Error())
 			return message
@@ -47,7 +47,7 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
-		kfpconfig := *NewKFPConfig()
+		kfpconfig := *utils.NewKFPConfig()
 
 		pipelineID := ""
 		if cmd.Flag("id").Value != nil {
@@ -68,7 +68,6 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
-		kfpconfig := *NewKFPConfig()
 		deleteClient, err := apiclient.NewPipelineClient(kfpconfig, false)
 		if err != nil {
 			message := fmt.Errorf("could not create API client for deleting a pipeline pipeline: %v", err)

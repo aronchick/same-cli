@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	v1 "k8s.io/api/apps/v1"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -101,7 +103,19 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command)
 		// From here: https://github.com/k3s-io/k3s/issues/3087
 		message := INIT_ERROR_KUBECONFIG_UNSET_WARN
 		cmd.Println(message)
+		return fmt.Errorf(message)
 	}
+
+	if ok, err := dc.CanConnectToKubernetes(cmd); ok && err != nil {
+		message := MISSING_KUBERNETES_ENDPOINT
+		return fmt.Errorf(message)
+	}
+
+	if ok, err := dc.HasKubeflowNamespace(cmd); ok && err != nil {
+		message := MISSING_KUBEFLOW_NAMESPACE
+		cmd.Println(message)
+	}
+
 	return nil
 }
 
@@ -256,9 +270,50 @@ func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
 	return output
 
 }
+func (dc *LiveDependencyCheckers) CanConnectToKubernetes(cmd *cobra.Command) (bool, error) {
+
+	k8sClient, err := utils.GetKubernetesClient()
+	if err != nil {
+		return false, fmt.Errorf("could not get a Kubernetes client. That's all we know: %v", err.Error())
+	}
+	_, err = k8sClient.GetVersion()
+	if err != nil {
+		return false, fmt.Errorf("could not connect to Kubernetes with the following message: %v", err.Error())
+	}
+	return true, nil
+}
+
+func (dc *LiveDependencyCheckers) HasKubeflowNamespace(cmd *cobra.Command) (bool, error) {
+	kubectlCommand := dc.GetKubectlCmd()
+	scriptCmd := exec.Command(kubectlCommand, "get deployments -o json")
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("Failed to see if there's a kubeflow namespace. That's all we know: %v", err)
+	}
+
+	// Declared an empty interface
+	//var result map[string]interface{}
+	var result v1.DeploymentList
+
+	//  waiting_pod_array=("k8s-app=kube-dns;kube-system"
+	// "k8s-app=metrics-server;kube-system"
+
+	// Unmarshal or Decode the JSON to the interface.
+	//err = json.Unmarshal([]byte(scriptOutput), &result)
+	err = json.Unmarshal(scriptOutput, &result)
+	if err != nil {
+		return false, fmt.Errorf("Failed to unmarshall result of kubeflow namespace test: %v", err)
+	}
+
+	if len(result.Items) < 1 {
+		return false, fmt.Errorf(MISSING_KUBEFLOW_NAMESPACE)
+	}
+
+	return true, nil
+}
 
 func (dc *LiveDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, error) {
-	return utils.GetUtils().K3sRunning(cmd)
+	return utils.GetUtils().IsK3sRunning(cmd)
 }
 
 func (dc *LiveDependencyCheckers) IsKubectlOnPath(cmd *cobra.Command) (string, error) {
@@ -278,8 +333,8 @@ var (
 	INIT_ERROR_KUBECONFIG_UNSET_WARN string = `
 Your KUBECONFIG variable is not explicitly set. This may cause issues when you run locally, such as 'error: open /etc/rancher/k3s/k3s.yaml.lock: permission denied'. While not critical, you can ensure the proper functioning of SAME by executing the following two commands.
 
-echo "export KUBECONFIG=$HOME\.kube\config" >> $HOME\.bashrc
-export KUBECONFIG=$HOME\.kube\config 
+echo "export KUBECONFIG=$HOME/.kube/config" >> $HOME/.bashrc
+export KUBECONFIG=$HOME/.kube/config 
 `
 	INIT_ERROR_KUBECONFIG_UNSET_FATAL string = `
 Unable to set your current context because your KUBECONFIG is either unset, or pointing at '/etc/rancher/k3s/k3s.yaml' (to which you don't have permissions).
@@ -313,4 +368,19 @@ command: %v
 output: %v
 
 Raw error:`
+
+	MISSING_KUBERNETES_ENDPOINT string = `
+We could not connect to a Kubernetes endpoint via your kubeconfig. Please check that your Kubernetes is up and running and you can connect with the following command:
+
+kubectl version
+
+Which should have both a "Client Version" and a "Server Version" section.`
+
+	MISSING_KUBEFLOW_NAMESPACE string = `
+We could not find a kubeflow namespace. Unfortunately, we require that currently (and it must be named 'kubeflow').
+
+Please re-run: 
+same init
+
+To have same automatically create one for you and install Kubeflow Pipelines.`
 )

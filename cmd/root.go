@@ -23,7 +23,6 @@ import (
 
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/mitchellh/go-homedir"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -64,14 +63,14 @@ func init() {
 		lvl = "debug"
 	}
 	// parse string, this is built-in feature of logrus
-	ll, err := logrus.ParseLevel(lvl)
+	ll, err := log.ParseLevel(lvl)
 	if err != nil {
-		ll = logrus.InfoLevel
+		ll = log.InfoLevel
 	}
 	// set global log level
-	logrus.SetLevel(ll)
+	log.SetLevel(ll)
 
-	log.Tracef("Log Level: %v\n", logrus.GetLevel())
+	log.Tracef("Log Level: %v\n", log.GetLevel())
 	log.Traceln("Starting Root Init")
 	cobra.OnInitialize(initConfig)
 

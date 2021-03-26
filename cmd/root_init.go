@@ -24,6 +24,7 @@ import (
 
 	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
 
@@ -41,10 +42,6 @@ var initCmd = &cobra.Command{
 
 		var i = GetClusterInstallMethods()
 		i.SetCmdArgs(args)
-
-		if err := dc.CheckDependenciesInstalled(cmd); err != nil {
-			return err
-		}
 
 		target := strings.ToLower(viper.GetString("target"))
 		if target == "" {
@@ -68,7 +65,7 @@ var initCmd = &cobra.Command{
 			cmd.Println(message)
 			err = SetupAKS(cmd, dc, i)
 		default:
-			message := fmt.Errorf("Setup target '%v' not understood.\n", target)
+			message := fmt.Errorf("setup target '%v' not understood", target)
 			cmd.Printf(message.Error())
 			log.Fatalf(message.Error())
 			if os.Getenv("TEST_PASS") == "1" {
@@ -89,7 +86,7 @@ var initCmd = &cobra.Command{
 			elapsedTime := 0
 			for {
 				cmd.Printf("%v...", elapsedTime)
-				if isReady, _ := utils.KFPReady(cmd); isReady {
+				if isReady, _ := utils.IsKFPReady(cmd); isReady {
 					cmd.Println("SAME pipeline is ready.")
 					return nil
 				}
@@ -154,44 +151,50 @@ func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Install
 }
 
 func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
-	log.Trace("Testing AZ Token")
-	hasToken, err := dc.HasValidAzureToken(cmd)
-	if !hasToken || err != nil {
-		return err
-	}
-	log.Trace("Token passed, testing cluster exists.")
-	hasProvisionedNewResources := false
-	if clusterCreated, err := dc.IsClusterWithKubeflowCreated(cmd); !clusterCreated || err != nil {
-		log.Trace("Cluster does not exist, creating.")
-		hasProvisionedNewResources = true
-		if err := dc.CreateAKSwithKubeflow(cmd); err != nil {
-			return err
+	kubeconfig := *utils.NewKFPConfig()
+	forceCreate := viper.GetBool("force-create")
+	if !forceCreate && kubeconfig != nil {
+		currentConfig, _ := kubeconfig.ClientConfig()
+		if strings.Contains(currentConfig.Host, "azmk8s.io") {
+			cmd.Printf("Reusing your existing AKS cluster (%v). Ready to install KFP.", currentConfig.String())
+			return nil
+		} else {
+			if utils.PrintErrorAndReturnExit(cmd, fmt.Sprintf("Your current Kubernetes context (%v) is pointing at a cluster which does not appear to be hosted on AKS. Please update your current context with kubectl config set-context to your AKS cluster, or use --force-create with the same command", currentConfig.ServerName), fmt.Errorf("")) {
+				return errors.Errorf("current Kubectl context pointing at non-AKS cluster")
+			}
 		}
-		log.Info("Cluster created.")
-	}
-
-	log.Trace("Cluster exists, testing to see if storage provisioned.")
-	if storageConfigured, err := dc.IsStorageConfigured(cmd); !storageConfigured || err != nil {
-		log.Trace("Storage not provisioned, creating.")
-		hasProvisionedNewResources = true
-		if err := dc.ConfigureStorage(cmd); err != nil {
-			return err
-		}
-		log.Trace("Storage provisioned.")
-	}
-
-	if hasProvisionedNewResources {
-		cmd.Println("Infrastructure Setup Complete.")
 	} else {
-		cmd.Println("Using existing infrastructure. Ready to create programs.")
-	}
+		log.Trace("Testing AZ Token")
+		hasToken, err := dc.HasValidAzureToken(cmd)
+		if !hasToken || err != nil {
+			return err
+		}
+		log.Trace("Token passed, testing cluster exists.")
+		if clusterCreated, err := dc.IsClusterWithKubeflowCreated(cmd); !clusterCreated || err != nil {
+			log.Trace("Cluster does not exist, creating.")
+			if err := dc.CreateAKSwithKubeflow(cmd); err != nil {
+				return err
+			}
+			log.Info("Cluster created.")
+		}
 
+		log.Trace("Cluster exists, testing to see if storage provisioned.")
+		if storageConfigured, err := dc.IsStorageConfigured(cmd); !storageConfigured || err != nil {
+			log.Trace("Storage not provisioned, creating.")
+			if err := dc.ConfigureStorage(cmd); err != nil {
+				return err
+			}
+			log.Trace("Storage provisioned.")
+		}
+	}
+	cmd.Println("Infrastructure Setup Complete.")
 	return nil
 }
 
 func init() {
 	initCmd.PersistentFlags().BoolP("wait", "w", true, "Wait for SAME to be ready before exiting. Can be run or quit with no impact.")
 	initCmd.PersistentFlags().BoolP("ready", "r", false, "Run a check to see if all SAME components are ready in the cluster.")
+	initCmd.PersistentFlags().BoolP("force-create", "", false, "Force creation of a new cluster, even if one already exists.")
 	RootCmd.AddCommand(initCmd)
 
 	// Here you will define your flags and configuration settings.

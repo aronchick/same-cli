@@ -91,9 +91,23 @@ func (mockDC *MockDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, er
 
 func (mockDC *MockDependencyCheckers) IsKubectlOnPath(cmd *cobra.Command) (string, error) {
 	if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE) {
-		return "", fmt.Errorf(mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE)
+		return "", fmt.Errorf(mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_RESULT)
 	}
 	return "VALID_KUBECTL", nil
+}
+
+func (mockDC *MockDependencyCheckers) CanConnectToKubernetes(cmd *cobra.Command) (bool, error) {
+	if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_CANNOT_CONNECT_TO_K8S_PROBE) {
+		return false, fmt.Errorf(mocks.DEPENDENCY_CHECKER_CANNOT_CONNECT_TO_K8S_RESULT)
+	}
+	return true, nil
+}
+
+func (mockDC *MockDependencyCheckers) HasKubeflowNamespace(cmd *cobra.Command) (bool, error) {
+	if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_MISSING_KUBEFLOW_NAMESPACE_PROBE) {
+		return false, fmt.Errorf(mocks.DEPENDENCY_CHECKER_MISSING_KUBEFLOW_NAMESPACE_RESULT)
+	}
+	return true, nil
 }
 
 func (mockDC *MockDependencyCheckers) WriteCurrentContextToConfig() string {

@@ -24,6 +24,7 @@ import (
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -35,19 +36,19 @@ var runProgramCmd = &cobra.Command{
 	Long:  `Runs a SAME program that was already created.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		pipelineID, err := cmd.PersistentFlags().GetString("program-id")
-		if err != nil {
-			pipelineID = ""
-		}
-
 		filePath, err := cmd.PersistentFlags().GetString("file")
 		if err != nil {
 			return err
 		}
 
-		programName, err := cmd.PersistentFlags().GetString("name")
+		programName, err := cmd.PersistentFlags().GetString("program-name")
 		if err != nil {
 			programName = ""
+		}
+
+		programDescription, err := cmd.PersistentFlags().GetString("program-description")
+		if err != nil {
+			return err
 		}
 
 		runName, err := cmd.PersistentFlags().GetString("run-name")
@@ -67,6 +68,11 @@ var runProgramCmd = &cobra.Command{
 		experimentDescription, err := cmd.PersistentFlags().GetString("experiment-description")
 		if err != nil {
 			experimentDescription = ""
+		}
+
+		runOnly, err := cmd.PersistentFlags().GetBool("run-only")
+		if err != nil {
+			runOnly = false
 		}
 
 		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
@@ -89,7 +95,7 @@ var runProgramCmd = &cobra.Command{
 		}
 		// HACK: Currently Kubeconfig must define default namespace
 		if err := exec.Command("/bin/bash", "-c", fmt.Sprintf("%v config set 'contexts.'`%v config current-context`'.namespace' kubeflow", kubectlCommand, kubectlCommand)).Run(); err != nil {
-			message := fmt.Errorf("Could not set kubeconfig default context to use kubeflow namespace: %v", err)
+			message := fmt.Errorf("could not set kubeconfig default context to use kubeflow namespace: %v", err)
 			log.Error(message.Error())
 			return message
 		}
@@ -107,20 +113,46 @@ var runProgramCmd = &cobra.Command{
 			return err
 		}
 
-		if pipelineID == "" {
-			if sameConfigFile.Spec.Pipeline.Name != "" && programName == "" {
-				programName = sameConfigFile.Spec.Pipeline.Name
-			}
-			pipeline, err := FindPipelineByName(programName)
+		if sameConfigFile.Spec.Pipeline.Name != "" && programName == "" {
+			programName = sameConfigFile.Spec.Pipeline.Name
+		}
+
+		pipelineID := ""
+		pipelineVersionID := ""
+		pipeline, err := FindPipelineByName(programName)
+		if runOnly {
 			if err == nil {
 				pipelineID = pipeline.ID
 			}
+		} else {
+			if err != nil {
+				if sameConfigFile.Spec.Pipeline.Description != "" && programDescription == "" {
+					programDescription = sameConfigFile.Spec.Pipeline.Description
+				}
+				uploadedPipeline, err := UploadPipeline(sameConfigFile, programName, programDescription)
+				if err != nil {
+					return err
+				}
+				pipelineID = uploadedPipeline.ID
 
-			// if ID is still blank we must exit
-			if pipelineID == "" {
-				log.Errorf("Could not find pipeline ID. Did you create the program?")
-				return fmt.Errorf("Could not determine program ID for run.")
+				cmd.Printf("Pipeline Uploaded.\nName: %v\nID: %v", uploadedPipeline.Name, uploadedPipeline.ID)
+			} else {
+				pipelineID = pipeline.ID
+				newID, _ := uuid.NewRandom()
+				uploadedPipelineVersion, err := UpdatePipeline(sameConfigFile, pipelineID, newID.String())
+				if err != nil {
+					return err
+				}
+				pipelineVersionID = uploadedPipelineVersion.ID
+
+				cmd.Printf("Pipeline Updated.\nName: %v\nVersionID: %v\nID: %v\n", uploadedPipelineVersion.Name, uploadedPipelineVersion.ID, pipeline.ID)
 			}
+		}
+
+		// if ID is still blank we must exit
+		if pipelineID == "" {
+			log.Errorf("Could not find pipeline ID. Did you create the program?")
+			return fmt.Errorf("could not determine program ID for run")
 		}
 
 		params, _ := cmd.PersistentFlags().GetStringSlice("run-param")
@@ -152,7 +184,7 @@ var runProgramCmd = &cobra.Command{
 			runName = sameConfigFile.Spec.Run.Name
 		}
 
-		runDetails := CreateRun(runName, pipelineID, experimentID, runDescription, runParams)
+		runDetails := CreateRun(runName, pipelineID, pipelineVersionID, experimentID, runDescription, runParams)
 
 		fmt.Printf("Program run created with ID %s.", runDetails.Run.ID)
 
@@ -175,7 +207,7 @@ func init() {
 	}
 	runProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
 
-	runProgramCmd.PersistentFlags().String("experiment-name", "", "The name of a SAME Experiment to be created or reused.")
+	runProgramCmd.PersistentFlags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
 	err := runProgramCmd.MarkPersistentFlagRequired("experiment-name")
 	if err != nil {
 		message := "'experiment-name' is required for this to run."
@@ -185,7 +217,7 @@ func init() {
 	}
 
 	runProgramCmd.PersistentFlags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
-	runProgramCmd.PersistentFlags().String("run-name", "", "The name of the SAME program run.")
+	runProgramCmd.PersistentFlags().StringP("run-name", "r", "", "The name of the SAME program run.")
 	err = runProgramCmd.MarkPersistentFlagRequired("run-name")
 	if err != nil {
 		message := "'run-name' is required for this to run."
@@ -195,6 +227,9 @@ func init() {
 	}
 
 	runProgramCmd.PersistentFlags().String("run-description", "", "A description of the SAME program run.")
-	runProgramCmd.PersistentFlags().StringSlice("run-param", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
+	runProgramCmd.PersistentFlags().StringSliceP("run-param", "p", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
+	runProgramCmd.PersistentFlags().String("program-description", "", "Brief description of the program")
+	runProgramCmd.PersistentFlags().StringP("program-name", "n", "", "The program name")
+	runProgramCmd.PersistentFlags().Bool("run-only", false, "Indicates whether to skip program upload")
 
 }
