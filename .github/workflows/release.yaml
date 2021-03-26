@@ -18,7 +18,7 @@ jobs:
         with:
           go-version: "^1.16" # The Go version to download (if necessary) and use.
       - run: go version
-      - run: 'echo "$PRIVATE_PEM" > private.pem'
+      - run: 'echo "$PRIVATE_PEM" > /tmp/private.pem'
         shell: bash
         env:
           PRIVATE_PEM: ${{secrets.PRIVATE_PEM}}

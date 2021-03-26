@@ -1,4 +1,5 @@
 export PRIVATE_KEY_PASSPHRASE="AAAAAAAAAA"
+gh secret set PRIVATE_KEY_PASSPHRASE -b"${PRIVATE_KEY_PASSPHRASE}"
 
 openssl genrsa -aes128 -passout pass:$PRIVATE_KEY_PASSPHRASE -out private.pem 4096
 openssl rsa -in private.pem -passin pass:$PRIVATE_KEY_PASSPHRASE -pubout -out public.pem

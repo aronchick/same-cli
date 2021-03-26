@@ -25,7 +25,7 @@ export PRECOMMIT = poetry run pre-commit
 
 BUILD_DIR = same-cli
 
-TAG ?= $(eval TAG := $(shell git describe --tags --long --always))$(TAG)
+TAG ?= $(eval TAG := $(shell git describe --tags --always))$(TAG)
 REPO ?= $(shell echo $$(cd ../${BUILD_DIR} && git config --get remote.origin.url) | sed 's/git@\(.*\):\(.*\).git$$/https:\/\/\1\/\2/')
 BRANCH ?= $(shell cd ../${BUILD_DIR} && git branch | grep '^*' | awk '{print $$2}')
 ARCH ?= $(shell go env GOOS)_$(shell go env GOARCH)
@@ -41,13 +41,13 @@ PACKAGE := $(shell echo "same_$(TAG)_$(ARCH)")
 PRIVATE_KEY_PASSPHRASE ?= "PASSPHRASE_FOR_TESTING"
 
 ifdef GITHUB_ACTIONS
-PRIVATE_KEY_FILE := private.pem
+PRIVATE_KEY_FILE := /tmp/private.pem
 else
 PRIVATE_KEY_FILE := test/testdata/signature_keys/private.pem
 endif
 
 ifdef GITHUB_ACTIONS
-PUBLIC_KEY_FILE := public.pem
+PUBLIC_KEY_FILE := /tmp/public.pem
 else
 PUBLIC_KEY_FILE := test/testdata/signature_keys/public.pem
 endif
@@ -122,11 +122,11 @@ build-same-tgz: build-same
 	mkdir $(TMPARTIFACTDIR)/$(PACKAGE)
 	cp bin/$(ARCH)/same $(TMPARTIFACTDIR)/$(PACKAGE)/same
 	cd $(TMPRELEASEWORKINGDIR)
-	openssl dgst -sha256 -sign private.pem -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/sign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE)/same
+	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE) -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" -out $(TMPRELEASEWORKINGDIR)/sign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE)/same
 	openssl base64 -in $(TMPRELEASEWORKINGDIR)/sign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE)/same.signature.sha256
 	@echo "tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) $(PACKAGE)"
 	tar cvzf $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz -C $(TMPARTIFACTDIR)/$(PACKAGE) .
-	openssl dgst -sha256 -sign private.pem -passin pass:$(PRIVATE_KEY_PASSPHRASE) -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
+	openssl dgst -sha256 -sign $(PRIVATE_KEY_FILE)  -passin pass:"$(PRIVATE_KEY_PASSPHRASE)" -out $(TMPRELEASEWORKINGDIR)/tarsign.sha256 $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz
 	openssl base64 -in $(TMPRELEASEWORKINGDIR)/tarsign.sha256 -out $(TMPARTIFACTDIR)/$(PACKAGE).tar.gz.signature.sha256
 	@echo "BINARY_TARBALL=$(TMPARTIFACTDIR)/$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
 	@echo "BINARY_TARBALL_NAME=$(PACKAGE).tar.gz" >> $(GITHUB_ENV)
