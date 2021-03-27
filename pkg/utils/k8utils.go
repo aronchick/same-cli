@@ -181,7 +181,7 @@ func HasContext(cmd *cobra.Command) (currentContext string, err error) {
 	if currentContextString != "" {
 		return strings.TrimSpace(currentContextString), nil
 	} else {
-		return "", fmt.Errorf("kubectl config current-context is empty.")
+		return "", fmt.Errorf("kubectl config current-context is empty")
 	}
 }
 

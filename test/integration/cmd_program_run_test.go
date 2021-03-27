@@ -96,7 +96,7 @@ func (suite *ProgramRunSuite) Test_ExecuteWithNoCreate() {
 func (suite *ProgramRunSuite) Test_ExecuteWithCreateAndNoArgs() {
 	os.Setenv("TEST_PASS", "1")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "--config", "../testdata/config/notarget.yaml")
-	assert.Regexp(suite.T(), regexp.MustCompile(`required flag\(s\) .+?"file".+? not set`), string(out))
+	assert.Regexp(suite.T(), regexp.MustCompile(`required flag\(s\).+?"experiment-name".+? not set`), string(out))
 }
 
 func (suite *ProgramRunSuite) Test_ExecuteWithCreateWithFileAndNoKubectl() {
@@ -145,13 +145,13 @@ func (suite *ProgramRunSuite) Test_GetRemoteNoSAME() {
 func (suite *ProgramRunSuite) Test_GetRemoteSAMEWithBadPipelineFile() {
 	os.Setenv("TEST_PASS", "1")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/samefiles/badpipelinedirectory.yaml", "-e", "test-experiment", "-r", suite.runID, "--config", "../testdata/config/notarget.yaml")
-	assert.Contains(suite.T(), string(out), "/dev/null/bad_pipeline.tgz: not a directory")
+	assert.Contains(suite.T(), string(out), "could not find pipeline definition specified in SAME program")
 }
 
 func (suite *ProgramRunSuite) Test_GetRemoteSAMEWithBadPipelineDirectory() {
 	os.Setenv("TEST_PASS", "1")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/samefiles/badpipelinefile.yaml", "-e", "test-experiment", "-r", suite.runID, "--config", "../testdata/config/notarget.yaml")
-	assert.Contains(suite.T(), string(out), "/tmp/bad_pipeline.tgz: no such file or directory")
+	assert.Contains(suite.T(), string(out), "could not find pipeline definition specified in SAME program")
 }
 
 func (suite *ProgramRunSuite) Test_GetRemoteSAMEGoodPipeline() {

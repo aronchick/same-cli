@@ -199,13 +199,7 @@ func init() {
 
 	runProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
 
-	runProgramCmd.PersistentFlags().StringP("file", "f", "", "a SAME program file")
-	err = runProgramCmd.MarkPersistentFlagRequired("file")
-	if err != nil {
-		log.Errorf("could not set 'file' flag as required: %v", err)
-		return
-	}
-	runProgramCmd.PersistentFlags().StringP("filename", "c", "same.yaml", "The filename for the same file (defaults to 'same.yaml')")
+	runProgramCmd.PersistentFlags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml')")
 
 	runProgramCmd.PersistentFlags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
 	err := runProgramCmd.MarkPersistentFlagRequired("experiment-name")
