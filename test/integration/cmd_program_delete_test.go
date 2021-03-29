@@ -3,6 +3,7 @@ package integration_test
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -24,11 +26,13 @@ import (
 // returns the current testing context
 type ProgramDeleteSuite struct {
 	suite.Suite
-	rootCmd      *cobra.Command
-	pipelineID   string
-	pipelineName string
-	logBuf       *gbytes.Buffer
-	dc           infra.DependencyCheckers
+	rootCmd            *cobra.Command
+	pipelineID         string
+	pipelineName       string
+	logBuf             *gbytes.Buffer
+	dc                 infra.DependencyCheckers
+	tmpConfigDirectory string
+	origDir            string
 }
 
 // Before all suite
@@ -48,13 +52,17 @@ func (suite *ProgramDeleteSuite) SetupAllSuite() {
 		suite.T().Skip()
 	}
 	suite.logBuf = gbytes.NewBuffer()
-
+	suite.origDir, _ = os.Getwd()
 }
 
-// before each test
 func (suite *ProgramDeleteSuite) SetupTest() {
 	os.Setenv("TEST_PASS", "1")
 	suite.rootCmd = cmd.RootCmd
+	viper.Reset()
+
+	if os.Getenv("KUBECONFIG") == "" {
+		os.Setenv("KUBECONFIG", os.ExpandEnv("$HOME/.kube/config"))
+	}
 
 	suite.dc = &infra.LiveDependencyCheckers{}
 	if ok, err := suite.dc.CanConnectToKubernetes(suite.rootCmd); !ok && (err != nil) {
@@ -65,28 +73,45 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
 	}
 
-	runID, _ := uuid.NewRandom()
-	c, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/samefiles/deletepipeline.yaml", "-e", "test-experiment", "-r", runID.String())
-	_ = c
-	_ = out
+	suite.tmpConfigDirectory = utils.GetTmpConfigDirectory("DELETE")
+	tmpConfigFile, _ := utils.GetTmpConfigFile("DELETE", suite.tmpConfigDirectory, "../testdata/samefiles/deletepipeline.yaml")
 
+	_, err := utils.CopyFilesInDir("../testdata/pipelines", suite.tmpConfigDirectory, false)
+	if err != nil {
+		log.Fatalf("could not copy pipeline files into temp directory: %v", err.Error())
+	}
+
+	// if err = os.Chdir(suite.tmpConfigDirectory); err != nil {
+	// 	log.Warnf("could not switch to the temp directory for execution: %v", suite.tmpConfigDirectory)
+	// }
+
+	runID, _ := uuid.NewRandom()
+	commandString := fmt.Sprintf("same program run -f %v -e DELETE_SUITE-test-experiment -r %v", tmpConfigFile, runID.String())
+	out, err := exec.Command("/bin/bash", "-c", commandString).CombinedOutput()
 	if err != nil {
 		message := fmt.Errorf("could not start delete test suite because we could not create a sample pipeline: %v", err)
 		suite.rootCmd.Print(message)
-		log.Fatalf(message.Error())
+		log.Warn(message.Error())
+		return
 	}
 
 	r := regexp.MustCompile(`Name:\s+([^\n]+)\nVersionID:\s+([^\n]+)`)
-	rs := r.FindStringSubmatch(string(out))
+	outputString := string(out)
+	rs := r.FindStringSubmatch(outputString)
 	if len(rs) < 2 {
-		log.Fatalf("cmd_program_delete_test: during setup, could not find name and ID in the returned upload string: %v", out)
+		log.Fatalf("cmd_program_delete_test: during setup, could not find name and ID in the returned upload string: %v", outputString)
 	}
 	suite.rootCmd.Printf("%#v\n", rs[1])
 	suite.rootCmd.Printf("%#v\n", rs[2])
 	suite.pipelineName = rs[1]
 	suite.pipelineID = rs[2]
+
 }
 
+func (suite *ProgramDeleteSuite) TearDownAllSuite() {
+	os.RemoveAll(suite.tmpConfigDirectory)
+	_ = os.Chdir(suite.origDir)
+}
 func (suite *ProgramDeleteSuite) Test_DeletePipeline() {
 	os.Setenv("TEST_PASS", "1")
 

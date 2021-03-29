@@ -49,6 +49,6 @@ func (mi *MockInstallers) SetKubectlCmd(s string) {
 	mi._kubectlCommand = s
 }
 
-func (mi *MockInstallers) GetKubectlCmd() string {
+func (mi *MockInstallers) GetKubectlCmd(cmd *cobra.Command) string {
 	return mi._kubectlCommand
 }

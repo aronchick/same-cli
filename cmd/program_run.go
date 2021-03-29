@@ -35,7 +35,6 @@ var runProgramCmd = &cobra.Command{
 	Short: "Runs a SAME program",
 	Long:  `Runs a SAME program that was already created.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		filePath, err := cmd.PersistentFlags().GetString("file")
 		if err != nil {
 			return err
@@ -81,11 +80,12 @@ var runProgramCmd = &cobra.Command{
 		}
 
 		if kubectlCommand == "" {
-			if _, err := kubectlExists(); err != nil {
-				log.Error(err.Error())
-				return err
+			kubectlCommand, err = infra.GetDependencyCheckers(cmd, args).IsKubectlOnPath(cmd)
+			if err != nil {
+				if utils.PrintErrorAndReturnExit(cmd, "could not get kubectl command: %v", err) {
+					return err
+				}
 			}
-			kubectlCommand = "kubectl"
 		}
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
@@ -204,10 +204,10 @@ func init() {
 	runProgramCmd.PersistentFlags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
 	err := runProgramCmd.MarkPersistentFlagRequired("experiment-name")
 	if err != nil {
-		message := "'experiment-name' is required for this to run."
-		RootCmd.Println(message)
-		log.Fatalf(message)
-		return
+		message := "'experiment-name' is required for this to run.: %v"
+		if utils.PrintErrorAndReturnExit(runProgramCmd, message, err) {
+			return
+		}
 	}
 
 	runProgramCmd.PersistentFlags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
@@ -215,8 +215,9 @@ func init() {
 	err = runProgramCmd.MarkPersistentFlagRequired("run-name")
 	if err != nil {
 		message := "'run-name' is required for this to run."
-		RootCmd.Println(message)
-		log.Fatalf(message)
+		if utils.PrintErrorAndReturnExit(RootCmd, message+"%v", err) {
+			return
+		}
 		return
 	}
 

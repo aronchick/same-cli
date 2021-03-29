@@ -6,7 +6,7 @@ type InstallerInterface interface {
 	InstallK3s(*cobra.Command) (string, error)
 	PostInstallK3sRunning(*cobra.Command) error
 	InstallKFP(*cobra.Command) error
-	GetKubectlCmd() string
+	GetKubectlCmd(*cobra.Command) string
 	SetKubectlCmd(string)
 	GetCmdArgs() []string
 	SetCmdArgs([]string)

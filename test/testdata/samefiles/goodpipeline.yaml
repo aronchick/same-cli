@@ -1,4 +1,4 @@
 apiVersion: projectsame.io/v1alpha1
 pipeline:
   name: "good_pipeline"
-  package: "../testdata/pipelines/pipeline.py"
+  package: "pipeline.py"

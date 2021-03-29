@@ -1,9 +1,13 @@
 package utils_test
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
+	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/infra"
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -16,7 +20,9 @@ import (
 // returns the current testing context
 type K8sUtilsSuite struct {
 	suite.Suite
-	rootCmd *cobra.Command
+	rootCmd      *cobra.Command
+	fatal        bool
+	outputBuffer *bytes.Buffer
 }
 
 // Before all suite
@@ -26,6 +32,13 @@ func (suite *K8sUtilsSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *K8sUtilsSuite) SetupTest() {
+	suite.rootCmd = cmd.RootCmd
+	suite.outputBuffer = new(bytes.Buffer)
+	suite.rootCmd.SetOut(suite.outputBuffer)
+	suite.rootCmd.SetErr(suite.outputBuffer)
+	suite.fatal = false
+	os.Setenv("TEST_PASS", "1")
+
 }
 
 // After test
@@ -52,6 +65,23 @@ func (suite *K8sUtilsSuite) Test_K3sRunning() {
 	running, err := utils.GetUtils().IsK3sRunning(suite.rootCmd)
 	assert.True(suite.T(), running, "K3s is not running.")
 	assert.Nil(suite.T(), err, "Error requesting testing for k3s cluster: %v", err)
+}
+
+func (suite *K8sUtilsSuite) Test_UnsetKubectlCmd() {
+	os.Setenv("TEST_PASS", "1")
+
+	defer func() { log.StandardLogger().ExitFunc = nil }()
+	log.StandardLogger().ExitFunc = func(int) { suite.fatal = true }
+
+	i := &infra.LiveInstallers{}
+	os.Setenv("MISSING_KUBECTL", mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE)
+	i.SetKubectlCmd("")
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", "")
+	_ = i.GetKubectlCmd(suite.rootCmd)
+	assert.Contains(suite.T(), suite.outputBuffer.String(), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_RESULT, "Suite does not properly warn about missing kubectl on path.")
+	os.Setenv("PATH", origPath)
+	os.Unsetenv("MISSING_KUBECTL")
 }
 
 func TestK8sUtilsSuite(t *testing.T) {

@@ -35,10 +35,10 @@ var deleteCmd = &cobra.Command{
 	Long:  `Deletes a pipeline. Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cmd.Flag("name").Value == nil && cmd.Flag("id").Value == nil {
-			message := fmt.Errorf("'name' or 'id' must be set to delete a flag")
-			cmd.PrintErr(message.Error())
-			log.Fatalf(message.Error())
-			return message
+			message := "'name' or 'id' must be set to delete a flag"
+			if utils.PrintErrorAndReturnExit(cmd, message+"%v", err) {
+				return nil
+			}
 		}
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
@@ -81,9 +81,10 @@ var deleteCmd = &cobra.Command{
 
 		err = deleteClient.Delete(deleteParams)
 		if err != nil {
-			message := fmt.Errorf("could not delete the pipeline with ID (%v): %v", pipelineID, err)
-			cmd.PrintErr("delete.go:" + message.Error())
-			log.Fatalf(message.Error())
+			message := fmt.Sprintf("could not delete the pipeline with ID (%v): %v", pipelineID, err)
+			if utils.PrintErrorAndReturnExit(cmd, message+"%v", err) {
+				return nil
+			}
 		}
 
 		cmd.Printf("Successfully deleted pipeline ID: %v", pipelineID)

@@ -21,7 +21,6 @@ import (
 
 	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -31,11 +30,6 @@ var listProgramCmd = &cobra.Command{
 	Short: "Lists all deployed SAME programs",
 	Long:  `Lists all deployed SAME programs.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
-		if _, err := kubectlExists(); err != nil {
-			log.Errorf(err.Error())
-			return err
-		}
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
 			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {

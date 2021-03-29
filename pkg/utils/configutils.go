@@ -36,7 +36,7 @@ func LoadConfig(configPath string) (err error) {
 
 		home, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("Failed to write to temporary file: %v", err)
 		}
 		defaultSameConfigDir := path.Join(home, ".same")
 		_, noSameConfigDirFound := os.Stat(defaultSameConfigDir)
@@ -63,7 +63,7 @@ func LoadConfig(configPath string) (err error) {
 				log.Infof("No config directory found at %v, creating one.\n", defaultSameConfigDir)
 				createDirErr := os.Mkdir(defaultSameConfigDir, 0755)
 				if createDirErr != nil {
-					log.Fatal(createDirErr)
+					return fmt.Errorf("Failed to write to create config directory: %v", createDirErr)
 				}
 			}
 			viper.Set("created-at", time.Now().Format(time.RFC3339))

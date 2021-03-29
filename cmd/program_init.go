@@ -76,7 +76,8 @@ func ExecuteInit(sameRepoName string) {
 
 	dir, err := ioutil.TempDir(os.TempDir(), "foobaz")
 	if err != nil {
-		log.Fatal(err)
+		log.Warn(err)
+		return
 	}
 
 	log.Info(fmt.Sprintf("Working directory: cd %v", dir))

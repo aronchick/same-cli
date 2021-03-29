@@ -2,6 +2,7 @@ package infra
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
@@ -90,10 +91,11 @@ func (mockDC *MockDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, er
 }
 
 func (mockDC *MockDependencyCheckers) IsKubectlOnPath(cmd *cobra.Command) (string, error) {
-	if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE) {
+	if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE) ||
+		os.Getenv("MISSING_KUBECTL") != "" {
 		return "", fmt.Errorf(mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_RESULT)
 	}
-	return "VALID_KUBECTL", nil
+	return "kubectl", nil
 }
 
 func (mockDC *MockDependencyCheckers) CanConnectToKubernetes(cmd *cobra.Command) (bool, error) {

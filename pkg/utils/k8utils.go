@@ -175,7 +175,7 @@ func HasContext(cmd *cobra.Command) (currentContext string, err error) {
 	log.Tracef("About to execute: %v", scriptCmd)
 	scriptOutput, err := scriptCmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("Failed to current context for Kubernetes. That's all we know: %v", err)
+		return "", fmt.Errorf("Failed to current context for Kubernetes. That's all we know: %v", err)
 	}
 	currentContextString := strings.TrimSpace(string(scriptOutput))
 	if currentContextString != "" {
@@ -190,12 +190,12 @@ func HasClusters(cmd *cobra.Command) (clusters []string, err error) {
 	scriptCmd := exec.Command("kubectl", "config", "get-clusters")
 	scriptOutput, err := scriptCmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("Failed to get current clusters. That's all we know: %v", err)
+		return nil, fmt.Errorf("Failed to get current clusters. That's all we know: %v", err)
 	}
 	currentClusterString := string(scriptOutput)
 	clusters = strings.Split(currentClusterString, "\n")
 	if len(clusters) < 1 {
-		log.Fatal("Error when getting clusters, but we don't know anything more about it.")
+		return nil, fmt.Errorf("Error when getting clusters, but we don't know anything more about it.")
 	} else if len(clusters) == 1 {
 		return []string{}, fmt.Errorf("We were able to get clusters, but there were none in the kubeconfig.")
 	}

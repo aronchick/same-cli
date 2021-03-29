@@ -26,9 +26,7 @@ func PrintError(s string, err error) (exit bool) {
 	if err != nil {
 		errorString = err.Error()
 	}
-	log.Tracef("Error output: %v", errorString)
-	message := fmt.Sprintf(s, errorString)
-	log.Fatalf(message + "\n")
+	log.Warnf("%v\n%v", s, errorString)
 
 	return os.Getenv("TEST_PASS") != ""
 }

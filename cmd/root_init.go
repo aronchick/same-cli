@@ -135,7 +135,7 @@ func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Install
 		}
 	}
 	log.Traceln("K8s cluster and context detected, proceeding to install KFP.")
-	log.Tracef("kubectl path: %v", i.GetKubectlCmd())
+	log.Tracef("kubectl path: %v", i.GetKubectlCmd(cmd))
 
 	currentContext := dc.WriteCurrentContextToConfig()
 	log.Infof("Wrote kubectl current context as: %v", currentContext)

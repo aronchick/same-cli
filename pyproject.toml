@@ -10,6 +10,7 @@ pre-commit = "^2.9.3"
 pathlib2 = "^2.3.5"
 numpy = "^1.19.5"
 jupyter = "^1.0.0"
+kfp = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 

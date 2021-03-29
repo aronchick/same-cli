@@ -6,7 +6,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/mocks"
 )
 
 // // Settings default user setting
@@ -145,15 +146,22 @@ func main() {
 	// b, _ := utils.K3sRunning(cmd)
 	// fmt.Printf("Cmd B: %v", b)
 
-	k8s, err := utils.GetKubernetesClient()
-	if err != nil {
-		fmt.Println(err)
-		return
+	// k8s, err := utils.GetKubernetesClient()
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// v, err := k8s.GetVersion()
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// fmt.Println(v)
+	args := []string{mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE}
+	c := cmd.RootCmd
+	_ = c
+	for _, a := range args {
+		fmt.Println(a)
 	}
-	v, err := k8s.GetVersion()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(v)
+
 }

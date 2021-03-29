@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	netUrl "net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -317,16 +316,6 @@ func getConfigFilePath(putativeFilePath string) (filePath string, err error) {
 		}
 	}
 	return filePath, nil
-}
-
-func kubectlExists() (kubectlDoesExist bool, err error) {
-	path, err := exec.LookPath("kubectl")
-	if err != nil {
-		err := fmt.Errorf("the 'kubectl' binary is not on your PATH: %v", os.Getenv("PATH"))
-		return false, err
-	}
-	log.Tracef("'kubectl' found at %v", path)
-	return true, nil
 }
 
 func fileExists(path string) (fileDoesExist bool) {

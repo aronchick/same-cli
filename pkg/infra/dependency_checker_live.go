@@ -103,7 +103,6 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command)
 		// From here: https://github.com/k3s-io/k3s/issues/3087
 		message := INIT_ERROR_KUBECONFIG_UNSET_WARN
 		cmd.Println(message)
-		return fmt.Errorf(message)
 	}
 
 	if ok, err := dc.CanConnectToKubernetes(cmd); ok && err != nil {
@@ -319,7 +318,7 @@ func (dc *LiveDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, error)
 func (dc *LiveDependencyCheckers) IsKubectlOnPath(cmd *cobra.Command) (string, error) {
 	kubectlPath, err := exec.LookPath("kubectl")
 	if kubectlPath == "" || err != nil {
-		if utils.PrintError("could not find kubectl on your path: %v", err) {
+		if utils.PrintErrorAndReturnExit(cmd, "could not find kubectl on your path: %v %v", err) {
 			return "", err
 		}
 	}

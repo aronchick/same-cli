@@ -34,7 +34,7 @@ func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err
 		u, _ := user.Current()
 		log.Tracef("Current UID: %v", u.Username)
 		log.Tracef("Current SUDO_UID: %v", os.Getenv("SUDO_UID"))
-		log.Fatalf("We only support running this command under sudo. Please reexecute.")
+		return "", fmt.Errorf("We only support running this command under sudo. Please reexecute.")
 	}
 
 	// For some reason, go doesn't want to look up the username based
@@ -43,7 +43,7 @@ func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err
 
 	_, err = exec.LookPath("systemd")
 	if err != nil {
-		log.Fatalf("We only currently support this command on systems running systemd. Please read more about installing k3s on your machine here: https://rancher.com/docs/k3s/latest/en/advanced/")
+		return "", fmt.Errorf("We only currently support this command on systems running systemd. Please read more about installing k3s on your machine here: https://rancher.com/docs/k3s/latest/en/advanced/")
 	}
 
 	log.Tracef("Executing User Home: %v", executingUser.HomeDir)
@@ -58,7 +58,7 @@ func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err
 		uid, err1 := strconv.Atoi(executingUser.Uid)
 		gid, err2 := strconv.Atoi(executingUser.Gid)
 		if err1 != nil || err2 != nil {
-			log.Fatalf("'%v' or '%v' could not be converted to int from strconv.Atoi: \n1: %v\n2: %v", executingUser.Uid, executingUser.Gid, err1, err2)
+			return "", fmt.Errorf("'%v' or '%v' could not be converted to int from strconv.Atoi: \n1: %v\n2: %v", executingUser.Uid, executingUser.Gid, err1, err2)
 		}
 
 		kubeDir := path.Join(executingUser.HomeDir, ".kube")
@@ -66,11 +66,11 @@ func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err
 			logrus.Tracef("%v does not exist, creating it now.", kubeDir)
 			mkDirErr := os.Mkdir(kubeDir, 0700)
 			if mkDirErr != nil {
-				log.Fatalf("Unable to create the .kube directory at: %v", mkDirErr)
+				return "", fmt.Errorf("Unable to create the .kube directory at: %v", mkDirErr)
 			}
 			chownErr := os.Chown(kubeDir, uid, gid)
 			if chownErr != nil {
-				log.Fatalf("Unable to change %v to be owned by the current user.", kubeDir)
+				return "", fmt.Errorf("Unable to change %v to be owned by the current user.", kubeDir)
 			}
 		}
 
@@ -123,7 +123,7 @@ set -e
 		// We can use a pattern of "pre-*.txt" to get an extension like: /tmp/pre-123456.txt
 		tmpFile, err := ioutil.TempFile(os.TempDir(), "K3S_CONFIG_TEMP-")
 		if err != nil {
-			log.Fatal("Cannot create temporary file for merging", err)
+			return "", fmt.Errorf("Cannot create temporary file for merging: %v", err)
 		}
 
 		// Remember to clean up the file afterwards
@@ -135,17 +135,17 @@ set -e
 		k3s_default_config, err := ioutil.ReadFile("/etc/rancher/k3s/k3s.yaml")
 
 		if err != nil {
-			log.Fatal("Unable to read from /etc/rancher/k3s/k3s.yaml", err)
+			return "", fmt.Errorf("Unable to read from /etc/rancher/k3s/k3s.yaml: %v", err)
 		}
 		if _, err = tmpFile.Write(k3s_default_config); err != nil {
-			log.Fatal("Failed to write to temporary file", err)
+			return "", fmt.Errorf("Failed to write to temporary file: %v", err)
 		}
 
 		log.Tracef("Wrote to: %v", tmpFile.Name())
 
 		// Close the file
 		if err := tmpFile.Close(); err != nil {
-			log.Fatal(err)
+			return "", fmt.Errorf("Failed to close temporary file: %v", err)
 		}
 
 		kubeConfigs = append(kubeConfigs, tmpFile.Name())
@@ -207,7 +207,7 @@ func (i *LiveInstallers) DetectK3s(s string) (string, error) {
 func (i *LiveInstallers) InstallKFP(cmd *cobra.Command) (err error) {
 
 	log.Tracef("Inside InstallKFP()")
-	kubectlCommand := i.GetKubectlCmd()
+	kubectlCommand := i.GetKubectlCmd(cmd)
 	log.Tracef("kubectlCommand: %v\n", kubectlCommand)
 	kfpInstall := fmt.Sprintf(`
 	#!/bin/bash
@@ -234,7 +234,21 @@ func (i *LiveInstallers) SetKubectlCmd(s string) {
 	i._kubectlCommand = s
 }
 
-func (i *LiveInstallers) GetKubectlCmd() string {
+func (i *LiveInstallers) GetKubectlCmd(cmd *cobra.Command) string {
+	dc := GetDependencyCheckers(cmd, utils.GetUtils().GetCmdArgs())
+	if i._kubectlCommand == "" {
+		kubectlPath, err := dc.IsKubectlOnPath(cmd)
+		if err != nil || kubectlPath == "" {
+			if err == nil {
+				err = fmt.Errorf("")
+			}
+			if utils.PrintErrorAndReturnExit(cmd, "Unable to detect the kubectl binary on your path, please check with 'which kubectl'. %v", err) {
+				return ""
+			}
+		} else {
+			i.SetKubectlCmd(kubectlPath)
+		}
+	}
 	return i._kubectlCommand
 }
 
