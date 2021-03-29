@@ -15,7 +15,9 @@ import (
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_model"
 	pipelineuploadparams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
 	pipelineuploadmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_model"
+	"github.com/kubeflow/pipelines/backend/api/go_http_client/run_client/run_service"
 	runparams "github.com/kubeflow/pipelines/backend/api/go_http_client/run_client/run_service"
+	"github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
 	runmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 	"k8s.io/client-go/tools/clientcmd"
@@ -139,6 +141,16 @@ func ListPipelines() []*pipeline_model.APIPipeline {
 	pipelineClientParams := pipeline_service.NewListPipelinesParams()
 	listOfPipelines, _ := pClient.ListAll(pipelineClientParams, 10000)
 	return listOfPipelines
+}
+
+func ListRunsForExperiment(experimentID string) ([]*run_model.APIRun, error) {
+	kfpconfig := *utils.NewKFPConfig()
+	client, _ := apiclient.NewRunClient(kfpconfig, false)
+	params := run_service.NewListRunsParams()
+	resourceType := run_model.APIResourceTypeEXPERIMENT
+	params.SetResourceReferenceKeyType((*string)(&resourceType))
+	params.SetResourceReferenceKeyID(&experimentID)
+	return client.ListAll(params, 10000)
 }
 
 func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersion, error) {
