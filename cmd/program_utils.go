@@ -153,6 +153,16 @@ func ListRunsForExperiment(experimentID string) ([]*run_model.APIRun, error) {
 	return client.ListAll(params, 10000)
 }
 
+func ListRunsForPipelineVersion(pipelineVersionId string) ([]*run_model.APIRun, error) {
+	kfpconfig := *utils.NewKFPConfig()
+	client, _ := apiclient.NewRunClient(kfpconfig, false)
+	params := run_service.NewListRunsParams()
+	resourceType := run_model.APIResourceTypePIPELINEVERSION
+	params.SetResourceReferenceKeyType((*string)(&resourceType))
+	params.SetResourceReferenceKeyID(&pipelineVersionId)
+	return client.ListAll(params, 10000)
+}
+
 func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersion, error) {
 	kfpconfig := *utils.NewKFPConfig()
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)
