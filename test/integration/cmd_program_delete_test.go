@@ -42,7 +42,7 @@ func (suite *ProgramDeleteSuite) SetupAllSuite() {
 	if os.Getenv("TEST_K3S") == "true" {
 		running, err := utils.GetUtils().IsK3sRunning(suite.rootCmd)
 		if err != nil || !running {
-			log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+			assert.Fail(suite.T(), "k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
 		}
 	}
 
@@ -78,7 +78,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 
 	_, err := utils.CopyFilesInDir("../testdata/pipelines", suite.tmpConfigDirectory, false)
 	if err != nil {
-		log.Fatalf("could not copy pipeline files into temp directory: %v", err.Error())
+		assert.Fail(suite.T(), "could not copy pipeline files into temp directory: %v", err.Error())
 	}
 
 	// if err = os.Chdir(suite.tmpConfigDirectory); err != nil {
@@ -99,7 +99,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	outputString := string(out)
 	rs := r.FindStringSubmatch(outputString)
 	if len(rs) < 2 {
-		log.Fatalf("cmd_program_delete_test: during setup, could not find name and ID in the returned upload string: %v", outputString)
+		assert.Fail(suite.T(), "cmd_program_delete_test: during setup, could not find name and ID in the returned upload string: %v", outputString)
 	}
 	suite.rootCmd.Printf("%#v\n", rs[1])
 	suite.rootCmd.Printf("%#v\n", rs[2])
@@ -109,8 +109,8 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 }
 
 func (suite *ProgramDeleteSuite) TearDownAllSuite() {
-	os.RemoveAll(suite.tmpConfigDirectory)
-	_ = os.Chdir(suite.origDir)
+	// os.RemoveAll(suite.tmpConfigDirectory)
+	log.Warnf("Directory: %v", suite.tmpConfigDirectory)
 }
 func (suite *ProgramDeleteSuite) Test_DeletePipeline() {
 	os.Setenv("TEST_PASS", "1")

@@ -21,13 +21,13 @@ resources:
         - name: data_disk
           size: 10Gi
           volumeMount:
-            mountPath: "/mnt/data_disk"
-            name: volume
+              mountPath: "/mnt/data_disk"
+              name: volume
         - name: model_disk
           size: 10Gi
           volumeMount:
-            mountPath: "/mnt/model_disk"
-            name: volume
+              mountPath: "/mnt/model_disk"
+              name: volume
 workflow:
     type: kubeflow
     parameters:
@@ -37,11 +37,10 @@ workflow:
         services:
             - tensorflow_crd:2.1
             - pytorch_crd:1.8
-        credentialFile: porter-kfp
     # services:
     #   - tensorflow:2.2
     #   - katib:3.1
-    #   - feast:1.2 
+    #   - feast:1.2
 pipeline:
     name: "my_great_pipeline"
     description: "a very good description goes here"
@@ -55,7 +54,7 @@ datasets:
       type: remote
       url: "2.csv"
       makeLocalCopy: false
-run: 
+run:
     name: "My Run"
     parameters:
         epochs: 1000

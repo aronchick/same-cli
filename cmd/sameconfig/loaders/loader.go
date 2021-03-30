@@ -39,6 +39,7 @@ func (v V1) LoadSAME(def interface{}) (sameConfig *SameConfig, err error) {
 	sameConfig.Spec.Pipeline = sameConfigFromFile.Pipeline
 	sameConfig.Spec.DataSets = sameConfigFromFile.DataSets
 	sameConfig.Spec.Run = sameConfigFromFile.Run
+	sameConfig.Spec.ConfigFilePath = sameConfigFromFile.ConfigFilePath
 
 	// a, _ := yaml.Marshal(sameConfig)
 	// fmt.Println(string(a))

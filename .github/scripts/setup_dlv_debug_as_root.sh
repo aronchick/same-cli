@@ -25,7 +25,6 @@ EOB > .vscode/dlv-sudo.sh
 # Add GOPATH to system
 export GOPATH="$HOME/go"
 export PATH="$PATH:$GOPATH/bin"
-export PATH="$PATH:$HOME/.porter"
 export GOBIN=$(go env GOPATH)/bin
 
 # Add to settings.json

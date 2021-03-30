@@ -113,6 +113,10 @@ var runProgramCmd = &cobra.Command{
 			return err
 		}
 
+		if sameConfigFile.Spec.ConfigFilePath == "" {
+			sameConfigFile.Spec.ConfigFilePath = filePath
+		}
+
 		if sameConfigFile.Spec.Pipeline.Name != "" && programName == "" {
 			programName = sameConfigFile.Spec.Pipeline.Name
 		}

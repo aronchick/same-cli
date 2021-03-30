@@ -35,7 +35,6 @@ workflow:
         services:
             - tensorflow_crd:2.1
             - pytorch_crd:1.8
-        credentialFile: porter-kfp
 pipeline:
     name: "House Prices - Advanced Regression Techniques"
     description: "House Prices - Advanced Regression Techniques"

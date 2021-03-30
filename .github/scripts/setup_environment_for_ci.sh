@@ -42,13 +42,9 @@ sudo tee /etc/apt/sources.list.d/azure-cli.list
 sudo apt-get update
 sudo apt-get install -y azure-cli
 
-# Install Porter
-curl https://cdn.porter.sh/latest/install-linux.sh | bash
-
 cat << EOF
 The installation is finished. Run the following in your shell
 
-echo "export PATH=\$PATH:~/.porter" >> $HOME/.bashrc
 echo "export KUBECONFIG=\$HOME/.kube/config" >> $HOME/.bashrc
 source ~/.bashrc
 make build

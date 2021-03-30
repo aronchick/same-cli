@@ -82,11 +82,6 @@ func CopyFile(src, dst string) (string, error) {
 	var dstfd *os.File
 	var srcinfo os.FileInfo
 
-	cwd, _ := os.Getwd()
-	log.Warnf("CWD: %v", cwd)
-
-	log.Warnf("Src File: %v", src)
-
 	if srcfd, err = os.Open(src); err != nil {
 		return "", err
 	}

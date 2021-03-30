@@ -30,6 +30,7 @@ type SameSpec struct {
 	DataSets              []DataSet       `yaml:"dataSets,omitempty"`
 	Run                   Run             `yaml:"run,omitempty"`
 	DebuggingFeatureFlags map[string]bool `yaml:"debugging_features_flags,omitempty"`
+	ConfigFilePath        string          `yaml:"configfilepath,omitempty"`
 }
 
 // Metadata is summary data about the SAME program.

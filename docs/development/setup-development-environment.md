@@ -73,11 +73,6 @@ python -m pip install --upgrade pip
 pip install pre-commit
 pre-commit install
 ```
-- Install Porter
-```
-curl https://cdn.porter.sh/latest/install-linux.sh | bash
-echo "export PATH=$PATH:~/.porter" >> ~/.bashrc
-```
 
 # How to build
 Just run `make build`

@@ -68,8 +68,10 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	uploadparams.Name = &pipelineName
 	uploadparams.Description = &pipelineDescription
 
+	pipelineRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
+
 	// TODO: We only support local compressed pipelines (for now)
-	pipelineFilePath, err := utils.CompileForKFP(sameConfigFile.Spec.Pipeline.Package)
+	pipelineFilePath, err := utils.CompileForKFP(filepath.Join(pipelineRootDir, sameConfigFile.Spec.Pipeline.Package))
 
 	if err != nil {
 		return nil, err
@@ -103,8 +105,10 @@ func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipel
 	uploadparams.Pipelineid = &pipelineID
 	uploadparams.Name = &pipelineVersion
 
+	pipelineRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
+
 	// TODO: We only support local compressed pipelines (for now)
-	pipelineFilePath, err := utils.CompileForKFP(sameConfigFile.Spec.Pipeline.Package)
+	pipelineFilePath, err := utils.CompileForKFP(filepath.Join(pipelineRootDir, sameConfigFile.Spec.Pipeline.Package))
 	if err != nil {
 		return nil, err
 	}

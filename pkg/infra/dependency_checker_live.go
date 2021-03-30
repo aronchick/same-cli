@@ -66,30 +66,6 @@ func (dc *LiveDependencyCheckers) IsStorageConfigured(cmd *cobra.Command) (bool,
 }
 
 func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command) error {
-	_, err := exec.LookPath("az")
-	if err != nil {
-
-		cmd.Println("The Azure CLI is not installed.")
-		cmd.Println("Install with https://aka.ms/getcli.")
-		return err
-	}
-
-	_, err = exec.Command("/bin/bash", "-c", "az account list -otable").Output()
-	if err != nil {
-
-		cmd.Println("You are not logged in to Azure.")
-		cmd.Println("Please run 'az login'")
-		return err
-	}
-
-	_, err = exec.LookPath("porter")
-	if err != nil {
-
-		cmd.Println("Porter not installed or not on PATH")
-		cmd.Println("Read more how to install it here: https://porter.sh")
-		return err
-	}
-
 	kubectlPath, err := dc.IsKubectlOnPath(cmd)
 	if err != nil || kubectlPath == "" {
 		cmd.Printf("Could not find Kubectl on your path: %v", err.Error())
@@ -119,27 +95,20 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command)
 }
 
 func (dc *LiveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) error {
-	credPORTER := `
-	{
-		"schemaVersion": "1.0.0-DRAFT+b6c701f",
-		"name": "aks-kubeflow-msi",
-		"created": "2021-01-28T00:15:33.5682494-08:00",
-		"modified": "2021-01-28T00:15:33.5682494-08:00",
-		"credentials": [
-		  {
-			"name": "kubeconfig",
-			"source": {
-			  "path": "$HOME/.kube/config"
-			}
-		  }
-		]
-	}
-	`
 
-	log.Info("Copying porter credential to local.")
-	_, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("echo '%s' > ~/.porter/credentials/aks-kubeflow-msi.json", credPORTER)).Output()
+	_, err := exec.LookPath("az")
 	if err != nil {
-		cmd.Println("Porter Setup: Could not create AKS credential mapping for Kubeflow Installer")
+
+		cmd.Println("The Azure CLI is not installed.")
+		cmd.Println("Install with https://aka.ms/getcli.")
+		return err
+	}
+
+	_, err = exec.Command("/bin/bash", "-c", "az account list -otable").Output()
+	if err != nil {
+
+		cmd.Println("You are not logged in to Azure.")
+		cmd.Println("Please run 'az login'")
 		return err
 	}
 
@@ -176,10 +145,7 @@ func (dc *LiveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) erro
 	echo "Downloading AKS Kubeconfig credentials"
 	az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP 1>/dev/null
 	AKS_RESOURCE_ID=$(az aks show -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP --query id -otsv)
-	echo "Installing Kubeflow into AKS Cluster via Porter"
-	porter install -c aks-kubeflow-msi --reference ghcr.io/squillace/aks-kubeflow-msi:v0.1.7 1>/dev/null
-	echo "Kubeflow installed."
-	echo "TODO: Set up storage account."
+	echo "AKS is now installed, please execute 'same init' to install Kubeflow."
 	`
 
 	// TODO: Figure out how to check for quota violations. Example:
