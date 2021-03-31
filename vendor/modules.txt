@@ -14,6 +14,7 @@ github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
 github.com/PuerkitoBio/urlesc
 # github.com/argoproj/argo v0.0.0-20200506223611-54154c61eb4f
+## explicit
 github.com/argoproj/argo/pkg/apis/workflow
 github.com/argoproj/argo/pkg/apis/workflow/v1alpha1
 # github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
@@ -164,6 +165,7 @@ github.com/go-openapi/runtime/yamlpc
 # github.com/go-openapi/spec v0.20.0
 github.com/go-openapi/spec
 # github.com/go-openapi/strfmt v0.19.11
+## explicit
 github.com/go-openapi/strfmt
 # github.com/go-openapi/swag v0.19.12
 github.com/go-openapi/swag

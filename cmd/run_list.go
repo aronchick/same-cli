@@ -160,7 +160,6 @@ func getMetric(run *run_model.APIRun, metricName string) (value float64, exist b
 }
 
 func init() {
-	listRunCmd.Flags().StringP("experiment-name", "e", "", "The SAME Experiment name")
 	listRunCmd.Flags().StringP("program-name", "n", "", "The SAME Program name")
 	listRunCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml')")
 	runCmd.AddCommand(listRunCmd)

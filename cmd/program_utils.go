@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	gogetter "github.com/hashicorp/go-getter"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_client/experiment_service"
@@ -165,6 +166,13 @@ func ListRunsForPipelineVersion(pipelineVersionId string) ([]*run_model.APIRun, 
 	params.SetResourceReferenceKeyType((*string)(&resourceType))
 	params.SetResourceReferenceKeyID(&pipelineVersionId)
 	return client.ListAll(params, 10000)
+}
+
+func GetRun(runId string) (*run_model.APIRunDetail, *v1alpha1.Workflow, error) {
+	kfpconfig := *utils.NewKFPConfig()
+	client, _ := apiclient.NewRunClient(kfpconfig, false)
+	params := run_service.NewGetRunParams().WithRunID(runId)
+	return client.Get(params)
 }
 
 func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersion, error) {
