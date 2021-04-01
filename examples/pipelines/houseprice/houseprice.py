@@ -527,6 +527,7 @@ def train(train_data: InputPath(),
 def house_price_pipeline(
     epochs=250,
     batch_size=32,
+    sha=''
 ):
     download_data_factory = func_to_container_op(func=download_data,
                                                  base_image='tensorflow/tensorflow:2.4.1',

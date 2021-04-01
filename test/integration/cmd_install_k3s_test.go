@@ -28,8 +28,6 @@ func (suite *InstallK3sSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.fatal = false
 	viper.Reset()
-	// log.SetLevel(log.TraceLevel)
-	// log.SetOutput(ioutil.Discard)
 	os.Setenv("TEST_PASS", "1")
 
 	_, err := utils.GetUtils().DetectK3s()

@@ -25,7 +25,6 @@ type LiveInstallers struct {
 }
 
 func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	log.SetLevel(log.TraceLevel)
 	log.Tracef("Inside Installer: %v", cmd.Short)
 	executingUser, err := user.LookupId(os.Getenv("SUDO_UID"))
 

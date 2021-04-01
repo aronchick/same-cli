@@ -26,7 +26,6 @@ func (suite *InstallDockerSuite) SetupTest() {
 	suite.rootCmd = cmd.RootCmd
 	suite.fatal = false
 	viper.Reset()
-	// log.SetOutput(ioutil.Discard)
 	os.Setenv("TEST_PASS", "1")
 }
 

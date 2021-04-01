@@ -1,10 +1,7 @@
 package utils_test
 
 import (
-	"io/ioutil"
 	"testing"
-
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,7 +18,6 @@ func (suite *UtilsSuite) SetupAllSuite() {
 
 // Before each test
 func (suite *UtilsSuite) SetupTest() {
-	log.SetOutput(ioutil.Discard)
 }
 
 // After test

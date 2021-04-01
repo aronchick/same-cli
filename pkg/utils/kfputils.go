@@ -11,7 +11,7 @@ import (
 func CompileForKFP(pipelineDSLfilepath string) (compiledPipeline string, err error) {
 
 	if _, err = exec.LookPath("dsl-compile"); err != nil {
-		err = fmt.Errorf("could not find 'dsl-compile'. Please run 'python -m pip install kfp'")
+		err = fmt.Errorf("could not find 'dsl-compile'. Please run 'python -m pip install kfp'. You may also need to add it to your path by executing: export PATH=$PATH:$HOME/.local/bin")
 		return
 	}
 

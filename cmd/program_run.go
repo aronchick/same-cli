@@ -139,7 +139,11 @@ var runProgramCmd = &cobra.Command{
 				}
 				pipelineID = uploadedPipeline.ID
 
-				cmd.Printf("Pipeline Uploaded.\nName: %v\nID: %v", uploadedPipeline.Name, uploadedPipeline.ID)
+				cmd.Printf(`
+Pipeline Uploaded.
+Name: %v
+ID: %v\n
+`, uploadedPipeline.Name, uploadedPipeline.ID)
 			} else {
 				pipelineID = pipeline.ID
 				newID, _ := uuid.NewRandom()
@@ -149,7 +153,12 @@ var runProgramCmd = &cobra.Command{
 				}
 				pipelineVersionID = uploadedPipelineVersion.ID
 
-				cmd.Printf("Pipeline Updated.\nName: %v\nVersionID: %v\nID: %v\n", uploadedPipelineVersion.Name, uploadedPipelineVersion.ID, pipeline.ID)
+				cmd.Printf(`
+Pipeline Updated.
+Name: %v
+VersionID: %v
+ID: %v\n
+`, uploadedPipelineVersion.Name, uploadedPipelineVersion.ID, pipeline.ID)
 			}
 		}
 
@@ -190,7 +199,7 @@ var runProgramCmd = &cobra.Command{
 
 		runDetails := CreateRun(runName, pipelineID, pipelineVersionID, experimentID, runDescription, runParams)
 
-		fmt.Printf("Program run created with ID %s.", runDetails.Run.ID)
+		fmt.Printf("Program run created with ID %s.\n", runDetails.Run.ID)
 
 		return nil
 	},

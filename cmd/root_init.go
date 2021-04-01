@@ -45,7 +45,7 @@ var initCmd = &cobra.Command{
 
 		target := strings.ToLower(viper.GetString("target"))
 		if target == "" {
-			message := "No 'target' set for deployment - using 'local' as a default. To change this, please execute 'same config set target=XXXX'\n"
+			message := "No target set - using current-context from kubeconfig.\n"
 			target = "local"
 			cmd.Print(message)
 			if os.Getenv("TEST_PASS") == "1" {
@@ -56,7 +56,6 @@ var initCmd = &cobra.Command{
 		switch target {
 		case "local":
 			message := "Executing local setup."
-			log.Trace(message)
 			cmd.Println(message)
 			err = SetupLocal(cmd, dc, i)
 		case "aks":

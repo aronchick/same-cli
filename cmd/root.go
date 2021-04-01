@@ -58,9 +58,8 @@ func setVersion() {
 
 func init() {
 	lvl, ok := os.LookupEnv("LOG_LEVEL")
-	// LOG_LEVEL not set, let's default to debug
 	if !ok {
-		lvl = "debug"
+		lvl = "info"
 	}
 	// parse string, this is built-in feature of logrus
 	ll, err := log.ParseLevel(lvl)
@@ -95,7 +94,7 @@ func initConfig() {
 	if cfgFile == "" {
 
 		if (os.Geteuid() == 0) && (os.Getenv("SUDO_UID") != "") {
-			RootCmd.Println("Running as sudo, skipping over checking for configuration file in your root directory. If this is a mistake, please use the --config flag.")
+			log.Infoln("Running as sudo, skipping over checking for configuration file in your root directory. If this is a mistake, please use the --config flag.")
 			return
 		}
 		// Find home directory.

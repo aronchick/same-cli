@@ -55,7 +55,7 @@ func (suite *InitSuite) Test_EmptyConfig() {
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "init", "--config", "../testdata/config/emptyconfig.yaml")
 
 	assert.Equal(suite.T(), false, suite.fatal)
-	assert.Contains(suite.T(), string(out), "using 'local' as a default")
+	assert.Contains(suite.T(), string(out), "No target set - using current-context")
 }
 
 func (suite *InitSuite) Test_BadTarget() {
