@@ -175,6 +175,13 @@ func GetRun(runId string) (*run_model.APIRunDetail, *v1alpha1.Workflow, error) {
 	return client.Get(params)
 }
 
+func GetPipelineVersion(versionID string) (*pipeline_model.APIPipelineVersion, error) {
+	kfpconfig := *utils.NewKFPConfig()
+	client, _ := apiclient.NewPipelineClient(kfpconfig, false)
+	params := pipeline_service.NewGetPipelineVersionParams().WithVersionID(versionID)
+	return client.GetPipelineVersion(params)
+}
+
 func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersion, error) {
 	kfpconfig := *utils.NewKFPConfig()
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)

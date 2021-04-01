@@ -65,18 +65,12 @@ func pipelineVersionID(run *run_model.APIRun) string {
 
 func pipelineVersionName(run *run_model.APIRun) string {
 	versionID := pipelineVersionID(run)
-	pipeline, err := FindPipelineByName(run.PipelineSpec.PipelineName)
 	if err != nil {
 		return err.Error()
 	}
-	versions, err := ListPipelineVersions(pipeline.ID)
+	version, err := GetPipelineVersion(versionID)
 	if err != nil {
-		return err.Error()
-	}
-	for _, version := range versions {
-		if version.ID == versionID {
-			return version.Name
-		}
+		return version.Name
 	}
 	return ""
 }
@@ -116,5 +110,6 @@ Metrics:
 
 func init() {
 	describeRunCmd.Flags().StringP("run-id", "r", "", "The SAME run ID")
+	_ = describeRunCmd.MarkFlagRequired("run-id")
 	runCmd.AddCommand(describeRunCmd)
 }
