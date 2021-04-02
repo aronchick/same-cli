@@ -544,8 +544,8 @@ def house_price_pipeline(
                                              'scikit-learn>=0.24.1',
                                              'pandas>=1.1.5',
                                          ])
-    train_data_url = 'https://gist.githubusercontent.com/tcnghia/11d3314fec450511a5d93fd860208575/raw/4a68c3f6c56ced434ce6e634c089b0d1855b084c/train.csv'
-    test_data_url = 'https://gist.githubusercontent.com/tcnghia/41b010038e7114690e752649174300cc/raw/728e626f4da41b320c2c548cb4ec7ff799196d00/test.csv'
+    train_data_url = 'https://same-project.github.io/samples/houseprice/train.csv'
+    test_data_url = 'https://same-project.github.io/samples/houseprice/test.csv'
     train_download_op = download_data_factory(train_data_url)
     train_download_op.set_display_name('Download training data')
     test_download_op = download_data_factory(test_data_url)
