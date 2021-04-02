@@ -86,6 +86,7 @@ echo "activepipeline: nil" >> ~/.same/config.yaml
 ```
 sudo bin/same installK3s
 bin/same init
+export KUBECONFIG=$HOME/.kube/config
 ```
 
 To create a sample pipeline:
