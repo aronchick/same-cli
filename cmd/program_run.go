@@ -121,7 +121,8 @@ var runProgramCmd = &cobra.Command{
 				cmd.Printf(`
 Pipeline Uploaded.
 Name: %v
-ID: %v\n
+ID: %v
+
 `, uploadedPipeline.Name, uploadedPipeline.ID)
 			} else {
 				pipelineID = pipeline.ID
@@ -136,7 +137,8 @@ ID: %v\n
 Pipeline Updated.
 Name: %v
 VersionID: %v
-ID: %v\n
+ID: %v
+
 `, uploadedPipelineVersion.Name, uploadedPipelineVersion.ID, pipeline.ID)
 			}
 		}

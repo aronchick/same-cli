@@ -45,15 +45,20 @@ pkill -f kubectl >/dev/null 2>&1
 
 clear
 
+pe "az aks list"
+
+pe "clear"
+
 pe ""
 
 # Clone the directory
-p "git clone https://github.com/Contoso/Housing_Prices_Model"
-git clone git@github.com:SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo 2>/dev/null 
+p "git clone git@github.com:Trey-Research-AI-Division/Housing_Model.git"
+git clone git@github.com:Trey-Research-AI-Division/Housing_Model.git
+p ""
 
 # cd into the directory
-p "cd Housing_Prices_Model"
-cd EXAMPLE-SAME-Enabled-Data-Science-Repo
+p "cd Housing_Model"
+cd Housing_Model
 
 DEMO_PROMPT="${GREEN}➜ ${CYAN} ~/Housing_Prices_Model ${WHITE}$ "
 # Pretend the user has typed in the command from the website
@@ -119,7 +124,7 @@ pe "git push"
 pe "echo \"Go to GitHub now :)\""
 
 # # run command behind
-# cd ~ && rm -rf $DEMO_DIR
+cd ~ && rm -rf $DEMO_DIR
 
 # # enters interactive mode and allows newly typed command to be executed
 # cmd
