@@ -9,7 +9,6 @@ import (
 
 	"github.com/azure-octo/same-cli/cmd"
 	"github.com/azure-octo/same-cli/pkg/infra"
-	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -99,20 +98,13 @@ func (suite *ProgramRunSuite) Test_ExecuteWithCreateAndNoArgs() {
 	assert.Regexp(suite.T(), regexp.MustCompile(`required flag\(s\).+?"experiment-name".+? not set`), string(out))
 }
 
-func (suite *ProgramRunSuite) Test_ExecuteWithCreateWithFileAndNoKubectl() {
-	os.Setenv("TEST_PASS", "1")
-	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/same.yaml", "-e", "Test_ExecuteWithCreateWithFileAndNoKubectl-experiment", "-r", suite.runID, "--config", configFileName, "--", mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE)
-	assert.Contains(suite.T(), string(out), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_RESULT)
-}
-
 func (suite *ProgramRunSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 	os.Setenv("TEST_PASS", "1")
 	origKubeconfig := os.Getenv("KUBECONFIG")
 	os.Setenv("KUBECONFIG", "/dev/null/baddir")
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/same.yaml", "-e", "Test_ExecuteWithCreateWithNoKubeconfig-experiment", "-r", suite.runID, "--config", configFileName)
-	assert.Contains(suite.T(), string(out), "could not set kubeconfig default context")
+	assert.Contains(suite.T(), string(out), "open /dev/null/baddir: not a directory")
 
 	if origKubeconfig != "" {
 		_ = os.Setenv("KUBECONFIG", origKubeconfig)

@@ -18,7 +18,6 @@ limitations under the License.
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -35,69 +34,49 @@ var runProgramCmd = &cobra.Command{
 	Short: "Runs a SAME program",
 	Long:  `Runs a SAME program that was already created.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		filePath, err := cmd.PersistentFlags().GetString("file")
+		filePath, err := cmd.Flags().GetString("file")
 		if err != nil {
 			return err
 		}
 
-		programName, err := cmd.PersistentFlags().GetString("program-name")
+		programName, err := cmd.Flags().GetString("program-name")
 		if err != nil {
 			programName = ""
 		}
 
-		programDescription, err := cmd.PersistentFlags().GetString("program-description")
+		programDescription, err := cmd.Flags().GetString("program-description")
 		if err != nil {
 			return err
 		}
 
-		runName, err := cmd.PersistentFlags().GetString("run-name")
+		runName, err := cmd.Flags().GetString("run-name")
 		if err != nil {
 			return err
 		}
-		runDescription, err := cmd.PersistentFlags().GetString("run-description")
+		runDescription, err := cmd.Flags().GetString("run-description")
 		if err != nil {
 			runDescription = ""
 		}
 
-		experimentName, err := cmd.PersistentFlags().GetString("experiment-name")
+		experimentName, err := cmd.Flags().GetString("experiment-name")
 		if err != nil {
 			return err
 		}
 
-		experimentDescription, err := cmd.PersistentFlags().GetString("experiment-description")
+		experimentDescription, err := cmd.Flags().GetString("experiment-description")
 		if err != nil {
 			experimentDescription = ""
 		}
 
-		runOnly, err := cmd.PersistentFlags().GetBool("run-only")
+		runOnly, err := cmd.Flags().GetBool("run-only")
 		if err != nil {
 			runOnly = false
-		}
-
-		kubectlCommand, err := cmd.PersistentFlags().GetString("kubectl-command")
-		if err != nil {
-			return err
-		}
-
-		if kubectlCommand == "" {
-			kubectlCommand, err = infra.GetDependencyCheckers(cmd, args).IsKubectlOnPath(cmd)
-			if err != nil {
-				if utils.PrintErrorAndReturnExit(cmd, "could not get kubectl command: %v", err) {
-					return err
-				}
-			}
 		}
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
 			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
 				return nil
 			}
-		}
-		// HACK: Currently Kubeconfig must define default namespace
-		if err := exec.Command("/bin/bash", "-c", fmt.Sprintf("%v config set 'contexts.'`%v config current-context`'.namespace' kubeflow", kubectlCommand, kubectlCommand)).Run(); err != nil {
-			message := fmt.Errorf("could not set kubeconfig default context to use kubeflow namespace: %v", err)
-			log.Error(message.Error())
-			return message
 		}
 
 		// Load config file. Explicit parameters take precedent over config file.
@@ -168,7 +147,7 @@ ID: %v\n
 			return fmt.Errorf("could not determine program ID for run")
 		}
 
-		params, _ := cmd.PersistentFlags().GetStringSlice("run-param")
+		params, _ := cmd.Flags().GetStringSlice("run-param")
 
 		runParams := make(map[string]string)
 
@@ -188,7 +167,11 @@ ID: %v\n
 		experimentID := ""
 		experiment, err := FindExperimentByName(experimentName)
 		if experiment == nil || err != nil {
-			experimentID = CreateExperiment(experimentName, experimentDescription).ID
+			experimentEntity, err := CreateExperiment(experimentName, experimentDescription)
+			if err != nil {
+				return err
+			}
+			experimentID = experimentEntity.ID
 		} else {
 			experimentID = experiment.ID
 		}
@@ -197,7 +180,10 @@ ID: %v\n
 			runName = sameConfigFile.Spec.Run.Name
 		}
 
-		runDetails := CreateRun(runName, pipelineID, pipelineVersionID, experimentID, runDescription, runParams)
+		runDetails, err := CreateRun(runName, pipelineID, pipelineVersionID, experimentID, runDescription, runParams)
+		if err != nil {
+			return err
+		}
 
 		fmt.Printf("Program run created with ID %s.\n", runDetails.Run.ID)
 
@@ -208,14 +194,12 @@ ID: %v\n
 func init() {
 	programCmd.AddCommand(runProgramCmd)
 
-	runProgramCmd.PersistentFlags().String("program-id", "", "The ID of a SAME Program")
+	runProgramCmd.Flags().String("program-id", "", "The ID of a SAME Program")
 
-	runProgramCmd.PersistentFlags().String("kubectl-command", "", "Kubectl binary command - include in single quotes.")
+	runProgramCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml')")
 
-	runProgramCmd.PersistentFlags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml')")
-
-	runProgramCmd.PersistentFlags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
-	err := runProgramCmd.MarkPersistentFlagRequired("experiment-name")
+	runProgramCmd.Flags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
+	err := runProgramCmd.MarkFlagRequired("experiment-name")
 	if err != nil {
 		message := "'experiment-name' is required for this to run.: %v"
 		if utils.PrintErrorAndReturnExit(runProgramCmd, message, err) {
@@ -223,9 +207,9 @@ func init() {
 		}
 	}
 
-	runProgramCmd.PersistentFlags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
-	runProgramCmd.PersistentFlags().StringP("run-name", "r", "", "The name of the SAME program run.")
-	err = runProgramCmd.MarkPersistentFlagRequired("run-name")
+	runProgramCmd.Flags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
+	runProgramCmd.Flags().StringP("run-name", "r", "", "The name of the SAME program run.")
+	err = runProgramCmd.MarkFlagRequired("run-name")
 	if err != nil {
 		message := "'run-name' is required for this to run."
 		if utils.PrintErrorAndReturnExit(RootCmd, message+"%v", err) {
@@ -234,10 +218,10 @@ func init() {
 		return
 	}
 
-	runProgramCmd.PersistentFlags().String("run-description", "", "A description of the SAME program run.")
-	runProgramCmd.PersistentFlags().StringSliceP("run-param", "p", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
-	runProgramCmd.PersistentFlags().String("program-description", "", "Brief description of the program")
-	runProgramCmd.PersistentFlags().StringP("program-name", "n", "", "The program name")
-	runProgramCmd.PersistentFlags().Bool("run-only", false, "Indicates whether to skip program upload")
+	runProgramCmd.Flags().String("run-description", "", "A description of the SAME program run.")
+	runProgramCmd.Flags().StringSliceP("run-param", "p", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
+	runProgramCmd.Flags().String("program-description", "", "Brief description of the program")
+	runProgramCmd.Flags().StringP("program-name", "n", "", "The program name")
+	runProgramCmd.Flags().Bool("run-only", false, "Indicates whether to skip program upload")
 
 }

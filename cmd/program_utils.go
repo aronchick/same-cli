@@ -21,43 +21,18 @@ import (
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
 	runmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
 )
 
-// COMPILEDPIPELINE : Temporary placeholder
-var COMPILEDPIPELINE = "pipeline.tar.gz"
-
-// NewKFPConfig : Create Kubernetes API config compatible with Pipelines from KubeConfig
-func NewKFPConfig() *clientcmd.ClientConfig {
-	// Load kubeconfig
-	var kubeconfig string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = filepath.Join(home, ".kube", "config")
-	} else {
-		panic("Could not find kube config!")
-	}
-
-	kubebytes, err := ioutil.ReadFile(kubeconfig)
-	if err != nil {
-		panic(err)
-	}
-	// uses kubeconfig current context
-	config, err := clientcmd.NewClientConfigFromBytes(kubebytes)
-	if err != nil {
-		panic(err)
-	}
-
-	return &config
-}
-
 func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipelineuploadmodel.APIPipeline, err error) {
 	log.Traceln("- In program_utils.UploadPipeline")
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
@@ -94,7 +69,10 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 }
 
 func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string) (uploadedPipelineVersion *pipelineuploadmodel.APIPipelineVersion, err error) {
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	uploadclient, err := apiclient.NewPipelineUploadClient(kfpconfig, false)
 	if err != nil {
@@ -131,7 +109,10 @@ func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipel
 }
 
 func FindPipelineByName(pipelineName string) (uploadedPipeline *pipeline_model.APIPipeline, err error) {
-	listOfPipelines := ListPipelines()
+	listOfPipelines, err := ListPipelines()
+	if err != nil {
+		return nil, err
+	}
 	for _, thisPipeline := range listOfPipelines {
 		if pipelineName == thisPipeline.Name {
 			return thisPipeline, nil
@@ -140,16 +121,22 @@ func FindPipelineByName(pipelineName string) (uploadedPipeline *pipeline_model.A
 	return nil, fmt.Errorf("could not find a pipeline with the name: %v", pipelineName)
 }
 
-func ListPipelines() []*pipeline_model.APIPipeline {
-	kfpconfig := *utils.NewKFPConfig()
+func ListPipelines() ([]*pipeline_model.APIPipeline, error) {
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)
 	pipelineClientParams := pipeline_service.NewListPipelinesParams()
 	listOfPipelines, _ := pClient.ListAll(pipelineClientParams, 10000)
-	return listOfPipelines
+	return listOfPipelines, nil
 }
 
 func ListRunsForExperiment(experimentID string) ([]*run_model.APIRun, error) {
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	client, _ := apiclient.NewRunClient(kfpconfig, false)
 	params := run_service.NewListRunsParams()
 	resourceType := run_model.APIResourceTypeEXPERIMENT
@@ -159,7 +146,10 @@ func ListRunsForExperiment(experimentID string) ([]*run_model.APIRun, error) {
 }
 
 func ListRunsForPipelineVersion(pipelineVersionId string) ([]*run_model.APIRun, error) {
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	client, _ := apiclient.NewRunClient(kfpconfig, false)
 	params := run_service.NewListRunsParams()
 	resourceType := run_model.APIResourceTypePIPELINEVERSION
@@ -169,21 +159,30 @@ func ListRunsForPipelineVersion(pipelineVersionId string) ([]*run_model.APIRun, 
 }
 
 func GetRun(runId string) (*run_model.APIRunDetail, *v1alpha1.Workflow, error) {
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, nil, err
+	}
 	client, _ := apiclient.NewRunClient(kfpconfig, false)
 	params := run_service.NewGetRunParams().WithRunID(runId)
 	return client.Get(params)
 }
 
 func GetPipelineVersion(versionID string) (*pipeline_model.APIPipelineVersion, error) {
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	client, _ := apiclient.NewPipelineClient(kfpconfig, false)
 	params := pipeline_service.NewGetPipelineVersionParams().WithVersionID(versionID)
 	return client.GetPipelineVersion(params)
 }
 
 func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersion, error) {
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)
 	listPipelineVersionParams := pipeline_service.NewListPipelineVersionsParams()
 	pipelineType := pipeline_model.APIResourceTypePIPELINE
@@ -196,7 +195,10 @@ func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersi
 }
 
 func FindExperimentByName(experimentName string) (experiment *experiment_model.APIExperiment, err error) {
-	kfpconfig := *utils.NewKFPConfig()
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	eClient, _ := apiclient.NewExperimentClient(kfpconfig, false)
 	experimentClientParams := experiment_service.NewListExperimentParams()
 	apiExperimentType := experiment_model.APIResourceTypeEXPERIMENT
@@ -213,8 +215,11 @@ func FindExperimentByName(experimentName string) (experiment *experiment_model.A
 	return nil, fmt.Errorf("could not find an experiment with the name: %v", experimentName)
 }
 
-func CreateExperiment(experimentName string, experimentDescription string) *experiment_model.APIExperiment {
-	kfpconfig := *utils.NewKFPConfig()
+func CreateExperiment(experimentName string, experimentDescription string) (*experiment_model.APIExperiment, error) {
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	experimentclient, err := apiclient.NewExperimentClient(kfpconfig, false)
 	if err != nil {
 		panic(err)
@@ -231,11 +236,14 @@ func CreateExperiment(experimentName string, experimentDescription string) *expe
 		panic(err)
 	}
 
-	return createdExperiment
+	return createdExperiment, nil
 }
 
-func CreateRun(runName string, pipelineID string, pipelineVersionID string, experimentID string, runDescription string, runParameters map[string]string) *runmodel.APIRunDetail {
-	kfpconfig := *utils.NewKFPConfig()
+func CreateRun(runName string, pipelineID string, pipelineVersionID string, experimentID string, runDescription string, runParameters map[string]string) (*runmodel.APIRunDetail, error) {
+	kfpconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	runParams := make([]*runmodel.APIParameter, 0)
 
@@ -283,7 +291,7 @@ func CreateRun(runName string, pipelineID string, pipelineVersionID string, expe
 		panic(err)
 	}
 
-	return runDetail
+	return runDetail, nil
 }
 
 // getFilePath returns a file path to the local drive of the SAME config file, or error if invalid.

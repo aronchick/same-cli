@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 
 	"io/ioutil"
@@ -254,26 +255,44 @@ func IsK3sHealthy(cmd *cobra.Command) (kubectlCommand string, err error) {
 }
 
 // NewKFPConfig : Create Kubernetes API config compatible with Pipelines from KubeConfig
-func NewKFPConfig() *clientcmd.ClientConfig {
+func NewKFPConfig() (clientcmd.ClientConfig, error) {
 	// Load kubeconfig
 	var kubeconfig string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = filepath.Join(home, ".kube", "config")
+	if os.Getenv("KUBECONFIG") == "" {
+		if home := homedir.HomeDir(); home != "" {
+			kubeconfig = filepath.Join(home, ".kube", "config")
+		} else {
+			panic("Could not find kube config!")
+		}
 	} else {
-		panic("Could not find kube config!")
+		kubeconfig = os.Getenv("KUBECONFIG")
 	}
 
 	kubebytes, err := ioutil.ReadFile(kubeconfig)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	// uses kubeconfig current context
-	config, err := clientcmd.NewClientConfigFromBytes(kubebytes)
+	configFromFile, err := clientcmd.NewClientConfigFromBytes(kubebytes)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+	rawConfig, err := configFromFile.RawConfig()
+	if err != nil {
+		return nil, err
 	}
 
-	return &config
+	namespaceConfigOverride := clientcmd.ConfigOverrides{
+		Context: api.Context{
+			Namespace: "kubeflow",
+		},
+	}
+	config := clientcmd.NewDefaultClientConfig(rawConfig, &namespaceConfigOverride)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
 type k8sClient struct {
@@ -283,7 +302,10 @@ type k8sClient struct {
 func GetKubernetesClient() (*k8sClient, error) {
 	var err error
 	client := k8sClient{}
-	clientConfig := *NewKFPConfig()
+	clientConfig, err := NewKFPConfig()
+	if err != nil {
+		return nil, err
+	}
 	restConfig, _ := clientConfig.ClientConfig()
 	client.clientset, err = kubernetes.NewForConfig(restConfig)
 	if err != nil {

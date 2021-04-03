@@ -65,7 +65,7 @@ func (suite *InitSuite) Test_BadTarget() {
 }
 
 func (suite *InitSuite) Test_AKSTarget() {
-	kubeconfig := *utils.NewKFPConfig()
+	kubeconfig, _ := utils.NewKFPConfig()
 	if kubeconfig != nil {
 		currentConfig, _ := kubeconfig.ClientConfig()
 		if !strings.Contains(currentConfig.Host, "azmk8s.io") {

@@ -150,7 +150,11 @@ func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Install
 }
 
 func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
-	kubeconfig := *utils.NewKFPConfig()
+	kubeconfig, err := utils.NewKFPConfig()
+	if err != nil {
+		return err
+	}
+
 	forceCreate := viper.GetBool("force-create")
 	if !forceCreate && kubeconfig != nil {
 		currentConfig, _ := kubeconfig.ClientConfig()
@@ -191,9 +195,9 @@ func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Installer
 }
 
 func init() {
-	initCmd.PersistentFlags().BoolP("wait", "w", true, "Wait for SAME to be ready before exiting. Can be run or quit with no impact.")
-	initCmd.PersistentFlags().BoolP("ready", "r", false, "Run a check to see if all SAME components are ready in the cluster.")
-	initCmd.PersistentFlags().BoolP("force-create", "", false, "Force creation of a new cluster, even if one already exists.")
+	initCmd.Flags().BoolP("wait", "w", true, "Wait for SAME to be ready before exiting. Can be run or quit with no impact.")
+	initCmd.Flags().BoolP("ready", "r", false, "Run a check to see if all SAME components are ready in the cluster.")
+	initCmd.Flags().BoolP("force-create", "", false, "Force creation of a new cluster, even if one already exists.")
 	RootCmd.AddCommand(initCmd)
 
 	// Here you will define your flags and configuration settings.

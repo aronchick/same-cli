@@ -37,7 +37,10 @@ var listProgramCmd = &cobra.Command{
 			}
 		}
 
-		listOfPipelines := ListPipelines()
+		listOfPipelines, err := ListPipelines()
+		if err != nil {
+			return err
+		}
 		for _, thisPipeline := range listOfPipelines {
 			//TODO: Making the formatting nicer
 			fmt.Println(thisPipeline.ID, thisPipeline.Name, thisPipeline.Description)

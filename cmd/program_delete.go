@@ -47,7 +47,10 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
-		kfpconfig := *utils.NewKFPConfig()
+		kfpconfig, err := utils.NewKFPConfig()
+		if err != nil {
+			return err
+		}
 
 		pipelineID := ""
 		if cmd.Flag("id").Value != nil {
