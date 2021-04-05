@@ -14,17 +14,6 @@ def irisclassification(
 ):
   """Pipeline steps"""
 
-  pvcname = 'pipelinepvc'
-  createStorageOp = dsl.VolumeOp(
-  name = pvcname,
-  resource_name = pvcname,
-  size = '10Gi',
-  storage_class = 'blob',
-  modes = ['ReadWriteMany']
-  )
-  pipelinepvc = createStorageOp.volume
-
-  storage_mount_path = '/mnt/azure'
   operations: Dict[str, dsl.ContainerOp] = dict()
 
   # preprocess data
@@ -33,10 +22,7 @@ def irisclassification(
   base_image='python:3.8-slim',
   packages_to_install=['pathlib2~=2.3.1', 'requests==2.25.0']
   )
-  operations['preprocess'] = dataFactory(
-      mnt_path=storage_mount_path
-  )
-  operations['preprocess'].after(createStorageOp)
+  operations['preprocess'] = dataFactory()
 
   # train
   import train
@@ -45,14 +31,11 @@ def irisclassification(
   packages_to_install=['pathlib2>=2.3.1,<2.4.0', 'requests==2.25.0']
   )
   operations['training']= trainFactory(
-      mnt_path=storage_mount_path,
+      train_data=operations['preprocess'].output,
       batch_size=batch_size,
       num_epochs=epochs
   )
   operations['training'].after(operations['preprocess'])
-
-  for _, op in operations.items():
-    op.add_pvolumes({storage_mount_path: pipelinepvc })
 
 if __name__ == '__main__':
   compiler.Compiler().compile(irisclassification, __file__ + '.tar.gz')
