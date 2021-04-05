@@ -45,9 +45,9 @@ jobs:
           - os: macOS-latest
             target_arch: arm64
     steps:
-      - uses: shogo82148/actions-mutex@v1
-        with:
-          key: TEST_MATRIX
+      # - uses: shogo82148/actions-mutex@v1
+      #   with:
+      #     key: TEST_MATRIX
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v2
         with:
@@ -55,7 +55,7 @@ jobs:
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
+          python-version: "3.9"
       - name: Install KFP Python SDK
         run: |
           pip3 install --upgrade pip
