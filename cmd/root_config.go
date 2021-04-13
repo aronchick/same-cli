@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -30,7 +31,10 @@ var configCmd = &cobra.Command{
 	Short: "Initialize your .same/config.yaml file.",
 	Long:  `Creates and initializes environment wide settings in .same/config.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		defaultLocation := "~/.same/config.yaml"
+		defaultLocation, err := homedir.Expand("~/.same/config.yaml")
+		if err != nil {
+			return fmt.Errorf("error expanding homedir: %s", err)
+		}
 		err = utils.LoadConfig(defaultLocation)
 		if err != nil {
 			message := fmt.Errorf("error loading config file from '%v': %v", defaultLocation, err)
