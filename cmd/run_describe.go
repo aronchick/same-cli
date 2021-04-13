@@ -80,6 +80,25 @@ func formatDate(t strfmt.DateTime) string {
 }
 
 func prettyPrint(run *run_model.APIRunDetail, wf *v1alpha1.Workflow) error {
+
+	var outputArtifacts []v1alpha1.Artifact
+	outputArtifacts = make([]v1alpha1.Artifact, 0)
+
+	for _, node := range wf.Status.Nodes {
+		if node.Outputs != nil {
+			if len(node.Outputs.Artifacts) > 0 {
+				for _, artifact := range node.Outputs.Artifacts {
+					outputArtifacts = append(outputArtifacts, artifact)
+				}
+			}
+		}
+	}
+
+	data := struct {
+		Run       *run_model.APIRun
+		Artifacts []v1alpha1.Artifact
+	}{run.Run, outputArtifacts}
+
 	funcs := map[string]interface{}{
 		"PipelineVersionID":   pipelineVersionID,
 		"PipelineVersionName": pipelineVersionName,
@@ -103,9 +122,13 @@ Metrics:
   {{- with .Run.Metrics }}{{- range . }}
     {{.Name}}:{{"\t"}}{{.NumberValue}}
   {{- end }}{{- end }}
+Outputs:
+  {{- with .Artifacts }}{{- range . }}
+    {{.Name}}:{{"\t"}}{{.S3.Key}}
+  {{- end }}{{- end }}
 `
 	t := template.Must(template.New("Run Detail").Funcs(funcs).Parse(runInfoTmpl))
-	return t.Execute(os.Stdout, run)
+	return t.Execute(os.Stdout, data)
 }
 
 func init() {

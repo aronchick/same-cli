@@ -14,12 +14,10 @@ import (
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/experiment_model"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_client/pipeline_service"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_model"
-	pipelineuploadparams "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
-	pipelineuploadmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_model"
+	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_client/pipeline_upload_service"
+	"github.com/kubeflow/pipelines/backend/api/go_http_client/pipeline_upload_model"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/run_client/run_service"
-	runparams "github.com/kubeflow/pipelines/backend/api/go_http_client/run_client/run_service"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
-	runmodel "github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
 	apiclient "github.com/kubeflow/pipelines/backend/src/common/client/api_server"
 
 	log "github.com/sirupsen/logrus"
@@ -27,7 +25,7 @@ import (
 	"github.com/azure-octo/same-cli/pkg/utils"
 )
 
-func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipelineuploadmodel.APIPipeline, err error) {
+func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipeline_upload_model.APIPipeline, err error) {
 	log.Traceln("- In program_utils.UploadPipeline")
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
@@ -40,7 +38,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 		return nil, err
 	}
 
-	uploadparams := pipelineuploadparams.NewUploadPipelineParams()
+	uploadparams := pipeline_upload_service.NewUploadPipelineParams()
 	uploadparams.Name = &pipelineName
 	uploadparams.Description = &pipelineDescription
 
@@ -68,7 +66,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	return uploadedPipeline, nil
 }
 
-func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string) (uploadedPipelineVersion *pipelineuploadmodel.APIPipelineVersion, err error) {
+func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string) (uploadedPipelineVersion *pipeline_upload_model.APIPipelineVersion, err error) {
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
@@ -80,7 +78,7 @@ func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipel
 		return nil, err
 	}
 
-	uploadparams := pipelineuploadparams.NewUploadPipelineVersionParams()
+	uploadparams := pipeline_upload_service.NewUploadPipelineVersionParams()
 	uploadparams.Pipelineid = &pipelineID
 	uploadparams.Name = &pipelineVersion
 
@@ -239,16 +237,16 @@ func CreateExperiment(experimentName string, experimentDescription string) (*exp
 	return createdExperiment, nil
 }
 
-func CreateRun(runName string, pipelineID string, pipelineVersionID string, experimentID string, runDescription string, runParameters map[string]string) (*runmodel.APIRunDetail, error) {
+func CreateRun(runName string, pipelineID string, pipelineVersionID string, experimentID string, runDescription string, runParameters map[string]string) (*run_model.APIRunDetail, error) {
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	runParams := make([]*runmodel.APIParameter, 0)
+	runParams := make([]*run_model.APIParameter, 0)
 
 	for name, value := range runParameters {
-		runParams = append(runParams, &runmodel.APIParameter{Name: name, Value: value})
+		runParams = append(runParams, &run_model.APIParameter{Name: name, Value: value})
 	}
 
 	runclient, err := apiclient.NewRunClient(kfpconfig, false)
@@ -256,11 +254,11 @@ func CreateRun(runName string, pipelineID string, pipelineVersionID string, expe
 		panic(err)
 	}
 
-	createRunParams := runparams.NewCreateRunParams()
-	runBody := runmodel.APIRun{
+	createRunParams := run_service.NewCreateRunParams()
+	runBody := run_model.APIRun{
 		Name:        runName,
 		Description: runDescription,
-		PipelineSpec: &runmodel.APIPipelineSpec{
+		PipelineSpec: &run_model.APIPipelineSpec{
 			Parameters: runParams,
 			PipelineID: pipelineID,
 		},
@@ -268,19 +266,19 @@ func CreateRun(runName string, pipelineID string, pipelineVersionID string, expe
 	createRunParams.Body = &runBody
 
 	// associate run with experiment
-	resourceKey := runmodel.APIResourceKey{ID: experimentID, Type: runmodel.APIResourceTypeEXPERIMENT}
-	resourceRef := runmodel.APIResourceReference{
+	resourceKey := run_model.APIResourceKey{ID: experimentID, Type: run_model.APIResourceTypeEXPERIMENT}
+	resourceRef := run_model.APIResourceReference{
 		Key:          &resourceKey,
-		Relationship: runmodel.APIRelationship(runmodel.APIRelationshipOWNER),
+		Relationship: run_model.APIRelationship(run_model.APIRelationshipOWNER),
 	}
 	createRunParams.Body.ResourceReferences = append(createRunParams.Body.ResourceReferences, &resourceRef)
 
 	if pipelineVersionID != "" {
 		// We want to run a specific pipeline version, so let us specify it
-		versionResourceKey := runmodel.APIResourceKey{ID: pipelineVersionID, Type: runmodel.APIResourceTypePIPELINEVERSION}
-		versionResourceRef := runmodel.APIResourceReference{
+		versionResourceKey := run_model.APIResourceKey{ID: pipelineVersionID, Type: run_model.APIResourceTypePIPELINEVERSION}
+		versionResourceRef := run_model.APIResourceReference{
 			Key:          &versionResourceKey,
-			Relationship: runmodel.APIRelationship(runmodel.APIRelationshipCREATOR),
+			Relationship: run_model.APIRelationship(run_model.APIRelationshipCREATOR),
 		}
 		createRunParams.Body.ResourceReferences = append(createRunParams.Body.ResourceReferences, &versionResourceRef)
 	}
