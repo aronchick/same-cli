@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/user"
 	"strings"
+	"time"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
@@ -46,7 +47,8 @@ func (dc *LiveDependencyCheckers) GetKubectlCmd() string {
 	return dc._kubectlCommand
 }
 
-func (dc *LiveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) (bool, error) {
+func (dc *LiveDependencyCheckers) HasValidAzureToken() (bool, error) {
+	cmd := dc.GetCmd()
 	output, err := exec.Command("/bin/bash", "-c", "az aks list").Output()
 	if (err != nil) || (strings.Contains(string(output), "refresh token has expired")) {
 		cmd.Println("Azure authentication token invalid. Please execute 'az login' and run again..")
@@ -55,18 +57,19 @@ func (dc *LiveDependencyCheckers) HasValidAzureToken(cmd *cobra.Command) (bool, 
 	return true, nil
 }
 
-func (dc *LiveDependencyCheckers) IsClusterWithKubeflowCreated(cmd *cobra.Command) (bool, error) {
+func (dc *LiveDependencyCheckers) IsClusterWithKubeflowCreated() (bool, error) {
 	output, err := exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow -o yaml").CombinedOutput()
 	return strings.Contains(string(output), "name: kubeflow"), err
 }
 
-func (dc *LiveDependencyCheckers) IsStorageConfigured(cmd *cobra.Command) (bool, error) {
+func (dc *LiveDependencyCheckers) IsStorageConfigured() (bool, error) {
 	output, err := exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).CombinedOutput()
 	return (string(output) == ""), err
 }
 
-func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command) error {
-	kubectlPath, err := dc.IsKubectlOnPath(cmd)
+func (dc *LiveDependencyCheckers) CheckDependenciesInstalled() error {
+	cmd := dc.GetCmd()
+	kubectlPath, err := dc.IsKubectlOnPath()
 	if err != nil || kubectlPath == "" {
 		cmd.Printf("Could not find Kubectl on your path: %v", err.Error())
 		return err
@@ -81,12 +84,12 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command)
 		cmd.Println(message)
 	}
 
-	if ok, err := dc.CanConnectToKubernetes(cmd); ok && err != nil {
+	if ok, err := dc.CanConnectToKubernetes(); ok && err != nil {
 		message := MISSING_KUBERNETES_ENDPOINT
 		return fmt.Errorf(message)
 	}
 
-	if ok, err := dc.HasKubeflowNamespace(cmd); ok && err != nil {
+	if ok, err := dc.HasKubeflowNamespace(); ok && err != nil {
 		message := MISSING_KUBEFLOW_NAMESPACE
 		cmd.Println(message)
 	}
@@ -94,8 +97,8 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled(cmd *cobra.Command)
 	return nil
 }
 
-func (dc *LiveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) error {
-
+func (dc *LiveDependencyCheckers) CreateAKSwithKubeflow() error {
+	cmd := dc.GetCmd()
 	_, err := exec.LookPath("az")
 	if err != nil {
 
@@ -151,14 +154,14 @@ func (dc *LiveDependencyCheckers) CreateAKSwithKubeflow(cmd *cobra.Command) erro
 	// TODO: Figure out how to check for quota violations. Example:
 	// Operation failed with status: 'Bad Request'. Details: Provisioning of resource(s) for container service SAME-CLUSTER-23542 in resource group SAME-GROUP-10482 failed. Message: Operation could not be completed as it results in exceeding approved standardDSv2Family Cores quota. Additional details - Deployment Model: Resource Manager, Location: westus2, Current Limit: 200, Current Usage: 194, Additional Required: 24, (Minimum) New Limit Required: 218. Submit a request for Quota increase at https://aka.ms/ProdportalCRP/?#create/Microsoft.Support/Parameters/%7B%22subId%22:%222865c7d1-29fa-485a-8862-717377bdbf1b%22,%22pesId%22:%2206bfd9d3-516b-d5c6-5802-169c800dec89%22,%22supportTopicId%22:%22e12e3d1d-7fa0-af33-c6d0-3c50df9658a3%22%7D by specifying parameters listed in the ‘Details’ section for deployment to succeed. Please read more about quota limits at https://docs.microsoft.com/en-us/azure/azure-supportability/per-vm-quota-requests.. Details:
 	cmd.Printf("About to execute: %v\n", theDEMOINSTALL)
-	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exsts."); err != nil {
+	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exists."); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (dc *LiveDependencyCheckers) ConfigureStorage(cmd *cobra.Command) error {
-
+func (dc *LiveDependencyCheckers) ConfigureStorage() error {
+	cmd := dc.GetCmd()
 	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
 	theDEMOINSTALL := `
 	#!/bin/bash
@@ -235,9 +238,18 @@ func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
 	return output
 
 }
-func (dc *LiveDependencyCheckers) CanConnectToKubernetes(cmd *cobra.Command) (bool, error) {
+func (dc *LiveDependencyCheckers) CanConnectToKubernetes() (bool, error) {
+	kfpConfig, err := utils.NewKFPConfig()
+	if err != nil || kfpConfig == nil {
+		return false, fmt.Errorf("could not retrieve KFP Config: %v", err.Error())
+	}
+	restConfig, _ := kfpConfig.ClientConfig()
 
-	k8sClient, err := utils.GetKubernetesClient()
+	if ok, err := utils.GetUtils(dc.GetCmd(), dc.GetCmdArgs()).IsEndpointReachable(restConfig.Host); !ok || err != nil {
+		return false, fmt.Errorf("could not reach Kubernetes endpoint (%v): %v", restConfig.Host, err.Error())
+	}
+
+	k8sClient, err := utils.GetKubernetesClient(20 * time.Second)
 	if err != nil {
 		return false, fmt.Errorf("could not get a Kubernetes client. That's all we know: %v", err.Error())
 	}
@@ -248,7 +260,7 @@ func (dc *LiveDependencyCheckers) CanConnectToKubernetes(cmd *cobra.Command) (bo
 	return true, nil
 }
 
-func (dc *LiveDependencyCheckers) HasKubeflowNamespace(cmd *cobra.Command) (bool, error) {
+func (dc *LiveDependencyCheckers) HasKubeflowNamespace() (bool, error) {
 	kubectlCommand := dc.GetKubectlCmd()
 	scriptCmd := exec.Command(kubectlCommand, "get deployments -o json")
 	scriptOutput, err := scriptCmd.CombinedOutput()
@@ -277,14 +289,14 @@ func (dc *LiveDependencyCheckers) HasKubeflowNamespace(cmd *cobra.Command) (bool
 	return true, nil
 }
 
-func (dc *LiveDependencyCheckers) IsK3sRunning(cmd *cobra.Command) (bool, error) {
-	return utils.GetUtils().IsK3sRunning(cmd)
+func (dc *LiveDependencyCheckers) IsK3sRunning() (bool, error) {
+	return utils.GetUtils(dc.GetCmd(), dc.GetCmdArgs()).IsK3sRunning()
 }
 
-func (dc *LiveDependencyCheckers) IsKubectlOnPath(cmd *cobra.Command) (string, error) {
+func (dc *LiveDependencyCheckers) IsKubectlOnPath() (string, error) {
 	kubectlPath, err := exec.LookPath("kubectl")
 	if kubectlPath == "" || err != nil {
-		if utils.PrintErrorAndReturnExit(cmd, "could not find kubectl on your path: %v %v", err) {
+		if utils.PrintErrorAndReturnExit(dc.GetCmd(), "could not find kubectl on your path: %v %v", err) {
 			return "", err
 		}
 	}

@@ -10,7 +10,6 @@ replace (
 require (
 	cloud.google.com/go v0.76.0 // indirect
 	github.com/argoproj/argo v0.0.0-20200506223611-54154c61eb4f
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.2.0
 	github.com/go-openapi/strfmt v0.19.11
 	github.com/google/uuid v1.1.2

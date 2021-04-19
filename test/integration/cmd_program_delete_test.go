@@ -40,14 +40,15 @@ func (suite *ProgramDeleteSuite) SetupAllSuite() {
 	os.Setenv("TEST_PASS", "1")
 
 	if os.Getenv("TEST_K3S") == "true" {
-		running, err := utils.GetUtils().IsK3sRunning(suite.rootCmd)
+		running, err := utils.GetUtils(suite.rootCmd, []string{}).IsK3sRunning()
 		if err != nil || !running {
 			assert.Fail(suite.T(), "k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+			suite.T().Skip()
 		}
 	}
 
 	dc := infra.GetDependencyCheckers(suite.rootCmd, []string{})
-	if err := dc.CheckDependenciesInstalled(suite.rootCmd); err != nil {
+	if err := dc.CheckDependenciesInstalled(); err != nil {
 		log.Warnf("Failed one or more dependencies - skipping this test: %v", err.Error())
 		suite.T().Skip()
 	}
@@ -65,12 +66,17 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	}
 
 	suite.dc = &infra.LiveDependencyCheckers{}
-	if ok, err := suite.dc.CanConnectToKubernetes(suite.rootCmd); !ok && (err != nil) {
+	suite.dc.SetCmd(suite.rootCmd)
+	suite.dc.SetCmdArgs([]string{})
+	
+	if ok, err := suite.dc.CanConnectToKubernetes(); !ok && (err != nil) {
 		assert.Fail(suite.T(), `Cannot run tests because we cannot connect to a live cluster. Test your cluster with:  kubectl version`)
+		suite.T().Skip()
 	}
 
 	if ok, _ := utils.IsKFPReady(suite.rootCmd); !ok {
-		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
+		assert.Fail(suite.T(), "KFP does not appear to be ready, this may cause tests to fail.")
+		suite.T().Skip()
 	}
 
 	suite.tmpConfigDirectory = utils.GetTmpConfigDirectory("DELETE")
@@ -79,6 +85,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	_, err := utils.CopyFilesInDir("../testdata/pipelines", suite.tmpConfigDirectory, false)
 	if err != nil {
 		assert.Fail(suite.T(), "could not copy pipeline files into temp directory: %v", err.Error())
+		suite.T().Skip()
 	}
 
 	// if err = os.Chdir(suite.tmpConfigDirectory); err != nil {
@@ -92,7 +99,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 		message := fmt.Errorf("could not start delete test suite because we could not create a sample pipeline: %v", err)
 		suite.rootCmd.Print(message)
 		log.Warn(message.Error())
-		return
+		suite.T().Skip()
 	}
 
 	r := regexp.MustCompile(`Name:\s+([^\n]+)\nVersionID:\s+([^\n]+)`)
@@ -100,6 +107,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	rs := r.FindStringSubmatch(outputString)
 	if len(rs) < 2 {
 		assert.Fail(suite.T(), "cmd_program_delete_test: during setup, could not find name and ID in the returned upload string: %v", outputString)
+		suite.T().Skip()
 	}
 	suite.rootCmd.Printf("%#v\n", rs[1])
 	suite.rootCmd.Printf("%#v\n", rs[2])

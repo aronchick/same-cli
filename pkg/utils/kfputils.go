@@ -26,9 +26,11 @@ func CompileForKFP(pipelineDSLfilepath string) (compiledPipeline string, err err
 
 	scriptCmd := exec.Command("dsl-compile", "--py", pipelineDSLfilepath, "--output", compiledPipeline)
 	log.Tracef("About to execute: %v", scriptCmd)
-	_, err = scriptCmd.CombinedOutput()
+	out, err := scriptCmd.CombinedOutput()
 	if err != nil {
-		err = fmt.Errorf("could not compile pipeline: %v", pipelineDSLfilepath)
+		err = fmt.Errorf(`
+could not compile pipeline: %v
+dsl-compile error message: %v`, pipelineDSLfilepath, string(out))
 	}
 	return
 }

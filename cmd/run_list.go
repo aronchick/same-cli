@@ -36,7 +36,7 @@ var listRunCmd = &cobra.Command{
 	Short: "Lists all SAME runs for a given program",
 	Long:  `Lists all SAME runs for a given program.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
+		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
 				return err
 			}
@@ -47,12 +47,12 @@ var listRunCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		sameConfigFilePath, err := getConfigFilePath(filePath)
+		sameConfigFilePath, err := utils.GetUtils(cmd, args).GetConfigFilePath(filePath)
 		if err != nil {
 			log.Errorf("could not resolve SAME config file path: %v", err)
 			return err
 		}
-		sameConfigFile, err := loaders.LoadSAME(sameConfigFilePath)
+		sameConfigFile, err := loaders.V1{}.LoadSAME(sameConfigFilePath)
 		if err != nil {
 			log.Errorf("could not load SAME config file: %v", err)
 			return err

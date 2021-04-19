@@ -30,7 +30,7 @@ func (suite *InstallK3sSuite) SetupTest() {
 	viper.Reset()
 	os.Setenv("TEST_PASS", "1")
 
-	_, err := utils.GetUtils().DetectK3s()
+	_, err := utils.GetUtils(suite.rootCmd, []string{}).DetectK3s()
 	if err == nil {
 		log.Warn("k3s detected, please uninstall with\n./pkg/infra/k3s-uninstall.sh")
 	}

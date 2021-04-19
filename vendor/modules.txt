@@ -82,7 +82,6 @@ github.com/emirpasic/gods/utils
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
 # github.com/ghodss/yaml v1.0.0
-## explicit
 github.com/ghodss/yaml
 # github.com/go-git/gcfg v1.5.0
 github.com/go-git/gcfg

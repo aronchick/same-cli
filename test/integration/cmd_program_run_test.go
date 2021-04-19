@@ -9,6 +9,7 @@ import (
 
 	"github.com/azure-octo/same-cli/cmd"
 	"github.com/azure-octo/same-cli/pkg/infra"
+	"github.com/azure-octo/same-cli/pkg/mocks"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -31,27 +32,33 @@ type ProgramRunSuite struct {
 
 // Before all suite
 func (suite *ProgramRunSuite) SetupAllSuite() {
-	if os.Getenv("GITHUB_ACTIONS") != "" {
-		running, err := utils.GetUtils().IsK3sRunning(suite.rootCmd)
+	if os.Getenv("TEST_K3S") == "true" {
+		running, err := utils.GetUtils(suite.rootCmd, []string{}).IsK3sRunning()
 		if err != nil || !running {
-			log.Fatal("k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+			assert.Fail(suite.T(), "k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
+			suite.T().Skip()
 		}
 	}
 
 	os.Setenv("TEST_PASS", "1")
 
 	suite.dc = &infra.LiveDependencyCheckers{}
-	if ok, err := suite.dc.CanConnectToKubernetes(suite.rootCmd); !ok && (err != nil) {
+	suite.dc.SetCmd(suite.rootCmd)
+	suite.dc.SetCmdArgs([]string{})
+
+	if ok, err := suite.dc.CanConnectToKubernetes(); !ok && (err != nil) {
 		assert.Fail(suite.T(), `Cannot run tests because we cannot connect to a live cluster. Test your cluster with:  kubectl version`)
+		suite.T().Skip()
 	}
 
-	if err := suite.dc.CheckDependenciesInstalled(suite.rootCmd); err != nil {
-		log.Warnf("Failed one or more dependencies - skipping this test: %v", err.Error())
+	if err := suite.dc.CheckDependenciesInstalled(); err != nil {
+		assert.Fail(suite.T(), "Failed one or more dependencies - skipping this test: %v", err.Error())
 		suite.T().Skip()
 	}
 
 	if ok, _ := utils.IsKFPReady(suite.rootCmd); !ok {
-		log.Warn("KFP does not appear to be ready, this may cause tests to fail.")
+		assert.Fail(suite.T(), "KFP does not appear to be ready, this will cause tests to fail.")
+		suite.T().Skip()
 	}
 
 }
@@ -133,8 +140,11 @@ func (suite *ProgramRunSuite) Test_GetRemoteNoSAME() {
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
 
 	// The URL 'https://github.com/dapr/dapr' does not have a 'same.yaml' file in it, so it should fail
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://github.com/dapr/dapr", "-e", "Test_GetRemoteNoSAME-experiment", "-r", suite.runID, "--config", configFileName)
-	assert.Contains(suite.T(), string(out), "could not download SAME")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://github.com/dapr/dapr", "-e", "Test_GetRemoteNoSAME-experiment", "-r", suite.runID, "--config", configFileName, "--", mocks.UTILS_TEST_BAD_CONFIG_FILE_DETECT_PROBE)
+	assert.Contains(suite.T(), string(out), mocks.UTILS_TEST_BAD_CONFIG_FILE_DETECT_RESULT)
+
+	_, out, _ = utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://github.com/dapr/dapr", "-e", "Test_GetRemoteNoSAME-experiment", "-r", suite.runID, "--config", configFileName, "--", mocks.UTILS_TEST_BAD_RETRIEVE_SAME_FILE_PROBE)
+	assert.Contains(suite.T(), string(out), mocks.UTILS_TEST_BAD_RETRIEVE_SAME_FILE_RESULT)
 
 }
 

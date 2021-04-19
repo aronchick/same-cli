@@ -35,7 +35,7 @@ var describeRunCmd = &cobra.Command{
 	Short: "Describes a single SAME program run",
 	Long:  `Describes a single SAME program run.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
+		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
 				return err
 			}

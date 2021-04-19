@@ -31,7 +31,7 @@ var listProgramCmd = &cobra.Command{
 	Long:  `Lists all deployed SAME programs.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
+		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
 				return err
 			}

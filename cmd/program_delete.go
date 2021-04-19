@@ -41,7 +41,7 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
-		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(cmd); err != nil {
+		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
 				return nil
 			}

@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
 type nilfn func(t assert.TestingT, object interface{}, msgAndArgs ...interface{}) bool
 
 func isGoodURL(t *testing.T, thisUrl string, expectedValue bool, fn nilfn) {
-	isRemote, err := utils.IsRemoteFilePath(thisUrl)
+	isRemote, err := utils.GetUtils(&cobra.Command{}, []string{}).IsRemoteFilePath(thisUrl)
 	if expectedValue {
 		assert.True(t, isRemote)
 	} else {

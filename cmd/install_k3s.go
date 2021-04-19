@@ -29,12 +29,13 @@ var installK3sCmd = &cobra.Command{
 		log.Trace("Starting installK3s command")
 		var i = GetClusterInstallMethods()
 
-		_, err = i.InstallK3s(cmd)
+		_, err = i.InstallK3s()
 		if err != nil {
 			log.Fatalf("error installing k3s: %v", err)
 		}
 		cmd.Println("K3s installed.")
-		k3sRunning, _ := utils.GetUtils().IsK3sRunning(cmd)
+		var u utils.UtilsInterface = utils.GetUtils(cmd, args)
+		k3sRunning, _ := u.IsK3sRunning()
 		if err == nil && k3sRunning {
 			cmd.Println("K3s started.")
 		} else {
@@ -42,7 +43,7 @@ var installK3sCmd = &cobra.Command{
 		}
 
 		// Need explicit path to detect
-		_, err = utils.GetUtils().DetectK3s()
+		_, err = u.DetectK3s()
 		if err != nil {
 			log.Fatalf("error detecting k3s: %v", err)
 		}

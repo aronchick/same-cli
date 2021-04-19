@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	gogetter "github.com/hashicorp/go-getter"
 	"github.com/spf13/cobra"
@@ -55,7 +56,8 @@ const (
 )
 
 // Checks if the path configFile is remote (e.g. http://github...)
-func IsRemoteFilePath(configFilePath string) (bool, error) {
+// NEED TO RATIONALIZE THIS WITH THE UTILS WE HAVE ELSEWHERE (probably by making this an interface as well)
+func (u *UtilsLive) IsRemoteFilePath(configFilePath string) (bool, error) {
 	if configFilePath == "" {
 		return false, fmt.Errorf("config file must be a URI or a path")
 	}
@@ -72,8 +74,8 @@ func IsRemoteFilePath(configFilePath string) (bool, error) {
 	return true, nil
 }
 
-func GetObjectKindFromUri(configFile string) (string, error) {
-	isRemoteFile, err := IsRemoteFilePath(configFile)
+func (u *UtilsLive) GetObjectKindFromUri(configFile string) (string, error) {
+	isRemoteFile, err := u.IsRemoteFilePath(configFile)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +134,7 @@ func JoinURL(basePath string, paths ...string) (*url.URL, error) {
 }
 
 // FileToRetrive checks to see if the URL ends with same.yaml (or whatever is provided) and returns a well structured URL
-func UrlToRetrive(url string, fileName string) (fullUrl url.URL, err error) {
+func (u *UtilsLive) UrlToRetrive(url string, fileName string) (fullUrl url.URL, err error) {
 	finalUrl, err := netUrl.Parse(url)
 	if err != nil {
 		message := fmt.Errorf("could not parse final url: %v", err)
@@ -234,9 +236,9 @@ func IsKFPReady(cmd *cobra.Command) (running bool, err error) {
 	return all_ready, nil
 }
 
-func IsK3sHealthy(cmd *cobra.Command) (kubectlCommand string, err error) {
-	_, err = GetUtils().DetectK3s()
-	k3sRunning, k3sRunningErr := GetUtils().IsK3sRunning(cmd)
+func (u *UtilsLive) IsK3sHealthy() (kubectlCommand string, err error) {
+	_, err = u.DetectK3s()
+	k3sRunning, k3sRunningErr := u.IsK3sRunning()
 	if err != nil {
 		if PrintError("k3s not installed/detected on path. Please run 'sudo same installK3s' to install: %v", err) {
 			return "", err
@@ -267,7 +269,6 @@ func NewKFPConfig() (clientcmd.ClientConfig, error) {
 	} else {
 		kubeconfig = os.Getenv("KUBECONFIG")
 	}
-
 	kubebytes, err := ioutil.ReadFile(kubeconfig)
 	if err != nil {
 		return nil, err
@@ -299,7 +300,7 @@ type k8sClient struct {
 	clientset kubernetes.Interface
 }
 
-func GetKubernetesClient() (*k8sClient, error) {
+func GetKubernetesClient(timeout time.Duration) (*k8sClient, error) {
 	var err error
 	client := k8sClient{}
 	clientConfig, err := NewKFPConfig()
@@ -307,7 +308,9 @@ func GetKubernetesClient() (*k8sClient, error) {
 		return nil, err
 	}
 	restConfig, _ := clientConfig.ClientConfig()
+	restConfig.Timeout = timeout
 	client.clientset, err = kubernetes.NewForConfig(restConfig)
+
 	if err != nil {
 		return nil, err
 	}

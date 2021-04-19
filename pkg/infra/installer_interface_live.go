@@ -20,12 +20,14 @@ import (
 )
 
 type LiveInstallers struct {
+	_cmd            *cobra.Command
 	_cmdArgs        []string
 	_kubectlCommand string
 }
 
-func (li *LiveInstallers) InstallK3s(cmd *cobra.Command) (k3sCommand string, err error) {
-	log.Tracef("Inside Installer: %v", cmd.Short)
+func (li *LiveInstallers) InstallK3s() (k3sCommand string, err error) {
+	cmd := li.GetCmd()
+	log.Tracef("Inside Installer: %v", li.GetCmd().Short)
 	executingUser, err := user.LookupId(os.Getenv("SUDO_UID"))
 
 	if err != nil {
@@ -170,16 +172,16 @@ export KUBECONFIG=$HOME/.kube/config
 
 	log.Trace("Finished installing, detecting again.")
 
-	return "k3s", li.PostInstallK3sRunning(cmd)
+	return "k3s", li.PostInstallK3sRunning()
 }
 
-func (i *LiveInstallers) PostInstallK3sRunning(cmd *cobra.Command) (err error) {
-
+func (i *LiveInstallers) PostInstallK3sRunning() (err error) {
+	cmd := i.GetCmd()
 	cmd.Println("Waiting up to 120 seconds for k3s to become ready...")
 	elapsedTime := 0
 	for {
 		cmd.Printf("%v...", elapsedTime)
-		if isRunning, _ := utils.GetUtils().IsK3sRunning(cmd); isRunning {
+		if isRunning, _ := utils.GetUtils(i.GetCmd(), i.GetCmdArgs()).IsK3sRunning(); isRunning {
 			cmd.Println("k3s is running locally.")
 			return nil
 		}
@@ -203,10 +205,11 @@ func (i *LiveInstallers) DetectK3s(s string) (string, error) {
 	return exec.LookPath(s)
 }
 
-func (i *LiveInstallers) InstallKFP(cmd *cobra.Command) (err error) {
+func (i *LiveInstallers) InstallKFP() (err error) {
+	cmd := i.GetCmd()
 
 	log.Tracef("Inside InstallKFP()")
-	kubectlCommand := i.GetKubectlCmd(cmd)
+	kubectlCommand := i.GetKubectlCmd()
 	log.Tracef("kubectlCommand: %v\n", kubectlCommand)
 	kfpInstall := fmt.Sprintf(`
 	#!/bin/bash
@@ -233,10 +236,11 @@ func (i *LiveInstallers) SetKubectlCmd(s string) {
 	i._kubectlCommand = s
 }
 
-func (i *LiveInstallers) GetKubectlCmd(cmd *cobra.Command) string {
-	dc := GetDependencyCheckers(cmd, utils.GetUtils().GetCmdArgs())
+func (i *LiveInstallers) GetKubectlCmd() string {
+	cmd := i.GetCmd()
+	dc := GetDependencyCheckers(cmd, i.GetCmdArgs())
 	if i._kubectlCommand == "" {
-		kubectlPath, err := dc.IsKubectlOnPath(cmd)
+		kubectlPath, err := dc.IsKubectlOnPath()
 		if err != nil || kubectlPath == "" {
 			if err == nil {
 				err = fmt.Errorf("")
@@ -249,6 +253,14 @@ func (i *LiveInstallers) GetKubectlCmd(cmd *cobra.Command) string {
 		}
 	}
 	return i._kubectlCommand
+}
+
+func (i *LiveInstallers) GetCmd() *cobra.Command {
+	return i._cmd
+}
+
+func (i *LiveInstallers) SetCmd(cmd *cobra.Command) {
+	i._cmd = cmd
 }
 
 func (i *LiveInstallers) GetCmdArgs() []string {

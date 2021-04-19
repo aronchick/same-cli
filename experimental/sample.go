@@ -6,8 +6,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/azure-octo/same-cli/cmd"
-	"github.com/azure-octo/same-cli/pkg/mocks"
+	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
 // // Settings default user setting
@@ -146,7 +146,7 @@ func main() {
 	// b, _ := utils.K3sRunning(cmd)
 	// fmt.Printf("Cmd B: %v", b)
 
-	// k8s, err := utils.GetKubernetesClient()
+	// k8s, err := utils.GetKubernetesClient(2)
 	// if err != nil {
 	// 	fmt.Println(err)
 	// 	return
@@ -157,11 +157,26 @@ func main() {
 	// 	return
 	// }
 	// fmt.Println(v)
-	args := []string{mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE}
-	c := cmd.RootCmd
-	_ = c
-	for _, a := range args {
-		fmt.Println(a)
-	}
+	// args := []string{mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_PROBE}
+	// c := cmd.RootCmd
+	// _ = c
+	// for _, a := range args {
+	// 	fmt.Println(a)
+	// }
+	good, err := utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("https://aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443/foobaz")
+	fmt.Printf("Endpoint reached: %v\n", good)
+	fmt.Printf("Endpoint error: %v\n", err)
+
+	bad, err := utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443")
+	fmt.Printf("Endpoint reached: %v\n", bad)
+	fmt.Printf("Endpoint error: %v\n", err)
+
+	bad, err = utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443/foobaz")
+	fmt.Printf("Endpoint reached: %v\n", bad)
+	fmt.Printf("Endpoint error: %v\n", err)
+
+	bad, err = utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("kubernetes.docker.internal:6443")
+	fmt.Printf("Endpoint reached: %v\n", bad)
+	fmt.Printf("Endpoint error: %v\n", err)
 
 }

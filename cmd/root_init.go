@@ -41,6 +41,7 @@ var initCmd = &cobra.Command{
 		var dc = infra.GetDependencyCheckers(cmd, args)
 
 		var i = GetClusterInstallMethods()
+		i.SetCmd(cmd)
 		i.SetCmdArgs(args)
 
 		target := strings.ToLower(viper.GetString("target"))
@@ -134,12 +135,14 @@ func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Install
 		}
 	}
 	log.Traceln("K8s cluster and context detected, proceeding to install KFP.")
-	log.Tracef("kubectl path: %v", i.GetKubectlCmd(cmd))
+	log.Tracef("kubectl path: %v", i.GetKubectlCmd())
 
 	currentContext := dc.WriteCurrentContextToConfig()
 	log.Infof("Wrote kubectl current context as: %v", currentContext)
 
-	err = i.InstallKFP(cmd)
+	log.Infof("Cmd: %v", i.GetCmd())
+
+	err = i.InstallKFP()
 	if err != nil {
 		if utils.PrintError("kfp failed to install: %v", err) {
 			return err
@@ -168,23 +171,23 @@ func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.Installer
 		}
 	} else {
 		log.Trace("Testing AZ Token")
-		hasToken, err := dc.HasValidAzureToken(cmd)
+		hasToken, err := dc.HasValidAzureToken()
 		if !hasToken || err != nil {
 			return err
 		}
 		log.Trace("Token passed, testing cluster exists.")
-		if clusterCreated, err := dc.IsClusterWithKubeflowCreated(cmd); !clusterCreated || err != nil {
+		if clusterCreated, err := dc.IsClusterWithKubeflowCreated(); !clusterCreated || err != nil {
 			log.Trace("Cluster does not exist, creating.")
-			if err := dc.CreateAKSwithKubeflow(cmd); err != nil {
+			if err := dc.CreateAKSwithKubeflow(); err != nil {
 				return err
 			}
 			log.Info("Cluster created.")
 		}
 
 		log.Trace("Cluster exists, testing to see if storage provisioned.")
-		if storageConfigured, err := dc.IsStorageConfigured(cmd); !storageConfigured || err != nil {
+		if storageConfigured, err := dc.IsStorageConfigured(); !storageConfigured || err != nil {
 			log.Trace("Storage not provisioned, creating.")
-			if err := dc.ConfigureStorage(cmd); err != nil {
+			if err := dc.ConfigureStorage(); err != nil {
 				return err
 			}
 			log.Trace("Storage provisioned.")

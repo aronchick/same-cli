@@ -3,21 +3,21 @@ package infra
 import (
 	"os"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 type DependencyCheckers interface {
-	CheckDependenciesInstalled(*cobra.Command) error
-	IsKubectlOnPath(*cobra.Command) (string, error)
-	HasValidAzureToken(*cobra.Command) (bool, error)
-	CanConnectToKubernetes(*cobra.Command) (bool, error)
-	HasKubeflowNamespace(*cobra.Command) (bool, error)
-	IsClusterWithKubeflowCreated(*cobra.Command) (bool, error)
-	IsK3sRunning(*cobra.Command) (bool, error)
-	CreateAKSwithKubeflow(*cobra.Command) error
-	IsStorageConfigured(*cobra.Command) (bool, error)
-	ConfigureStorage(*cobra.Command) error
+	CheckDependenciesInstalled() error
+	IsKubectlOnPath() (string, error)
+	HasValidAzureToken() (bool, error)
+	CanConnectToKubernetes() (bool, error)
+	HasKubeflowNamespace() (bool, error)
+	IsClusterWithKubeflowCreated() (bool, error)
+	IsK3sRunning() (bool, error)
+	CreateAKSwithKubeflow() error
+	IsStorageConfigured() (bool, error)
+	ConfigureStorage() error
 	GetCmd() *cobra.Command
 	SetCmd(*cobra.Command)
 	GetCmdArgs() []string
@@ -26,12 +26,12 @@ type DependencyCheckers interface {
 }
 
 func GetDependencyCheckers(cmd *cobra.Command, args []string) DependencyCheckers {
-	logrus.Tracef("Current TEST_PASS value: %v", os.Getenv("TEST_PASS"))
-	var i DependencyCheckers = &LiveDependencyCheckers{}
+	log.Tracef("Current TEST_PASS value: %v", os.Getenv("TEST_PASS"))
+	var dc DependencyCheckers = &LiveDependencyCheckers{}
 	if os.Getenv("TEST_PASS") != "" {
-		i = &MockDependencyCheckers{}
+		dc = &MockDependencyCheckers{}
 	}
-	i.SetCmd(cmd)
-	i.SetCmdArgs(args)
-	return i
+	dc.SetCmd(cmd)
+	dc.SetCmdArgs(args)
+	return dc
 }

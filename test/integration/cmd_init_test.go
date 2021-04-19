@@ -34,7 +34,9 @@ func (suite *InitSuite) SetupTest() {
 	suite.remoteSAMEURL = "https://github.com/SAME-Project/EXAMPLE-SAME-Enabled-Data-Science-Repo"
 	suite.fatal = false
 	suite.dc = &infra.LiveDependencyCheckers{}
-	if ok, err := suite.dc.CanConnectToKubernetes(suite.rootCmd); !ok && (err != nil) {
+	suite.dc.SetCmd(suite.rootCmd)
+	suite.dc.SetCmdArgs([]string{})
+	if ok, err := suite.dc.CanConnectToKubernetes(); !ok && (err != nil) {
 		assert.Fail(suite.T(), "Cannot run tests because we cannot connect to a live cluster. Test this with: kubectl version")
 	}
 	viper.Reset()
