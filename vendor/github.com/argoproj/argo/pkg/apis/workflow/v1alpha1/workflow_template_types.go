@@ -9,10 +9,11 @@ import (
 // WorkflowTemplate is the definition of a workflow template resource
 // +genclient
 // +genclient:noStatus
+// +kubebuilder:resource:shortName=wftmpl
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type WorkflowTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
 	Spec              WorkflowTemplateSpec `json:"spec" protobuf:"bytes,2,opt,name=spec"`
 }
 
@@ -38,11 +39,13 @@ type WorkflowTemplateList struct {
 	Items           WorkflowTemplates `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-var _ TemplateGetter = &WorkflowTemplate{}
+var _ TemplateHolder = &WorkflowTemplate{}
 
 // WorkflowTemplateSpec is a spec of WorkflowTemplate.
 type WorkflowTemplateSpec struct {
 	WorkflowSpec `json:",inline" protobuf:"bytes,1,opt,name=workflowSpec"`
+	// WorkflowMetadata contains some metadata of the workflow to be refer
+	WorkflowMetadata *metav1.ObjectMeta `json:"workflowMetadata,omitempty" protobuf:"bytes,2,opt,name=workflowMeta"`
 }
 
 // GetTemplateByName retrieves a defined template by its name
@@ -55,7 +58,16 @@ func (wftmpl *WorkflowTemplate) GetTemplateByName(name string) *Template {
 	return nil
 }
 
-// GetTemplateScope returns the template scope of workflow template.
-func (wftmpl *WorkflowTemplate) GetTemplateScope() string {
-	return wftmpl.Name
+// GetResourceScope returns the template scope of workflow template.
+func (wftmpl *WorkflowTemplate) GetResourceScope() ResourceScope {
+	return ResourceScopeNamespaced
+}
+
+func (wftmpl *WorkflowTemplate) GetWorkflowMetadata() *metav1.ObjectMeta {
+	return wftmpl.Spec.WorkflowMetadata
+}
+
+// GetWorkflowSpec returns the WorkflowSpec of workflow template.
+func (wftmpl *WorkflowTemplate) GetWorkflowSpec() *WorkflowSpec {
+	return &wftmpl.Spec.WorkflowSpec
 }

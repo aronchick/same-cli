@@ -122,7 +122,9 @@ func ListPipelines() ([]*pipeline_model.APIPipeline, error) {
 		return nil, err
 	}
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)
-	pipelineClientParams := pipeline_service.NewListPipelinesParams()
+
+	resourceType := pipeline_model.APIResourceTypeNAMESPACE
+	pipelineClientParams := pipeline_service.NewListPipelinesParams().WithResourceReferenceKeyType((*string)(&resourceType))
 	listOfPipelines, _ := pClient.ListAll(pipelineClientParams, 10000)
 	return listOfPipelines, nil
 }
@@ -133,10 +135,8 @@ func ListRunsForExperiment(experimentID string) ([]*run_model.APIRun, error) {
 		return nil, err
 	}
 	client, _ := apiclient.NewRunClient(kfpconfig, false)
-	params := run_service.NewListRunsParams()
 	resourceType := run_model.APIResourceTypeEXPERIMENT
-	params.SetResourceReferenceKeyType((*string)(&resourceType))
-	params.SetResourceReferenceKeyID(&experimentID)
+	params := run_service.NewListRunsParams().WithResourceReferenceKeyType((*string)(&resourceType)).WithResourceReferenceKeyID(&experimentID)
 	return client.ListAll(params, 10000)
 }
 
@@ -146,10 +146,8 @@ func ListRunsForPipelineVersion(pipelineVersionId string) ([]*run_model.APIRun, 
 		return nil, err
 	}
 	client, _ := apiclient.NewRunClient(kfpconfig, false)
-	params := run_service.NewListRunsParams()
 	resourceType := run_model.APIResourceTypePIPELINEVERSION
-	params.SetResourceReferenceKeyType((*string)(&resourceType))
-	params.SetResourceReferenceKeyID(&pipelineVersionId)
+	params := run_service.NewListRunsParams().WithResourceReferenceKeyID(&pipelineVersionId).WithResourceReferenceKeyType((*string)(&resourceType))
 	return client.ListAll(params, 10000)
 }
 
@@ -179,10 +177,8 @@ func ListPipelineVersions(pipelineID string) ([]*pipeline_model.APIPipelineVersi
 		return nil, err
 	}
 	pClient, _ := apiclient.NewPipelineClient(kfpconfig, false)
-	listPipelineVersionParams := pipeline_service.NewListPipelineVersionsParams()
 	pipelineType := pipeline_model.APIResourceTypePIPELINE
-	listPipelineVersionParams.SetResourceKeyType((*string)(&pipelineType))
-	listPipelineVersionParams.SetResourceKeyID(&pipelineID)
+	listPipelineVersionParams := pipeline_service.NewListPipelineVersionsParams().WithResourceKeyType((*string)(&pipelineType)).WithResourceKeyID(&pipelineID)
 	sortBy := "created_at desc"
 	listPipelineVersionParams.SetSortBy((*string)(&sortBy))
 	listOfPipelineVersions, _, _, vErr := pClient.ListPipelineVersions(listPipelineVersionParams)
@@ -195,9 +191,8 @@ func FindExperimentByName(experimentName string) (experiment *experiment_model.A
 		return nil, err
 	}
 	eClient, _ := apiclient.NewExperimentClient(kfpconfig, false)
-	experimentClientParams := experiment_service.NewListExperimentParams()
 	apiExperimentType := experiment_model.APIResourceTypeEXPERIMENT
-	experimentClientParams.SetResourceReferenceKeyType((*string)(&apiExperimentType))
+	experimentClientParams := experiment_service.NewListExperimentParams().WithResourceReferenceKeyType((*string)(&apiExperimentType))
 	listOfExperiments, _, _, err := eClient.List(experimentClientParams)
 	if err != nil {
 		return nil, err

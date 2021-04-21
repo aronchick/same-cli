@@ -4,18 +4,19 @@ go 1.16
 
 replace (
 	k8s.io/client-go => k8s.io/client-go v0.19.2
+	k8s.io/kubernetes => k8s.io/kubernetes v1.11.1
 	vbom.ml/util/sortorder => github.com/fvbommel/sortorder v1.0.2
 )
 
 require (
 	cloud.google.com/go v0.76.0 // indirect
-	github.com/argoproj/argo v0.0.0-20200506223611-54154c61eb4f
+	github.com/argoproj/argo v0.0.0-20210125193418-4cb5b7eb8075
 	github.com/go-git/go-git/v5 v5.2.0
 	github.com/go-openapi/strfmt v0.19.11
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/go-getter v1.5.2
-	github.com/kubeflow/pipelines v0.0.0-20210219225645-61f9c2c328d2
+	github.com/kubeflow/pipelines v0.0.0-20210420071019-2b5a5dd2d0be
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
@@ -26,9 +27,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.5.1 // indirect
-	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/cobra v1.1.3
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 // indirect

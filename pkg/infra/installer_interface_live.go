@@ -214,13 +214,12 @@ func (i *LiveInstallers) InstallKFP() (err error) {
 	kfpInstall := fmt.Sprintf(`
 	#!/bin/bash
 	set -e
-	export PIPELINE_VERSION=1.4.1
+	export PIPELINE_VERSION=1.5.0
 	export KUBECTL_COMMAND=%v
-	$KUBECTL_COMMAND create namespace kubeflow || true
-	$KUBECTL_COMMAND config set-context --current --namespace=kubeflow || true 
 	$KUBECTL_COMMAND apply -k "github.com/kubeflow/pipelines/manifests/kustomize/cluster-scoped-resources?ref=$PIPELINE_VERSION"
 	$KUBECTL_COMMAND wait --for condition=established --timeout=60s crd/applications.app.k8s.io
 	$KUBECTL_COMMAND apply -k "github.com/kubeflow/pipelines/manifests/kustomize/env/platform-agnostic-pns?ref=$PIPELINE_VERSION"
+	$KUBECTL_COMMAND wait pods -l application-crd-id=kubeflow-pipelines -n kubeflow --for condition=Ready --timeout=1800s
 	`, kubectlCommand)
 
 	log.Tracef("About to execute: %v\n", kfpInstall)
