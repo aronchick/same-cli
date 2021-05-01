@@ -24,7 +24,7 @@ raw_logs.txt
 terraform.tfvars
 
 # Exclude VS Code Settings
-.vscode/*
+.vscode
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
