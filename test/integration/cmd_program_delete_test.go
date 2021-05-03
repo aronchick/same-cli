@@ -68,7 +68,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	suite.dc = &infra.LiveDependencyCheckers{}
 	suite.dc.SetCmd(suite.rootCmd)
 	suite.dc.SetCmdArgs([]string{})
-	
+
 	if ok, err := suite.dc.CanConnectToKubernetes(); !ok && (err != nil) {
 		assert.Fail(suite.T(), `Cannot run tests because we cannot connect to a live cluster. Test your cluster with:  kubectl version`)
 		suite.T().Skip()
@@ -102,7 +102,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 		suite.T().Skip()
 	}
 
-	r := regexp.MustCompile(`Name:\s+([^\n]+)\nVersionID:\s+([^\n]+)`)
+	r := regexp.MustCompile(`Name:\s+([^\n]+)\nID:\s+([^\n]+)`)
 	outputString := string(out)
 	rs := r.FindStringSubmatch(outputString)
 	if len(rs) < 2 {

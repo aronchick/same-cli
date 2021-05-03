@@ -5,7 +5,7 @@ echo $PRIVATE_KEY_PASSPHRASE | gh secret set PRIVATE_KEY_PASSPHRASE
 
 openssl genrsa -aes128 -passout pass:$PRIVATE_KEY_PASSPHRASE -out /tmp/private.pem 4096
 
-gh secret set PRIVATE_PEM < /tmp/private.pem 
+gh secret set PRIVATE_PEM < /tmp/private.pem
 
 openssl rsa -in /tmp/private.pem -passin pass:$PRIVATE_KEY_PASSPHRASE -pubout -out /tmp/public.pem
 
