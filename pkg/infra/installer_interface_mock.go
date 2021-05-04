@@ -15,25 +15,9 @@ type MockInstallers struct {
 	_kubectlCommand string
 }
 
-func (mi *MockInstallers) InstallK3s() (k3sCommand string, err error) {
-	if utils.ContainsString(mi.GetCmdArgs(), "k3s-install-failed") {
-		return "", fmt.Errorf("INSTALL K3S FAILED")
-	}
-
-	return "VALID", nil
-}
-
-func (mi *MockInstallers) PostInstallK3sRunning() error {
-	if utils.ContainsString(mi.GetCmdArgs(), mocks.INIT_TEST_K3S_STARTED_BUT_SERVICES_FAILED_PROBE) {
-		return fmt.Errorf(mocks.INIT_TEST_K3S_STARTED_BUT_SERVICES_FAILED_RESULT)
-	}
-
-	return nil
-}
-
 func (mi *MockInstallers) InstallKFP() (err error) {
-	if utils.ContainsString(mi.GetCmdArgs(), "kfp-install-failed") {
-		return fmt.Errorf("INSTALL KFP FAILED")
+	if utils.ContainsString(mi.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_KFP_INSTALL_FAILED_PROBE) {
+		return fmt.Errorf(mocks.DEPENDENCY_CHECKER_KFP_INSTALL_FAILED_RESULT)
 	}
 
 	return nil
@@ -58,6 +42,6 @@ func (mi *MockInstallers) SetKubectlCmd(s string) {
 	mi._kubectlCommand = s
 }
 
-func (mi *MockInstallers) GetKubectlCmd() string {
-	return mi._kubectlCommand
+func (mi *MockInstallers) GetKubectlCmd() (string, error) {
+	return mi._kubectlCommand, nil
 }

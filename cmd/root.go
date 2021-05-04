@@ -100,22 +100,15 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			if !utils.PrintErrorAndReturnExit(RootCmd, "could not find home directory: ", err) {
-				// Use the below to pass along that we've failed and we should exit at the first check
-				os.Setenv("TEST_EXIT", "1")
-				return
-			}
+			fmt.Printf("could not find home directory: %v", err)
+			return
 		}
 
 		cfgFile = path.Join(home, ".same", "config.yaml")
 	}
 	err = utils.LoadConfig(cfgFile)
 	if err != nil {
-		if !utils.PrintErrorAndReturnExit(RootCmd, "Error reading config file: %v", err) {
-
-			// Use the below to pass along that we've failed and we should exit at the first check
-			os.Setenv("TEST_EXIT", "1")
-			return
-		}
+		fmt.Printf("Error reading config file: %v", err)
+		return
 	}
 }

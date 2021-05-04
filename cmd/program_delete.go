@@ -36,15 +36,11 @@ var deleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cmd.Flag("name").Value == nil && cmd.Flag("id").Value == nil {
 			message := "'name' or 'id' must be set to delete a flag"
-			if utils.PrintErrorAndReturnExit(cmd, message+"%v", err) {
-				return nil
-			}
+			return fmt.Errorf(message+"%v", err)
 		}
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
-			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
-				return nil
-			}
+			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
 
 		kfpconfig, err := utils.NewKFPConfig()
@@ -85,9 +81,7 @@ var deleteCmd = &cobra.Command{
 		err = deleteClient.Delete(deleteParams)
 		if err != nil {
 			message := fmt.Sprintf("could not delete the pipeline with ID (%v): %v", pipelineID, err)
-			if utils.PrintErrorAndReturnExit(cmd, message+"%v", err) {
-				return nil
-			}
+			return fmt.Errorf(message+"%v", err)
 		}
 
 		cmd.Printf("Successfully deleted pipeline ID: %v", pipelineID)

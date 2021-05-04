@@ -39,14 +39,6 @@ type ProgramDeleteSuite struct {
 func (suite *ProgramDeleteSuite) SetupAllSuite() {
 	os.Setenv("TEST_PASS", "1")
 
-	if os.Getenv("TEST_K3S") == "true" {
-		running, err := utils.GetUtils(suite.rootCmd, []string{}).IsK3sRunning()
-		if err != nil || !running {
-			assert.Fail(suite.T(), "k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
-			suite.T().Skip()
-		}
-	}
-
 	dc := infra.GetDependencyCheckers(suite.rootCmd, []string{})
 	if err := dc.CheckDependenciesInstalled(); err != nil {
 		log.Warnf("Failed one or more dependencies - skipping this test: %v", err.Error())
@@ -74,7 +66,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 		suite.T().Skip()
 	}
 
-	if ok, _ := utils.IsKFPReady(suite.rootCmd); !ok {
+	if ok, _ := suite.dc.IsKFPReady(); !ok {
 		assert.Fail(suite.T(), "KFP does not appear to be ready, this may cause tests to fail.")
 		suite.T().Skip()
 	}
@@ -102,7 +94,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 		suite.T().Skip()
 	}
 
-	r := regexp.MustCompile(`Name:\s+([^\n]+)\nID:\s+([^\n]+)`)
+	r := regexp.MustCompile(`Name:\s+([^\n]+)\n\s*(Version)?ID:\s+([^\n]+)`)
 	outputString := string(out)
 	rs := r.FindStringSubmatch(outputString)
 	if len(rs) < 2 {

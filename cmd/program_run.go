@@ -74,23 +74,19 @@ var runProgramCmd = &cobra.Command{
 		}
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
-			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
-				return nil
-			}
+			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
 
 		// Load config file. Explicit parameters take precedent over config file.
 		u := utils.GetUtils(cmd, args)
 		sameConfigFilePath, err := u.GetConfigFilePath(filePath)
 		if err != nil {
-			log.Errorf("could not resolve SAME config file path: %v", err)
-			return err
+			return fmt.Errorf("could not resolve SAME config file path: %v", err)
 		}
 
 		sameConfigFile, err := loaders.V1{}.LoadSAME(sameConfigFilePath)
 		if err != nil {
-			log.Errorf("could not load SAME config file: %v", err)
-			return err
+			return fmt.Errorf("could not load SAME config file: %v", err)
 		}
 
 		if sameConfigFile.Spec.ConfigFilePath == "" {
@@ -203,10 +199,9 @@ func init() {
 	runProgramCmd.Flags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
 	err := runProgramCmd.MarkFlagRequired("experiment-name")
 	if err != nil {
-		message := "'experiment-name' is required for this to run.: %v"
-		if utils.PrintErrorAndReturnExit(runProgramCmd, message, err) {
-			return
-		}
+		message := "'experiment-name' is required for this to run.: %v\n"
+		fmt.Printf(message, err)
+		return
 	}
 
 	runProgramCmd.Flags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
@@ -214,9 +209,7 @@ func init() {
 	err = runProgramCmd.MarkFlagRequired("run-name")
 	if err != nil {
 		message := "'run-name' is required for this to run."
-		if utils.PrintErrorAndReturnExit(RootCmd, message+"%v", err) {
-			return
-		}
+		fmt.Printf(message+"%v", err)
 		return
 	}
 

@@ -8,21 +8,22 @@ import (
 )
 
 type DependencyCheckers interface {
-	CheckDependenciesInstalled() error
-	IsKubectlOnPath() (string, error)
-	HasValidAzureToken() (bool, error)
-	CanConnectToKubernetes() (bool, error)
-	HasKubeflowNamespace() (bool, error)
-	IsClusterWithKubeflowCreated() (bool, error)
-	IsK3sRunning() (bool, error)
-	CreateAKSwithKubeflow() error
-	IsStorageConfigured() (bool, error)
-	ConfigureStorage() error
+	// Setup getter/setters
 	GetCmd() *cobra.Command
 	SetCmd(*cobra.Command)
 	GetCmdArgs() []string
 	SetCmdArgs([]string)
-	WriteCurrentContextToConfig() string
+
+	// Root method
+	CheckDependenciesInstalled() error
+
+	// Kubernetes helpers
+	IsKubectlOnPath() (string, error)
+	HasClusters() ([]string, error)
+	HasContext() (string, error)
+	CanConnectToKubernetes() (bool, error)
+	HasKubeflowNamespace() (bool, error)
+	IsKFPReady() (bool, error)
 }
 
 func GetDependencyCheckers(cmd *cobra.Command, args []string) DependencyCheckers {
