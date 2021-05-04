@@ -5,9 +5,7 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/azure-octo/same-cli/pkg/utils"
-	"github.com/spf13/cobra"
+	"regexp"
 )
 
 // // Settings default user setting
@@ -163,20 +161,29 @@ func main() {
 	// for _, a := range args {
 	// 	fmt.Println(a)
 	// }
-	good, err := utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("https://aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443/foobaz")
-	fmt.Printf("Endpoint reached: %v\n", good)
-	fmt.Printf("Endpoint error: %v\n", err)
+	// good, err := utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("https://aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443/foobaz")
+	// fmt.Printf("Endpoint reached: %v\n", good)
+	// fmt.Printf("Endpoint error: %v\n", err)
 
-	bad, err := utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443")
-	fmt.Printf("Endpoint reached: %v\n", bad)
-	fmt.Printf("Endpoint error: %v\n", err)
+	// bad, err := utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443")
+	// fmt.Printf("Endpoint reached: %v\n", bad)
+	// fmt.Printf("Endpoint error: %v\n", err)
 
-	bad, err = utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443/foobaz")
-	fmt.Printf("Endpoint reached: %v\n", bad)
-	fmt.Printf("Endpoint error: %v\n", err)
+	// bad, err = utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("aksmlproductioncluster-dns-c848e407.hcp.eastus2.azmk8s.io:443/foobaz")
+	// fmt.Printf("Endpoint reached: %v\n", bad)
+	// fmt.Printf("Endpoint error: %v\n", err)
 
-	bad, err = utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("kubernetes.docker.internal:6443")
-	fmt.Printf("Endpoint reached: %v\n", bad)
-	fmt.Printf("Endpoint error: %v\n", err)
+	// bad, err = utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("kubernetes.docker.internal:6443")
+	// fmt.Printf("Endpoint reached: %v\n", bad)
+	// fmt.Printf("Endpoint error: %v\n", err)
+	a := `
+	import tensorflow
+	
+	a = 3
+	
+	# +`
+	import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
+	all_imports := import_regex.FindAllStringSubmatch(a, -2)
+	fmt.Printf("Match: %v", all_imports)
 
 }

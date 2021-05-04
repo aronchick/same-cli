@@ -47,3 +47,4 @@ same-cli
 simple_script_for_creating_a_vm_on_azure.sh
 test_output.txt
 test_output*
+examples/pipelines/automated_notebook/*
