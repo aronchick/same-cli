@@ -1,0 +1,10 @@
+apiVersion: projectsame.io/v1alpha1
+metadata:
+  name: DrugAnalysis
+  version: 0.0.10
+pipeline:
+  name: "Drug Analysis Pipeline"
+  description: "Analyzing drug interactions"
+  package: root.py
+run:
+  name: "Drug Analysis Pipeline - Run"

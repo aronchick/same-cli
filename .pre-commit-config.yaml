@@ -1,8 +1,8 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
-exclude: | 
-  - '^vendor/*'
-  - '^third_party/*'
+exclude: |
+  - '^vendor$'
+  - '^third_party$'
 repos:
   - repo: git://github.com/Bahjat/pre-commit-golang
     rev: 85c26d4d1c8a086095a057bbdf8adf56af603ce4

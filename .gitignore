@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-bin/*
+bin
 
 # Test binary, built with `go test -c`
 *.test
@@ -24,7 +24,7 @@ raw_logs.txt
 terraform.tfvars
 
 # Exclude VS Code Settings
-.vscode/*
+.vscode
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
@@ -47,3 +47,4 @@ same-cli
 simple_script_for_creating_a_vm_on_azure.sh
 test_output.txt
 test_output*
+examples/pipelines/automated_notebook/*

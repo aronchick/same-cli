@@ -137,7 +137,8 @@ ID: %v\n
 Pipeline Updated.
 Name: %v
 ID: %v
-VersionID: %v\n
+VersionID: %v
+
 `, uploadedPipelineVersion.Name, pipeline.ID, uploadedPipelineVersion.ID)
 			}
 		}

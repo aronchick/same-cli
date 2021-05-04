@@ -1,0 +1,156 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: simple-overrideable-data-connector-
+  annotations:
+    {
+      pipelines.kubeflow.org/kfp_sdk_version: 1.4.0,
+      pipelines.kubeflow.org/pipeline_compilation_time: "2021-05-02T01:51:28.427181",
+      pipelines.kubeflow.org/pipeline_spec:
+        '{"description": "A simple component designed
+        to demonstrate a multistep pipeline.", "name": "Simple Overrideable Data Connector"}',
+    }
+  labels: { pipelines.kubeflow.org/kfp_sdk_version: 1.4.0 }
+spec:
+  entrypoint: simple-overrideable-data-connector
+  templates:
+    - name: function-0001
+      container:
+        args: []
+        command:
+          - sh
+          - -ec
+          - |
+            program_path=$(mktemp)
+            printf "%s" "$0" > "$program_path"
+            python3 -u "$program_path" "$@"
+          - |
+            def function_0001():
+                # jupyter:
+                #   jupytext:
+                #     text_representation:
+                #       extension: .py
+                #       format_name: light
+                #       format_version: '1.5'
+                #       jupytext_version: 1.11.1
+                #   kernelspec:
+                #     display_name: Python 3
+                #     language: python
+                #     name: python3
+                # ---
+
+                # +
+                # First Step
+                import tensorflow
+
+                a = 3
+
+                # +
+                # First Step
+
+                from PIL import Image
+
+                b = a + 5
+
+                image = Image.open("FaroeIslands.jpeg")
+                image.show()
+
+                # +
+                # First Step
+
+                import plotly
+
+                def some_math(x, z):
+                    return (x + z, x / z)
+
+                # +
+                # Second Step
+
+                import numpy as np
+                import matplotlib.pyplot as plt
+                import scipy.stats as stats
+
+                mu = 0
+                std = 1
+                x = np.linspace(start=-4, stop=4, num=100)
+                y = stats.norm.pdf(x, mu, std)
+                plt.plot(x, y)
+                plt.show()
+
+                # +
+                # Second Step
+
+                import requests
+                import pandas as pd
+                import io
+                import plotly.figure_factory as ff
+                import chart_studio.plotly as py
+
+                url = "https://same-project.github.io/SAME-samples/automated_notebook/test.csv"
+
+                r = requests.get(url)
+                if r.ok:
+                    data = r.content.decode("utf-8")
+                    df = pd.read_csv(io.StringIO(data))
+
+                df = pd.read_csv("test.csv")
+
+                df.describe()
+                # -
+
+                # Third Step
+                g = some_math(8, 21)
+
+                # +
+                # Fourth Step
+
+                print(f"j: {g[0]}")
+
+                # +
+                # Fourth Step
+
+                print(f"k: {g[1]}")
+
+            import argparse
+            _parser = argparse.ArgumentParser(prog='Function 0001', description='')
+            _parsed_args = vars(_parser.parse_args())
+
+            _outputs = function_0001(**_parsed_args)
+        image: python:3.9-slim-buster
+      metadata:
+        annotations:
+          {
+            pipelines.kubeflow.org/component_spec:
+              '{"implementation": {"container":
+              {"args": [], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\"
+              \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def
+              function_0001():\n    # jupyter:\n    #   jupytext:\n    #     text_representation:\n    #       extension:
+              .py\n    #       format_name: light\n    #       format_version: ''1.5''\n    #       jupytext_version:
+              1.11.1\n    #   kernelspec:\n    #     display_name: Python 3\n    #     language:
+              python\n    #     name: python3\n    # ---\n\n    # +\n    # First Step\n    import
+              tensorflow\n\n    a = 3\n\n    # +\n    # First Step\n\n    from PIL import
+              Image\n\n    b = a + 5\n\n    image = Image.open(\"FaroeIslands.jpeg\")\n    image.show()\n\n    #
+              +\n    # First Step\n\n    import plotly\n\n    def some_math(x, z):\n        return
+              (x + z, x / z)\n\n    # +\n    # Second Step\n\n    import numpy as np\n    import
+              matplotlib.pyplot as plt\n    import scipy.stats as stats\n\n    mu = 0\n    std
+              = 1\n    x = np.linspace(start=-4, stop=4, num=100)\n    y = stats.norm.pdf(x,
+              mu, std)\n    plt.plot(x, y)\n    plt.show()\n\n    # +\n    # Second Step\n\n    import
+              requests\n    import pandas as pd\n    import io\n    import plotly.figure_factory
+              as ff\n    import chart_studio.plotly as py\n\n    url = \"https://same-project.github.io/SAME-samples/automated_notebook/test.csv\"\n\n    r
+              = requests.get(url)\n    if r.ok:\n        data = r.content.decode(\"utf-8\")\n        df
+              = pd.read_csv(io.StringIO(data))\n\n    df = pd.read_csv(\"test.csv\")\n\n    df.describe()\n    #
+              -\n\n    # Third Step\n    g = some_math(8, 21)\n\n    # +\n    # Fourth
+              Step\n\n    print(f\"j: {g[0]}\")\n\n    # +\n    # Fourth Step\n\n    print(f\"k:
+              {g[1]}\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Function
+              0001'', description='''')\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+              = function_0001(**_parsed_args)\n"], "image": "python:3.9-slim-buster"}},
+              "name": "Function 0001"}',
+            pipelines.kubeflow.org/component_ref: "{}",
+          }
+    - name: simple-overrideable-data-connector
+      dag:
+        tasks:
+          - { name: function-0001, template: function-0001 }
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner
