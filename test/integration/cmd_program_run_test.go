@@ -32,13 +32,6 @@ type ProgramRunSuite struct {
 
 // Before all suite
 func (suite *ProgramRunSuite) SetupAllSuite() {
-	if os.Getenv("TEST_K3S") == "true" {
-		running, err := utils.GetUtils(suite.rootCmd, []string{}).IsK3sRunning()
-		if err != nil || !running {
-			assert.Fail(suite.T(), "k3s does not appear to be installed, required for testing. Please run 'sudo same installK3s'")
-			suite.T().Skip()
-		}
-	}
 
 	os.Setenv("TEST_PASS", "1")
 
@@ -56,7 +49,7 @@ func (suite *ProgramRunSuite) SetupAllSuite() {
 		suite.T().Skip()
 	}
 
-	if ok, _ := utils.IsKFPReady(suite.rootCmd); !ok {
+	if ok, _ := suite.dc.IsKFPReady(); !ok {
 		assert.Fail(suite.T(), "KFP does not appear to be ready, this will cause tests to fail.")
 		suite.T().Skip()
 	}

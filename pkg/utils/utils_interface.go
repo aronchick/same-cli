@@ -23,9 +23,6 @@ type UtilsInterface interface {
 
 	// Kubernetes interaction methods
 	IsEndpointReachable(string) (bool, error)
-	IsK3sHealthy() (string, error)
-	DetectK3s() (string, error)
-	IsK3sRunning() (bool, error)
 }
 
 func GetUtils(cmd *cobra.Command, args []string) UtilsInterface {

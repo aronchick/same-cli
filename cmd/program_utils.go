@@ -23,7 +23,6 @@ import (
 )
 
 func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipeline_upload_model.APIPipeline, err error) {
-	log.Traceln("- In program_utils.UploadPipeline")
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
@@ -278,7 +277,7 @@ func CreateRun(runName string, pipelineID string, pipelineVersionID string, expe
 	runDetail, _, err := runclient.Create(createRunParams)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return runDetail, nil

@@ -22,6 +22,7 @@ import (
 type K8sUtilsSuite struct {
 	suite.Suite
 	rootCmd      *cobra.Command
+	dc           infra.DependencyCheckers
 	fatal        bool
 	outputBuffer *bytes.Buffer
 }
@@ -37,6 +38,7 @@ func (suite *K8sUtilsSuite) SetupTest() {
 	suite.outputBuffer = new(bytes.Buffer)
 	suite.rootCmd.SetOut(suite.outputBuffer)
 	suite.rootCmd.SetErr(suite.outputBuffer)
+	suite.dc = infra.GetDependencyCheckers(suite.rootCmd, []string{})
 	suite.fatal = false
 	os.Setenv("TEST_PASS", "1")
 
@@ -48,24 +50,14 @@ func (suite *K8sUtilsSuite) TearDownAllSuite() {
 
 func (suite *K8sUtilsSuite) Test_HasContext() {
 	log.Trace("Inside Has Context")
-	context, err := utils.HasContext(suite.rootCmd)
+	context, err := suite.dc.HasContext()
 	assert.NotEmpty(suite.T(), context, "No context returned from the command.")
 	assert.Nil(suite.T(), err, "Error requesting kubernetes context")
 }
 func (suite *K8sUtilsSuite) Test_HasCluster() {
-	clusters, err := utils.HasClusters(suite.rootCmd)
+	clusters, err := suite.dc.HasClusters()
 	assert.NotEmpty(suite.T(), len(clusters) > 1, "No clusters returned from the command.")
 	assert.Nil(suite.T(), err, "Error requesting kubernetes context")
-}
-
-func (suite *K8sUtilsSuite) Test_K3sRunning() {
-	if os.Getenv("TEST_K3S") != "true" {
-		suite.T().Skip()
-	}
-
-	running, err := utils.GetUtils(suite.rootCmd, []string{}).IsK3sRunning()
-	assert.True(suite.T(), running, "K3s is not running.")
-	assert.Nil(suite.T(), err, "Error requesting testing for k3s cluster: %v", err)
 }
 
 func (suite *K8sUtilsSuite) Test_UnsetKubectlCmd() {
@@ -79,7 +71,6 @@ func (suite *K8sUtilsSuite) Test_UnsetKubectlCmd() {
 	i.SetKubectlCmd("")
 	origPath := os.Getenv("PATH")
 	os.Setenv("PATH", "")
-	_ = i.GetKubectlCmd()
 
 	// Fix below: https://github.com/azure-octo/same-cli/issues/221
 	//assert.Contains(suite.T(), suite.outputBuffer.String(), mocks.DEPENDENCY_CHECKER_KUBECTL_ON_PATH_RESULT, "Suite does not properly warn about missing kubectl on path.")
@@ -101,6 +92,7 @@ func (suite *K8sUtilsSuite) Test_IsUrlReachable() {
 	urls_to_test = append(urls_to_test, url_pair{"https://google.com:80/THIS_SHOULDNT_MATTER", true})
 	urls_to_test = append(urls_to_test, url_pair{"VALIDURLBUTNOTREACHABLE.com:6443", false}) // Bad URL
 	for _, url_pair := range urls_to_test {
+		fmt.Printf("Testing URL: %v - %v", url_pair.url, url_pair.passes)
 		_, err := utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable(url_pair.url)
 		assert.Equal(suite.T(), (err == nil), (url_pair.passes), fmt.Sprintf("Expected URL (%v) is reachable to be: %v", url_pair.url, url_pair.passes))
 	}

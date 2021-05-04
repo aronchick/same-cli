@@ -73,12 +73,6 @@ func (u *UtilsMock) GetConfigFilePath(s string) (string, error) {
 	return ul.GetConfigFilePath(s)
 }
 
-func (u *UtilsMock) IsK3sHealthy() (string, error) {
-	// Temporary until we start mocking
-	ul := &UtilsLive{}
-	return ul.IsK3sHealthy()
-}
-
 func (u *UtilsMock) IsRemoteFilePath(s string) (bool, error) {
 	// Temporary until we start mocking
 	ul := &UtilsLive{}

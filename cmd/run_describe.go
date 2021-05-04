@@ -17,13 +17,13 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"text/template"
 	"time"
 
 	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"github.com/azure-octo/same-cli/pkg/infra"
-	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/go-openapi/strfmt"
 	"github.com/kubeflow/pipelines/backend/api/go_http_client/run_model"
 
@@ -36,9 +36,7 @@ var describeRunCmd = &cobra.Command{
 	Long:  `Describes a single SAME program run.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
-			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
-				return err
-			}
+			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
 
 		runId, err := cmd.Flags().GetString("run-id")

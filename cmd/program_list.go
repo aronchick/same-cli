@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/azure-octo/same-cli/pkg/infra"
-	"github.com/azure-octo/same-cli/pkg/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -32,9 +31,7 @@ var listProgramCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
-			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
-				return err
-			}
+			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
 
 		listOfPipelines, err := ListPipelines()

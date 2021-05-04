@@ -15,17 +15,13 @@ package utils
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	gogetter "github.com/hashicorp/go-getter"
-	"github.com/spf13/cobra"
-	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -170,90 +166,6 @@ func ResolveLocalFilePath(filePathToTest string) (returnFilePath string, err err
 	}
 	returnFilePath, _ = filepath.Abs(u.String())
 	return returnFilePath, nil
-}
-
-func HasContext(cmd *cobra.Command) (currentContext string, err error) {
-	// https://golang.org/pkg/os/exec/#example_Cmd_StdoutPipe
-	scriptCmd := exec.Command("kubectl", "config", "current-context")
-	log.Tracef("About to execute: %v", scriptCmd)
-	scriptOutput, err := scriptCmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("Failed to current context for Kubernetes. That's all we know: %v", err)
-	}
-	currentContextString := strings.TrimSpace(string(scriptOutput))
-	if currentContextString != "" {
-		return strings.TrimSpace(currentContextString), nil
-	} else {
-		return "", fmt.Errorf("kubectl config current-context is empty")
-	}
-}
-
-func HasClusters(cmd *cobra.Command) (clusters []string, err error) {
-	// strings.Split(result,`\n`)
-	scriptCmd := exec.Command("kubectl", "config", "get-clusters")
-	scriptOutput, err := scriptCmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get current clusters. That's all we know: %v", err)
-	}
-	currentClusterString := string(scriptOutput)
-	clusters = strings.Split(currentClusterString, "\n")
-	if len(clusters) < 1 {
-		return nil, fmt.Errorf("Error when getting clusters, but we don't know anything more about it.")
-	} else if len(clusters) == 1 {
-		return []string{}, fmt.Errorf("We were able to get clusters, but there were none in the kubeconfig.")
-	}
-	return clusters[1:], nil
-}
-
-func IsKFPReady(cmd *cobra.Command) (running bool, err error) {
-
-	scriptCmd := exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kubeflow -o json")
-	scriptOutput, err := scriptCmd.CombinedOutput()
-	if err != nil {
-		return false, fmt.Errorf("Failed to test if k3s is running. That's all we know: %v", err)
-	}
-
-	// Declared an empty interface
-	//var result map[string]interface{}
-	var result v1.DeploymentList
-
-	//  waiting_pod_array=("k8s-app=kube-dns;kube-system"
-	// "k8s-app=metrics-server;kube-system"
-
-	// Unmarshal or Decode the JSON to the interface.
-	//err = json.Unmarshal([]byte(scriptOutput), &result)
-	err = json.Unmarshal(scriptOutput, &result)
-	if err != nil {
-		return false, fmt.Errorf("Failed to unmarshall result of kubeflow test: %v", err)
-	}
-
-	all_ready := true
-
-	for _, deployment := range result.Items {
-		all_ready = all_ready && (deployment.Status.ReadyReplicas > 0)
-	}
-
-	return all_ready, nil
-}
-
-func (u *UtilsLive) IsK3sHealthy() (kubectlCommand string, err error) {
-	_, err = u.DetectK3s()
-	k3sRunning, k3sRunningErr := u.IsK3sRunning()
-	if err != nil {
-		if PrintError("k3s not installed/detected on path. Please run 'sudo same installK3s' to install: %v", err) {
-			return "", err
-		}
-	} else if k3sRunningErr != nil {
-		if PrintError("Error checking to see if k3s is running: %v", err) {
-			return "", err
-		}
-	} else if !k3sRunning {
-		if PrintError("Core k3s services aren't running, but the server looks correct. You may want to check back in a few minutes.", nil) {
-			return "", err
-		}
-	}
-
-	return "kubectl", nil
 }
 
 // NewKFPConfig : Create Kubernetes API config compatible with Pipelines from KubeConfig

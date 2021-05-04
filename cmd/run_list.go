@@ -37,9 +37,7 @@ var listRunCmd = &cobra.Command{
 	Long:  `Lists all SAME runs for a given program.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
-			if utils.PrintErrorAndReturnExit(cmd, "Failed during dependency checks: %v", err) {
-				return err
-			}
+			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
 
 		// Load config file. Explicit parameters take precedent over config file.

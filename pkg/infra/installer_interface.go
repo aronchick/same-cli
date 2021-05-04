@@ -1,15 +1,30 @@
 package infra
 
-import "github.com/spf13/cobra"
+import (
+	"os"
+
+	"github.com/spf13/cobra"
+)
 
 type InstallerInterface interface {
-	InstallK3s() (string, error)
-	PostInstallK3sRunning() error
-	InstallKFP() error
-	GetKubectlCmd() string
-	SetKubectlCmd(string)
+	// Instantiation getter/setters
 	GetCmd() *cobra.Command
 	SetCmd(*cobra.Command)
 	GetCmdArgs() []string
 	SetCmdArgs([]string)
+	GetKubectlCmd() (string, error)
+	SetKubectlCmd(string)
+
+	// KFP helpers
+	InstallKFP() error
+}
+
+func GetInstallers(cmd *cobra.Command, args []string) InstallerInterface {
+	var i InstallerInterface = &LiveInstallers{}
+	if os.Getenv("TEST_PASS") != "" {
+		i = &MockInstallers{}
+	}
+	i.SetCmd(cmd)
+	i.SetCmdArgs(args)
+	return i
 }

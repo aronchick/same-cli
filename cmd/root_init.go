@@ -18,65 +18,55 @@ limitations under the License.
 
 import (
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/azure-octo/same-cli/pkg/infra"
-	"github.com/azure-octo/same-cli/pkg/utils"
-	"github.com/pkg/errors"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // createCmd represents the create command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc)",
-	Long:  `Initializes all base services for deploying a SAME (Kubernetes, Kubeflow, etc). Longer Description.`,
+	Short: "Initializes all base services for deploying a SAME (Kubeflow, etc)",
+	Long:  `Initializes all base services for deploying a SAME (Kubeflow, etc). Longer Description.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		var i = infra.GetInstallers(cmd, args)
 		var dc = infra.GetDependencyCheckers(cmd, args)
 
-		var i = GetClusterInstallMethods()
-		i.SetCmd(cmd)
-		i.SetCmdArgs(args)
+		fmt.Printf("args: %v\n", args)
 
-		target := strings.ToLower(viper.GetString("target"))
-		if target == "" {
-			message := "No target set - using current-context from kubeconfig.\n"
-			target = "local"
-			cmd.Print(message)
-			if os.Getenv("TEST_PASS") == "1" {
-				return nil
-			}
+		canConnect, err := dc.CanConnectToKubernetes()
+		if err != nil || !canConnect {
+			return fmt.Errorf("Could not connect to Kubernetes. Check your settings with 'kubectl get version': %v", err)
 		}
 
-		switch target {
-		case "local":
-			message := "Executing local setup."
-			cmd.Println(message)
-			err = SetupLocal(cmd, dc, i)
-		case "aks":
-			message := "Executing AKS setup."
-			log.Trace(message)
-			cmd.Println(message)
-			err = SetupAKS(cmd, dc, i)
-		default:
-			message := fmt.Errorf("setup target '%v' not understood", target)
-			cmd.Printf(message.Error())
-			log.Fatalf(message.Error())
-			if os.Getenv("TEST_PASS") == "1" {
-				return nil
-			}
-		}
-
+		clusters, err := dc.HasClusters()
 		if err != nil {
-			if utils.PrintError("Error while setting up Kubernetes API: %v", err) {
-				return err
-			}
+			return fmt.Errorf("error while checking for active clusters using the following command 'kubectl config get-clusters': %v", err)
+		}
+
+		if len(clusters) < 1 {
+			return fmt.Errorf("We were able to check for current clusters, but you don't have any. Please create a k8s cluster.")
+		}
+
+		context, err := dc.HasContext()
+		if err != nil {
+			return fmt.Errorf("error while checking for current context - using the following command 'kubectl config current-context': %v", err)
+		}
+
+		if context == "" {
+			return fmt.Errorf("We were able to check for current context, but you don't have any. %v", fmt.Errorf(""))
+		}
+		log.Traceln("K8s cluster and context detected, proceeding to install KFP.")
+
+		log.Infof("Cmd: %v", cmd)
+
+		err = i.InstallKFP()
+		if err != nil {
+			return fmt.Errorf("kfp failed to install: %v", err)
 		}
 
 		cmd.Println("Your installation is complete and running!")
@@ -86,7 +76,7 @@ var initCmd = &cobra.Command{
 			elapsedTime := 0
 			for {
 				cmd.Printf("%v...", elapsedTime)
-				if isReady, _ := utils.IsKFPReady(cmd); isReady {
+				if isReady, _ := dc.IsKFPReady(); isReady {
 					cmd.Println("SAME pipeline is ready.")
 					return nil
 				}
@@ -103,98 +93,6 @@ var initCmd = &cobra.Command{
 		return nil
 
 	},
-}
-
-func GetClusterInstallMethods() infra.InstallerInterface {
-	if os.Getenv("TEST_PASS") == "" {
-		return &infra.LiveInstallers{}
-	} else {
-		return &infra.MockInstallers{}
-	}
-}
-
-func SetupLocal(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
-	clusters, err := utils.HasClusters(cmd)
-	if err != nil {
-		if utils.PrintErrorAndReturnExit(cmd, "error while checking for active clusters using the following command 'kubectl config get-clusters': %v", err) {
-			return nil
-		}
-	} else if len(clusters) < 1 {
-		if utils.PrintErrorAndReturnExit(cmd, "We were able to check for current clusters, but you don't have any. Please create a k8s cluster. %v", fmt.Errorf("")) {
-			return nil
-		}
-	}
-	context, err := utils.HasContext(cmd)
-	if err != nil {
-		if utils.PrintErrorAndReturnExit(cmd, "error while checking for current context - using the following command 'kubectl config current-context': %v", err) {
-			return nil
-		}
-	} else if context == "" {
-		if utils.PrintErrorAndReturnExit(cmd, "We were able to check for current context, but you don't have any. %v", fmt.Errorf("")) {
-			return nil
-		}
-	}
-	log.Traceln("K8s cluster and context detected, proceeding to install KFP.")
-	log.Tracef("kubectl path: %v", i.GetKubectlCmd())
-
-	currentContext := dc.WriteCurrentContextToConfig()
-	log.Infof("Wrote kubectl current context as: %v", currentContext)
-
-	log.Infof("Cmd: %v", i.GetCmd())
-
-	err = i.InstallKFP()
-	if err != nil {
-		if utils.PrintError("kfp failed to install: %v", err) {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func SetupAKS(cmd *cobra.Command, dc infra.DependencyCheckers, i infra.InstallerInterface) (err error) {
-	kubeconfig, err := utils.NewKFPConfig()
-	if err != nil {
-		return err
-	}
-
-	forceCreate := viper.GetBool("force-create")
-	if !forceCreate && kubeconfig != nil {
-		currentConfig, _ := kubeconfig.ClientConfig()
-		if strings.Contains(currentConfig.Host, "azmk8s.io") {
-			cmd.Printf("Reusing your existing AKS cluster (%v). Ready to install KFP.", currentConfig.String())
-			return nil
-		} else {
-			if utils.PrintErrorAndReturnExit(cmd, fmt.Sprintf("Your current Kubernetes context (%v) is pointing at a cluster which does not appear to be hosted on AKS. Please update your current context with kubectl config set-context to your AKS cluster, or use --force-create with the same command", currentConfig.ServerName), fmt.Errorf("")) {
-				return errors.Errorf("current Kubectl context pointing at non-AKS cluster")
-			}
-		}
-	} else {
-		log.Trace("Testing AZ Token")
-		hasToken, err := dc.HasValidAzureToken()
-		if !hasToken || err != nil {
-			return err
-		}
-		log.Trace("Token passed, testing cluster exists.")
-		if clusterCreated, err := dc.IsClusterWithKubeflowCreated(); !clusterCreated || err != nil {
-			log.Trace("Cluster does not exist, creating.")
-			if err := dc.CreateAKSwithKubeflow(); err != nil {
-				return err
-			}
-			log.Info("Cluster created.")
-		}
-
-		log.Trace("Cluster exists, testing to see if storage provisioned.")
-		if storageConfigured, err := dc.IsStorageConfigured(); !storageConfigured || err != nil {
-			log.Trace("Storage not provisioned, creating.")
-			if err := dc.ConfigureStorage(); err != nil {
-				return err
-			}
-			log.Trace("Storage provisioned.")
-		}
-	}
-	cmd.Println("Infrastructure Setup Complete.")
-	return nil
 }
 
 func init() {

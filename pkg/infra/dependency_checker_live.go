@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strings"
 	"time"
 
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	v1 "k8s.io/api/apps/v1"
 
 	log "github.com/sirupsen/logrus"
@@ -47,24 +45,12 @@ func (dc *LiveDependencyCheckers) GetKubectlCmd() string {
 	return dc._kubectlCommand
 }
 
-func (dc *LiveDependencyCheckers) HasValidAzureToken() (bool, error) {
-	cmd := dc.GetCmd()
-	output, err := exec.Command("/bin/bash", "-c", "az aks list").Output()
-	if (err != nil) || (strings.Contains(string(output), "refresh token has expired")) {
-		cmd.Println("Azure authentication token invalid. Please execute 'az login' and run again..")
-		return false, err
+func (dc *LiveDependencyCheckers) IsKubectlOnPath() (string, error) {
+	kubectlPath, err := exec.LookPath("kubectl")
+	if kubectlPath == "" || err != nil {
+		return "", fmt.Errorf("could not find kubectl on your path: %v", err)
 	}
-	return true, nil
-}
-
-func (dc *LiveDependencyCheckers) IsClusterWithKubeflowCreated() (bool, error) {
-	output, err := exec.Command("/bin/bash", "-c", "kubectl get namespace kubeflow -o yaml").CombinedOutput()
-	return strings.Contains(string(output), "name: kubeflow"), err
-}
-
-func (dc *LiveDependencyCheckers) IsStorageConfigured() (bool, error) {
-	output, err := exec.Command("/bin/bash", "-c", `[ "$(kubectl get sc blob -o=jsonpath='{.provisioner}')" == "blob.csi.azure.com" ]`).CombinedOutput()
-	return (string(output) == ""), err
+	return kubectlPath, nil
 }
 
 func (dc *LiveDependencyCheckers) CheckDependenciesInstalled() error {
@@ -84,6 +70,16 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled() error {
 		cmd.Println(message)
 	}
 
+	if clusters, err := dc.HasClusters(); len(clusters) > 0 && err != nil {
+		message := MISSING_CLUSTERS
+		return fmt.Errorf(message)
+	}
+
+	if current_context, err := dc.HasContext(); current_context != "" && err != nil {
+		message := MISSING_CONTEXT
+		return fmt.Errorf(message)
+	}
+
 	if ok, err := dc.CanConnectToKubernetes(); ok && err != nil {
 		message := MISSING_KUBERNETES_ENDPOINT
 		return fmt.Errorf(message)
@@ -97,147 +93,6 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled() error {
 	return nil
 }
 
-func (dc *LiveDependencyCheckers) CreateAKSwithKubeflow() error {
-	cmd := dc.GetCmd()
-	_, err := exec.LookPath("az")
-	if err != nil {
-
-		cmd.Println("The Azure CLI is not installed.")
-		cmd.Println("Install with https://aka.ms/getcli.")
-		return err
-	}
-
-	_, err = exec.Command("/bin/bash", "-c", "az account list -otable").Output()
-	if err != nil {
-
-		cmd.Println("You are not logged in to Azure.")
-		cmd.Println("Please run 'az login'")
-		return err
-	}
-
-	testLogin := `
-	#!/bin/bash
-	set -e
-	export CURRENT_LOGIN=` + "`" + `az account show -o json | jq '\''"\(.name) : \(.id)"'\''` + "`" + `
-	echo "You are logged in with the following credentials: $CURRENT_LOGIN"
-	echo "If this is not correct, please execute:"
-	echo "az account list -o json | jq '\''.[] | \"\(.name) : \(.id)\"'\''"
-	echo "az account set --subscription REPLACE_WITH_YOUR_SUBSCRIPTION_ID"
-	`
-
-	if err := utils.ExecuteInlineBashScript(cmd, testLogin, "Your account does not appear to be logged into Azure. Please execute `az login` to authorize this account."); err != nil {
-		return err
-	}
-
-	log.Info("Tested login, working correctly.")
-
-	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
-	theDEMOINSTALL := `
-	#!/bin/bash
-	set -e
-	export SAME_RESOURCE_GROUP="SAME-GROUP-$RANDOM"
-	export SAME_LOCATION="westus2"
-	export SAME_CLUSTER_NAME="SAME-CLUSTER-$RANDOM"
-	echo "export SAME_RESOURCE_GROUP=$SAME_RESOURCE_GROUP"
-	echo "export SAME_LOCATION=$SAME_LOCATION"
-	echo "export SAME_CLUSTER_NAME=$SAME_CLUSTER_NAME"
-	echo "Creating Resource group $SAME_RESOURCE_GROUP in $SAME_LOCATION"
-	az group create -n $SAME_RESOURCE_GROUP --location $SAME_LOCATION -onone
-	echo "Creating AKS cluster $SAME_CLUSTER_NAME"
-	az aks create --resource-group $SAME_RESOURCE_GROUP --name $SAME_CLUSTER_NAME --node-count 3 --generate-ssh-keys --node-vm-size Standard_D4s_v3 --location $SAME_LOCATION 1>/dev/null
-	echo "Downloading AKS Kubeconfig credentials"
-	az aks get-credentials -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP 1>/dev/null
-	AKS_RESOURCE_ID=$(az aks show -n $SAME_CLUSTER_NAME -g $SAME_RESOURCE_GROUP --query id -otsv)
-	echo "AKS is now installed, please execute 'same init' to install Kubeflow."
-	`
-
-	// TODO: Figure out how to check for quota violations. Example:
-	// Operation failed with status: 'Bad Request'. Details: Provisioning of resource(s) for container service SAME-CLUSTER-23542 in resource group SAME-GROUP-10482 failed. Message: Operation could not be completed as it results in exceeding approved standardDSv2Family Cores quota. Additional details - Deployment Model: Resource Manager, Location: westus2, Current Limit: 200, Current Usage: 194, Additional Required: 24, (Minimum) New Limit Required: 218. Submit a request for Quota increase at https://aka.ms/ProdportalCRP/?#create/Microsoft.Support/Parameters/%7B%22subId%22:%222865c7d1-29fa-485a-8862-717377bdbf1b%22,%22pesId%22:%2206bfd9d3-516b-d5c6-5802-169c800dec89%22,%22supportTopicId%22:%22e12e3d1d-7fa0-af33-c6d0-3c50df9658a3%22%7D by specifying parameters listed in the ‘Details’ section for deployment to succeed. Please read more about quota limits at https://docs.microsoft.com/en-us/azure/azure-supportability/per-vm-quota-requests.. Details:
-	cmd.Printf("About to execute: %v\n", theDEMOINSTALL)
-	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Infrastructure set up failed. Please delete the SAME-GROUP resource group manually if it exists."); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (dc *LiveDependencyCheckers) ConfigureStorage() error {
-	cmd := dc.GetCmd()
-	// Instead of calling a bash script we will call the appropriate GO SDK functions or use Terraform
-	theDEMOINSTALL := `
-	#!/bin/bash
-	set -e
-	echo "Installing Blob Storage Driver"
-	curl -skSL https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/install-driver.sh | bash -s master -- 1>/dev/null
-	echo "Enabling on demand storage provisioning."
-	kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/storageclass-blobfuse.yaml 1>/dev/null
-	`
-
-	// Note: To use the storage, create a PVC with spec.storageClassName: blob for dynamic provisioning
-
-	if err := utils.ExecuteInlineBashScript(cmd, theDEMOINSTALL, "Configuring Storage failed."); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (dc *LiveDependencyCheckers) WriteCurrentContextToConfig() string {
-	// TODO: This is the right way to do it, need to figure out why the struct didn't get the value set correctly
-	//	currentContextScript := fmt.Sprintf("%v config current-context", dc.GetKubectlCmd())
-
-	// HACK: Hard coded 'kubectl'
-	currentContextScript := "kubectl config current-context"
-	u, _ := user.Current()
-	uidPlusGid := fmt.Sprintf("%v:%v", u.Username, u.Username)
-
-	log.Tracef("About to set current context in config file: %v", currentContextScript)
-	kubeConfigEnv := os.Getenv("KUBECONFIG")
-	log.Tracef("KUBECONFIG value: %v", kubeConfigEnv)
-	if kubeConfigEnv == "" {
-		log.Info(fmt.Sprintf("KUBECONFIG is unset, setting it to %v/.kube/config.", u.HomeDir))
-		err := os.Setenv("KUBECONFIG", fmt.Sprintf("%v/.kube/config", u.HomeDir))
-		if err != nil {
-			if utils.PrintError(fmt.Sprintf("Unable to set this user's ('%v') KUBECONFIG: ", u.Username)+"%v", err) {
-				return ""
-			}
-		}
-	}
-	outputBytes, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("KUBECONFIG=%v ", kubeConfigEnv)+currentContextScript).CombinedOutput()
-	if err != nil {
-		outputString := string(outputBytes)
-		log.Tracef("Output String: %v", outputString)
-		if strings.Contains(outputString, "/etc/rancher") {
-			if utils.PrintError(fmt.Sprintf(INIT_ERROR_KUBECONFIG_UNSET_FATAL, outputString)+"%v", err) {
-				return ""
-			}
-		} else if strings.Contains(outputString, ".kube/config") || strings.Contains(outputString, "permission denied") {
-			if utils.PrintError(fmt.Sprintf(INIT_ERROR_KUBECONFIG_PERMISSIONS, uidPlusGid, uidPlusGid)+"%v", err) {
-				return ""
-			}
-		} else if strings.Contains(outputString, "current-context is not set") {
-			if utils.PrintError(fmt.Sprintf(INIT_ERROR_CURRENT_CONTEXT_UNSET, currentContextScript, outputString)+": %v", err) {
-				return ""
-			}
-		} else {
-			if utils.PrintError(fmt.Sprintf(INIT_ERROR_CURRENT_CONTEXT_UNKNOWN_ERROR, currentContextScript, outputString)+": %v", err) {
-				return ""
-			}
-		}
-	}
-	output := strings.TrimSpace(string(outputBytes))
-
-	log.Tracef("Current config setting: %v\n", output)
-	viper.Set("activecontext", output)
-	err = viper.WriteConfig()
-	if err != nil {
-		if utils.PrintError(fmt.Sprintf("error writing activecontext ('%v') to config file: %v", output, viper.ConfigFileUsed()), err) {
-			return ""
-		}
-	}
-
-	log.Tracef("Wrote current context ('%v') as active context to file ('%v')\n", output, viper.ConfigFileUsed())
-	return output
-
-}
 func (dc *LiveDependencyCheckers) CanConnectToKubernetes() (bool, error) {
 	kfpConfig, err := utils.NewKFPConfig()
 	if err != nil || kfpConfig == nil {
@@ -289,18 +144,68 @@ func (dc *LiveDependencyCheckers) HasKubeflowNamespace() (bool, error) {
 	return true, nil
 }
 
-func (dc *LiveDependencyCheckers) IsK3sRunning() (bool, error) {
-	return utils.GetUtils(dc.GetCmd(), dc.GetCmdArgs()).IsK3sRunning()
+func (dc *LiveDependencyCheckers) HasContext() (currentContext string, err error) {
+	// https://golang.org/pkg/os/exec/#example_Cmd_StdoutPipe
+	scriptCmd := exec.Command("kubectl", "config", "current-context")
+	log.Tracef("About to execute: %v", scriptCmd)
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("Failed to current context for Kubernetes. That's all we know: %v", err)
+	}
+	currentContextString := strings.TrimSpace(string(scriptOutput))
+	if currentContextString != "" {
+		return strings.TrimSpace(currentContextString), nil
+	} else {
+		return "", fmt.Errorf("kubectl config current-context is empty")
+	}
 }
 
-func (dc *LiveDependencyCheckers) IsKubectlOnPath() (string, error) {
-	kubectlPath, err := exec.LookPath("kubectl")
-	if kubectlPath == "" || err != nil {
-		if utils.PrintErrorAndReturnExit(dc.GetCmd(), "could not find kubectl on your path: %v %v", err) {
-			return "", err
-		}
+func (dc *LiveDependencyCheckers) HasClusters() (clusters []string, err error) {
+	// strings.Split(result,`\n`)
+	scriptCmd := exec.Command("kubectl", "config", "get-clusters")
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get current clusters. That's all we know: %v", err)
 	}
-	return kubectlPath, nil
+	currentClusterString := string(scriptOutput)
+	clusters = strings.Split(currentClusterString, "\n")
+	if len(clusters) < 1 {
+		return nil, fmt.Errorf("Error when getting clusters, but we don't know anything more about it.")
+	} else if len(clusters) == 1 {
+		return []string{}, fmt.Errorf("We were able to get clusters, but there were none in the kubeconfig.")
+	}
+	return clusters[1:], nil
+}
+
+func (dc *LiveDependencyCheckers) IsKFPReady() (running bool, err error) {
+
+	scriptCmd := exec.Command("/bin/bash", "-c", "kubectl get deployments --namespace=kubeflow -o json")
+	scriptOutput, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("Failed to test if k3s is running. That's all we know: %v", err)
+	}
+
+	// Declared an empty interface
+	//var result map[string]interface{}
+	var result v1.DeploymentList
+
+	//  waiting_pod_array=("k8s-app=kube-dns;kube-system"
+	// "k8s-app=metrics-server;kube-system"
+
+	// Unmarshal or Decode the JSON to the interface.
+	//err = json.Unmarshal([]byte(scriptOutput), &result)
+	err = json.Unmarshal(scriptOutput, &result)
+	if err != nil {
+		return false, fmt.Errorf("Failed to unmarshall result of kubeflow test: %v", err)
+	}
+
+	all_ready := true
+
+	for _, deployment := range result.Items {
+		all_ready = all_ready && (deployment.Status.ReadyReplicas > 0)
+	}
+
+	return all_ready, nil
 }
 
 type InitClusterMethods struct {
@@ -360,4 +265,15 @@ Please re-run:
 same init
 
 To have same automatically create one for you and install Kubeflow Pipelines.`
+
+	MISSING_CLUSTERS string = `
+We could not find any clusters in your current KUBECONFIG. Please check with:
+
+kubectl config get-clusters`
+
+	MISSING_CONTEXT string = `
+We could not find any context in your current KUBECONFIG. Please check with:
+
+kubectl config get-contexts
+kubectl config current-context`
 )
