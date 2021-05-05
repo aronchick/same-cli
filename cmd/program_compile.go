@@ -97,6 +97,7 @@ var compileProgramCmd = &cobra.Command{
 type CodeBlock struct {
 	step_identifier     string
 	code                string
+	parameters          map[string]string
 	packages_to_install []string
 }
 
@@ -222,9 +223,12 @@ func combineCodeSlicesToSteps(stepsFound [][]string, codeSlices []string) (CodeB
 
 func writeSameConfigFile(compiledDir string, sameConfigFile loaders.SameConfig) error {
 	sameConfigFileYaml, err := yaml.Marshal(&sameConfigFile.Spec)
+	if err != nil {
+		return fmt.Errorf("error marshaling same config file: %v", err.Error())
+	}
 	err = os.WriteFile(path.Join(compiledDir, "same.yaml"), []byte(sameConfigFileYaml), 0700)
 	if err != nil {
-		return fmt.Errorf("Error writing root.py file: %v", err.Error())
+		return fmt.Errorf("error writing root.py file: %v", err.Error())
 	}
 
 	if err != nil {
@@ -294,11 +298,22 @@ func writeRootFile(compiledDir string, rootFileContents string) error {
 
 func writeStepFiles(compiledDir string, aggregatedSteps CodeBlocks) error {
 	for i := range aggregatedSteps {
+		parameter_string := ""
+		if len(aggregatedSteps[i].parameters) > 0 {
+			for _, key := range aggregatedSteps[i].parameters {
+				if parameter_string != "" {
+					parameter_string += ","
+				}
+				parameter_string += key + "=" + aggregatedSteps[i].parameters[key]
+			}
+
+		}
+
 		step_to_write := compiledDir + fmt.Sprintf("/step_%v.py", aggregatedSteps[i].step_identifier)
 		code_to_write := fmt.Sprintf(`
-def main():
+def main(%v):
 
-`)
+`, parameter_string)
 
 		scanner := bufio.NewScanner(strings.NewReader(aggregatedSteps[i].code))
 		for scanner.Scan() {
