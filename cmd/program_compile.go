@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -32,6 +33,7 @@ import (
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/spf13/cobra"
 )
@@ -100,29 +102,38 @@ type CodeBlock struct {
 
 type CodeBlocks map[string]*CodeBlock
 
-func compileFile(sameConfigFile loaders.SameConfig) (err error) {
+func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, error) {
 	jupytextExecutable, err := exec.LookPath("jupytext")
 	if err != nil {
-		return fmt.Errorf("could not find 'nbconvert'. Please run 'python -m pip install nbconvert'. You may also need to add it to your path by executing: export PATH=$PATH:$HOME/.local/bin")
+		return "", "", fmt.Errorf("could not find 'jupytext'. Please run 'python -m pip install jupytext'. You may also need to add it to your path by executing: export PATH=$PATH:$HOME/.local/bin")
 	}
 
 	notebookRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
 	notebookFilePath, err := utils.ResolveLocalFilePath(filepath.Join(notebookRootDir, sameConfigFile.Spec.Pipeline.Package))
 	if err != nil {
-		return fmt.Errorf("could not find pipeline definition specified in SAME program: %v", notebookFilePath)
+		return "", "", fmt.Errorf("could not find pipeline definition specified in SAME program: %v", notebookFilePath)
 	}
 
-	fmt.Printf("Current filepath: %v\n", notebookFilePath)
+	// cwd, err := os.Getwd()
+	// if err != nil {
+	// 	return "", "", fmt.Errorf("Could not get cwd: %v", err)
+	// }
+	return jupytextExecutable, notebookFilePath, nil
+
+}
+
+func convertNotebook(jupytextExecutablePath string, notebookFilePath string) (string, error) {
+	log.Infof("Using notebook from here: %v\n", notebookFilePath)
 	notebookFile, err := os.Open(notebookFilePath)
 	if err != nil {
-		return fmt.Errorf("error reading from notebook file: %v", notebookFilePath)
+		return "", fmt.Errorf("error reading from notebook file: %v", notebookFilePath)
 	}
 
-	scriptCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("%v --to py", jupytextExecutable))
+	scriptCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("%v --to py", jupytextExecutablePath))
 	scriptStdin, err := scriptCmd.StdinPipe()
 
 	if err != nil {
-		return fmt.Errorf("Error building Stdin pipe for notebook file: %v", err.Error())
+		return "", fmt.Errorf("Error building Stdin pipe for notebook file: %v", err.Error())
 	}
 
 	b, _ := ioutil.ReadAll(notebookFile)
@@ -134,76 +145,96 @@ func compileFile(sameConfigFile loaders.SameConfig) (err error) {
 
 	out, err := scriptCmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Error executing notebook conversion: %v", err.Error())
+		return "", fmt.Errorf("Error executing notebook conversion: %v", err.Error())
 	}
 
 	if err != nil {
-		err = fmt.Errorf(`
+		return "", fmt.Errorf(`
 could not convert the file: %v
 full error message: %v`, notebookFilePath, string(out))
-		return err
 	}
 
-	convertedText := string(out)
+	return string(out), nil
+}
 
-	// dir, err := ioutil.TempDir(os.TempDir(), "SAME-compile-*")
-	// if err != nil {
-	// 	log.Warn(err)
-	// 	return
-	// }
+func getTemporaryCompileDirectory() (string, error) {
+	dir, err := ioutil.TempDir(os.TempDir(), "SAME-compile-*")
+	if err != nil {
+		return "", fmt.Errorf("error creating temporary directory to compile in: %v", err)
+	}
 
-	// fmt.Printf("TempDir: %v\n", dir)
+	return dir, nil
+}
 
+func findAllSteps(convertedText string) (steps [][]string, code_slices []string, err error) {
 	// Need to enable multiline for beginning of the line checking - (?m)
 	re_text := "(?m)^# SAME-step-([0-9]+)\\w*$"
 	re := regexp.MustCompile(re_text)
-
-	all_named_steps := re.FindAllStringSubmatch(convertedText, -1)
-	if all_named_steps == nil {
-		return fmt.Errorf("no steps matched in the entire file for %v", re_text)
+	stepsFound := re.FindAllStringSubmatch(convertedText, -1)
+	if stepsFound == nil {
+		return nil, nil, fmt.Errorf("no steps matched in the file for %v", re_text)
 	}
 
-	// fmt.Printf("Steps: %v", all_named_steps)
-
 	code_blocks_slices := re.Split(convertedText, -1)
-	// fmt.Printf("Code block slices: %v", len(code_blocks_slices))
-	code_blocks := make(CodeBlocks)
+	fmt.Printf("Found %v code blocks in %v steps.\n", len(code_blocks_slices), len(stepsFound))
 
-	logrus.Infof("Found %v steps to combine.", len(all_named_steps))
+	return stepsFound, code_blocks_slices, nil
+}
 
-	for i, j := range all_named_steps {
+func combineCodeSlicesToSteps(stepsFound [][]string, codeSlices []string) (CodeBlocks, error) {
+	aggregatedSteps := make(CodeBlocks)
+	for i, j := range stepsFound {
 		if len(j) > 2 {
-			return fmt.Errorf("more than one match in this string, not clear how we got here: %v", j)
+			return nil, fmt.Errorf("more than one match in this string, not clear how we got here: %v", j)
 		} else if len(j) <= 1 {
-			return fmt.Errorf("zero matches in this array, not clear how we got here: %v", j)
+			return nil, fmt.Errorf("zero matches in this array, not clear how we got here: %v", j)
 		}
 
-		logrus.Tracef("Current step: %v\n", j[1])
-		logrus.Tracef("Current slice: %v\n", code_blocks_slices[i])
-		if code_blocks[j[1]] == nil {
-			code_blocks[j[1]] = &CodeBlock{}
+		thisStep := j[1]
+		logrus.Tracef("Current step: %v\n", thisStep)
+		logrus.Tracef("Current slice: %v\n", codeSlices[i])
+
+		if aggregatedSteps[thisStep] == nil {
+			aggregatedSteps[thisStep] = &CodeBlock{}
 		}
-		code_blocks[j[1]].code += code_blocks_slices[i]
-		code_blocks[j[1]].step_identifier = j[1]
+
+		aggregatedSteps[thisStep].code += codeSlices[i]
+		aggregatedSteps[thisStep].step_identifier = thisStep
 
 		import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
-		all_imports := import_regex.FindAllStringSubmatch(code_blocks[j[1]].code, -2)
+		all_imports := import_regex.FindAllStringSubmatch(aggregatedSteps[thisStep].code, -2)
 
-		// fmt.Printf("Code: %v", code_blocks_slices[i])
+		logrus.Tracef("Code: %v", aggregatedSteps[thisStep].code)
 		if len(all_imports) > 1 {
-			// fmt.Printf("Code: %v", code_blocks_slices[i])
-			// fmt.Printf("Match: %v", all_imports[1])
 			logrus.Tracef("Packages:")
 			for i := range all_imports {
-				code_blocks[j[1]].packages_to_install = append(code_blocks[j[1]].packages_to_install, all_imports[i][1])
+				aggregatedSteps[thisStep].packages_to_install = append(aggregatedSteps[thisStep].packages_to_install, all_imports[i][1])
 				logrus.Tracef("- \t%v\n", all_imports[i][1])
 			}
 
 		} else {
-			logrus.Tracef("No Matches\n")
+			logrus.Tracef("No packages to install for step: %v\n", aggregatedSteps[thisStep].step_identifier)
 		}
 	}
 
+	return aggregatedSteps, nil
+}
+
+func writeSameConfigFile(compiledDir string, sameConfigFile loaders.SameConfig) error {
+	sameConfigFileYaml, err := yaml.Marshal(&sameConfigFile.Spec)
+	err = os.WriteFile(path.Join(compiledDir, "same.yaml"), []byte(sameConfigFileYaml), 0700)
+	if err != nil {
+		return fmt.Errorf("Error writing root.py file: %v", err.Error())
+	}
+
+	if err != nil {
+		return fmt.Errorf("error writing same.yaml file to %v: %v", compiledDir, err)
+	}
+
+	return nil
+}
+
+func createRootFile(aggregatedSteps CodeBlocks) (string, error) {
 	// Create the root file
 	rootFile_pre_imports := `
 import kfp
@@ -211,64 +242,65 @@ import kfp.dsl as dsl
 from kfp.components import func_to_container_op, InputPath, OutputPath
 import kfp.compiler as compiler
 from kfp.dsl.types import Dict as KFPDict, List as KFPList
+
 `
 	import_section := ""
-	for i := range code_blocks {
-		import_section += fmt.Sprintf("import step_%v\n", code_blocks[i].step_identifier)
+	for i := range aggregatedSteps {
+		import_section += fmt.Sprintf("import step_%v\n", aggregatedSteps[i].step_identifier)
 	}
 
 	root_pre_code := `
-@dsl.pipeline(
-name="Compilation of pipelines",
-)
+@dsl.pipeline(name="Compilation of pipelines",)
 def root():
-`
+		`
 	all_code := ""
 	previous_step := ""
-	for i := range code_blocks {
+	for i := range aggregatedSteps {
 		package_string := ""
-		if len(code_blocks[i].packages_to_install) > 0 {
-			package_string = fmt.Sprintf("\"%v\"", strings.Join(code_blocks[i].packages_to_install[:], "\",\""))
+		if len(aggregatedSteps[i].packages_to_install) > 0 {
+			package_string = fmt.Sprintf("\"%v\"", strings.Join(aggregatedSteps[i].packages_to_install[:], "\",\""))
 		}
 
 		all_code += fmt.Sprintf(`
 	step_%v_op = func_to_container_op(
-		func=step_%v.step_%v,
+		func=step_%v.main,
 		base_image="python:3.9-slim-buster",
-		packages_to_install=[%v
-		],
+		packages_to_install=[%v],
 	)
 	step_%v_task = step_%v_op()
-`, code_blocks[i].step_identifier, code_blocks[i].step_identifier, code_blocks[i].step_identifier, package_string, code_blocks[i].step_identifier, code_blocks[i].step_identifier)
+		`, aggregatedSteps[i].step_identifier, aggregatedSteps[i].step_identifier, package_string, aggregatedSteps[i].step_identifier, aggregatedSteps[i].step_identifier)
 		if previous_step != "" {
 			all_code += fmt.Sprintf(`
 	step_%v_task.after(step_%v_task)
-`, code_blocks[i].step_identifier, previous_step)
+		`, aggregatedSteps[i].step_identifier, previous_step)
 		}
-		previous_step = code_blocks[i].step_identifier
+		previous_step = aggregatedSteps[i].step_identifier
 	}
+	return rootFile_pre_imports + import_section + root_pre_code + all_code, nil
 
-	compiledDir := "/tmp/working_same/compiled"
-	_ = RemoveContents(compiledDir)
+}
 
-	_ = Copy("/tmp/working_same/same.yaml", compiledDir+"/same.yaml")
-
-	file_to_write := compiledDir + "/root.py"
+func writeRootFile(compiledDir string, rootFileContents string) error {
+	file_to_write := path.Join(compiledDir, "root.py")
 	logrus.Tracef("File: %v\n", file_to_write)
 
-	err = os.WriteFile(file_to_write, []byte(rootFile_pre_imports+import_section+root_pre_code+all_code), 0700)
+	err = os.WriteFile(file_to_write, []byte(rootFileContents), 0700)
 	if err != nil {
 		return fmt.Errorf("Error writing root.py file: %v", err.Error())
 	}
 
-	for i := range code_blocks {
-		step_to_write := compiledDir + fmt.Sprintf("/step_%v.py", code_blocks[i].step_identifier)
+	return nil
+}
+
+func writeStepFiles(compiledDir string, aggregatedSteps CodeBlocks) error {
+	for i := range aggregatedSteps {
+		step_to_write := compiledDir + fmt.Sprintf("/step_%v.py", aggregatedSteps[i].step_identifier)
 		code_to_write := fmt.Sprintf(`
-def step_%v():
+def main():
 
-`, code_blocks[i].step_identifier)
+`)
 
-		scanner := bufio.NewScanner(strings.NewReader(code_blocks[i].code))
+		scanner := bufio.NewScanner(strings.NewReader(aggregatedSteps[i].code))
 		for scanner.Scan() {
 			code_to_write += fmt.Sprintf("\t" + scanner.Text() + "\n")
 		}
@@ -279,7 +311,58 @@ def step_%v():
 		}
 	}
 
-	fmt.Printf("Compilation complete! In order to upload, go to this directory (%v) and execute 'same program run'. Make sure your same.yaml is pointing at root.py\n", compiledDir)
+	return nil
+
+}
+
+func compileFile(sameConfigFile loaders.SameConfig) (err error) {
+	jupytextExecutablePath, notebookFilePath, err := checkExecutableAndFile(sameConfigFile)
+	if err != nil {
+		return err
+	}
+
+	convertedText, err := convertNotebook(jupytextExecutablePath, notebookFilePath)
+	if err != nil {
+		return err
+	}
+
+	stepsFound, codeSlices, err := findAllSteps(convertedText)
+	if err != nil {
+		return err
+	}
+
+	aggregatedSteps, err := combineCodeSlicesToSteps(stepsFound, codeSlices)
+	if err != nil {
+		return err
+	}
+
+	rootFileContents, err := createRootFile(aggregatedSteps)
+	if err != nil {
+		return err
+	}
+
+	compiledDir, err := getTemporaryCompileDirectory()
+	if err != nil {
+		return err
+	}
+
+	err = writeRootFile(compiledDir, rootFileContents)
+	if err != nil {
+		return err
+	}
+
+	sameConfigFile.Spec.Pipeline.Package = "root.py"
+	err = writeSameConfigFile(compiledDir, sameConfigFile)
+	if err != nil {
+		return nil
+	}
+
+	err = writeStepFiles(compiledDir, aggregatedSteps)
+	if err != nil {
+		return nil
+	}
+
+	fmt.Printf("Compilation complete! In order to upload, go to this directory (%v) and execute 'same program run'.\n", compiledDir)
 	return nil
 
 }
@@ -288,47 +371,4 @@ func init() {
 	programCmd.AddCommand(compileProgramCmd)
 
 	compileProgramCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml')")
-
-	compileProgramCmd.Flags().StringSliceP("run-param", "p", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
-}
-
-// Copy the src file to dst. Any existing file will be overwritten and will not
-// copy file attributes.
-func Copy(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-	if err != nil {
-		return err
-	}
-	return out.Close()
-}
-
-func RemoveContents(dir string) error {
-	d, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer d.Close()
-	names, err := d.Readdirnames(-1)
-	if err != nil {
-		return err
-	}
-	for _, name := range names {
-		err = os.RemoveAll(filepath.Join(dir, name))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
