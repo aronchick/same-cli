@@ -238,7 +238,7 @@ func writeSameConfigFile(compiledDir string, sameConfigFile loaders.SameConfig) 
 	return nil
 }
 
-func createRootFile(aggregatedSteps CodeBlocks) (string, error) {
+func createRootFile(aggregatedSteps CodeBlocks, sameConfigFile loaders.SameConfig) (string, error) {
 	// Create the root file
 	rootFile_pre_imports := `
 import kfp
@@ -253,10 +253,19 @@ from kfp.dsl.types import Dict as KFPDict, List as KFPList
 		import_section += fmt.Sprintf("import step_%v\n", aggregatedSteps[i].step_identifier)
 	}
 
-	root_pre_code := `
+	rootParameterString := ""
+	if len(sameConfigFile.Spec.Run.Parameters) > 0 {
+		rootParameters := make(map[string]string, len(sameConfigFile.Spec.Run.Parameters))
+		for k, v := range sameConfigFile.Spec.Run.Parameters {
+			rootParameters[k] = v
+		}
+		rootParameterString, _ = utils.JoinMapKeysValues(rootParameters)
+	}
+
+	root_pre_code := fmt.Sprintf(`
 @dsl.pipeline(name="Compilation of pipelines",)
-def root():
-		`
+def root(%v):
+		`, rootParameterString)
 	all_code := ""
 	previous_step := ""
 	for i := range aggregatedSteps {
@@ -298,16 +307,7 @@ func writeRootFile(compiledDir string, rootFileContents string) error {
 
 func writeStepFiles(compiledDir string, aggregatedSteps CodeBlocks) error {
 	for i := range aggregatedSteps {
-		parameter_string := ""
-		if len(aggregatedSteps[i].parameters) > 0 {
-			for _, key := range aggregatedSteps[i].parameters {
-				if parameter_string != "" {
-					parameter_string += ","
-				}
-				parameter_string += key + "=" + aggregatedSteps[i].parameters[key]
-			}
-
-		}
+		parameter_string, _ := utils.JoinMapKeysValues(aggregatedSteps[i].parameters)
 
 		step_to_write := compiledDir + fmt.Sprintf("/step_%v.py", aggregatedSteps[i].step_identifier)
 		code_to_write := fmt.Sprintf(`
@@ -351,7 +351,7 @@ func compileFile(sameConfigFile loaders.SameConfig) (err error) {
 		return err
 	}
 
-	rootFileContents, err := createRootFile(aggregatedSteps)
+	rootFileContents, err := createRootFile(aggregatedSteps, sameConfigFile)
 	if err != nil {
 		return err
 	}
