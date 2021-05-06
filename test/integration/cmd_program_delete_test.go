@@ -109,8 +109,7 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 }
 
 func (suite *ProgramDeleteSuite) TearDownAllSuite() {
-	// os.RemoveAll(suite.tmpConfigDirectory)
-	log.Warnf("Directory: %v", suite.tmpConfigDirectory)
+	os.RemoveAll(suite.tmpConfigDirectory)
 }
 func (suite *ProgramDeleteSuite) Test_DeletePipeline() {
 	os.Setenv("TEST_PASS", "1")
