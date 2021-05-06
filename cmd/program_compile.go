@@ -17,7 +17,6 @@ limitations under the License.
 */
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,7 +24,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -94,15 +92,6 @@ var compileProgramCmd = &cobra.Command{
 	},
 }
 
-type CodeBlock struct {
-	step_identifier     string
-	code                string
-	parameters          map[string]string
-	packages_to_install []string
-}
-
-type CodeBlocks map[string]*CodeBlock
-
 func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, error) {
 	jupytextExecutable, err := exec.LookPath("jupytext")
 	if err != nil {
@@ -167,60 +156,6 @@ func getTemporaryCompileDirectory() (string, error) {
 	return dir, nil
 }
 
-func findAllSteps(convertedText string) (steps [][]string, code_slices []string, err error) {
-	// Need to enable multiline for beginning of the line checking - (?m)
-	re_text := "(?m)^# SAME-step-([0-9]+)\\w*$"
-	re := regexp.MustCompile(re_text)
-	stepsFound := re.FindAllStringSubmatch(convertedText, -1)
-	if stepsFound == nil {
-		return nil, nil, fmt.Errorf("no steps matched in the file for %v", re_text)
-	}
-
-	code_blocks_slices := re.Split(convertedText, -1)
-	fmt.Printf("Found %v code blocks in %v steps.\n", len(code_blocks_slices), len(stepsFound))
-
-	return stepsFound, code_blocks_slices, nil
-}
-
-func combineCodeSlicesToSteps(stepsFound [][]string, codeSlices []string) (CodeBlocks, error) {
-	aggregatedSteps := make(CodeBlocks)
-	for i, j := range stepsFound {
-		if len(j) > 2 {
-			return nil, fmt.Errorf("more than one match in this string, not clear how we got here: %v", j)
-		} else if len(j) <= 1 {
-			return nil, fmt.Errorf("zero matches in this array, not clear how we got here: %v", j)
-		}
-
-		thisStep := j[1]
-		logrus.Tracef("Current step: %v\n", thisStep)
-		logrus.Tracef("Current slice: %v\n", codeSlices[i])
-
-		if aggregatedSteps[thisStep] == nil {
-			aggregatedSteps[thisStep] = &CodeBlock{}
-		}
-
-		aggregatedSteps[thisStep].code += codeSlices[i]
-		aggregatedSteps[thisStep].step_identifier = thisStep
-
-		import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
-		all_imports := import_regex.FindAllStringSubmatch(aggregatedSteps[thisStep].code, -2)
-
-		logrus.Tracef("Code: %v", aggregatedSteps[thisStep].code)
-		if len(all_imports) > 1 {
-			logrus.Tracef("Packages:")
-			for i := range all_imports {
-				aggregatedSteps[thisStep].packages_to_install = append(aggregatedSteps[thisStep].packages_to_install, all_imports[i][1])
-				logrus.Tracef("- \t%v\n", all_imports[i][1])
-			}
-
-		} else {
-			logrus.Tracef("No packages to install for step: %v\n", aggregatedSteps[thisStep].step_identifier)
-		}
-	}
-
-	return aggregatedSteps, nil
-}
-
 func writeSameConfigFile(compiledDir string, sameConfigFile loaders.SameConfig) error {
 	sameConfigFileYaml, err := yaml.Marshal(&sameConfigFile.Spec)
 	if err != nil {
@@ -238,61 +173,6 @@ func writeSameConfigFile(compiledDir string, sameConfigFile loaders.SameConfig) 
 	return nil
 }
 
-func createRootFile(aggregatedSteps CodeBlocks, sameConfigFile loaders.SameConfig) (string, error) {
-	// Create the root file
-	rootFile_pre_imports := `
-import kfp
-import kfp.dsl as dsl
-from kfp.components import func_to_container_op, InputPath, OutputPath
-import kfp.compiler as compiler
-from kfp.dsl.types import Dict as KFPDict, List as KFPList
-
-`
-	import_section := ""
-	for i := range aggregatedSteps {
-		import_section += fmt.Sprintf("import step_%v\n", aggregatedSteps[i].step_identifier)
-	}
-
-	rootParameterString := ""
-	if len(sameConfigFile.Spec.Run.Parameters) > 0 {
-		rootParameters := make(map[string]string, len(sameConfigFile.Spec.Run.Parameters))
-		for k, v := range sameConfigFile.Spec.Run.Parameters {
-			rootParameters[k] = v
-		}
-		rootParameterString, _ = utils.JoinMapKeysValues(rootParameters)
-	}
-
-	root_pre_code := fmt.Sprintf(`
-@dsl.pipeline(name="Compilation of pipelines",)
-def root(%v):
-		`, rootParameterString)
-	all_code := ""
-	previous_step := ""
-	for i := range aggregatedSteps {
-		package_string := ""
-		if len(aggregatedSteps[i].packages_to_install) > 0 {
-			package_string = fmt.Sprintf("\"%v\"", strings.Join(aggregatedSteps[i].packages_to_install[:], "\",\""))
-		}
-
-		all_code += fmt.Sprintf(`
-	step_%v_op = func_to_container_op(
-		func=step_%v.main,
-		base_image="python:3.9-slim-buster",
-		packages_to_install=[%v],
-	)
-	step_%v_task = step_%v_op()
-		`, aggregatedSteps[i].step_identifier, aggregatedSteps[i].step_identifier, package_string, aggregatedSteps[i].step_identifier, aggregatedSteps[i].step_identifier)
-		if previous_step != "" {
-			all_code += fmt.Sprintf(`
-	step_%v_task.after(step_%v_task)
-		`, aggregatedSteps[i].step_identifier, previous_step)
-		}
-		previous_step = aggregatedSteps[i].step_identifier
-	}
-	return rootFile_pre_imports + import_section + root_pre_code + all_code, nil
-
-}
-
 func writeRootFile(compiledDir string, rootFileContents string) error {
 	file_to_write := path.Join(compiledDir, "root.py")
 	logrus.Tracef("File: %v\n", file_to_write)
@@ -305,32 +185,8 @@ func writeRootFile(compiledDir string, rootFileContents string) error {
 	return nil
 }
 
-func writeStepFiles(compiledDir string, aggregatedSteps CodeBlocks) error {
-	for i := range aggregatedSteps {
-		parameter_string, _ := utils.JoinMapKeysValues(aggregatedSteps[i].parameters)
-
-		step_to_write := compiledDir + fmt.Sprintf("/step_%v.py", aggregatedSteps[i].step_identifier)
-		code_to_write := fmt.Sprintf(`
-def main(%v):
-
-`, parameter_string)
-
-		scanner := bufio.NewScanner(strings.NewReader(aggregatedSteps[i].code))
-		for scanner.Scan() {
-			code_to_write += fmt.Sprintf("\t" + scanner.Text() + "\n")
-		}
-
-		err = os.WriteFile(step_to_write, []byte(code_to_write), 0700)
-		if err != nil {
-			return fmt.Errorf("Error writing step %v: %v", step_to_write, err.Error())
-		}
-	}
-
-	return nil
-
-}
-
 func compileFile(sameConfigFile loaders.SameConfig) (err error) {
+	var c = utils.GetCompileFunctions()
 	jupytextExecutablePath, notebookFilePath, err := checkExecutableAndFile(sameConfigFile)
 	if err != nil {
 		return err
@@ -341,17 +197,17 @@ func compileFile(sameConfigFile loaders.SameConfig) (err error) {
 		return err
 	}
 
-	stepsFound, codeSlices, err := findAllSteps(convertedText)
+	stepsFound, codeSlices, err := c.FindAllSteps(convertedText)
 	if err != nil {
 		return err
 	}
 
-	aggregatedSteps, err := combineCodeSlicesToSteps(stepsFound, codeSlices)
+	aggregatedSteps, err := c.CombineCodeSlicesToSteps(stepsFound, codeSlices)
 	if err != nil {
 		return err
 	}
 
-	rootFileContents, err := createRootFile(aggregatedSteps, sameConfigFile)
+	rootFileContents, err := c.CreateRootFile(aggregatedSteps, sameConfigFile)
 	if err != nil {
 		return err
 	}
@@ -372,7 +228,7 @@ func compileFile(sameConfigFile loaders.SameConfig) (err error) {
 		return nil
 	}
 
-	err = writeStepFiles(compiledDir, aggregatedSteps)
+	err = c.WriteStepFiles(compiledDir, aggregatedSteps)
 	if err != nil {
 		return nil
 	}
