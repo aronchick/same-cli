@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 // // Settings default user setting
@@ -176,14 +177,92 @@ func main() {
 	// bad, err = utils.GetUtils(&cobra.Command{}, []string{}).IsEndpointReachable("kubernetes.docker.internal:6443")
 	// fmt.Printf("Endpoint reached: %v\n", bad)
 	// fmt.Printf("Endpoint error: %v\n", err)
-	a := `
-	import tensorflow
-	
-	a = 3
-	
-	# +`
-	import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
-	all_imports := import_regex.FindAllStringSubmatch(a, -2)
-	fmt.Printf("Match: %v", all_imports)
+	// a := `
+	// import tensorflow
 
+	// a = 3
+
+	// # +`
+	// import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
+	// all_imports := import_regex.FindAllStringSubmatch(a, -2)
+	// fmt.Printf("Match: %v", all_imports)
+
+	var (
+		ZERO_NAMED_STEPS = `
+	# ---
+
+	foo = "bar"
+
+	# +
+	import tensorflow
+	`
+		ZERO_NAMED_STEPS_WITH_PARAMS = `
+	# ---
+	
+	# + tags=["parameters"]
+	foo = "bar"
+	
+	# +
+	import tensorflow
+	`
+
+		ONE_STEP = `
+	# ---
+	
+	# + tags=["parameters"]
+	foo = "bar"
+	
+	# +
+	# + tags=["same-step-1"]
+	import tensorflow
+	`
+
+		ONE_STEP_WITH_CACHE = `
+	# ---
+	
+	# + tags=["parameters"]
+	foo = "bar"
+	
+	# +
+	# + tags=["same-step-1", "cache=20d"]
+	import tensorflow
+	`
+	)
+
+	process_steps(ZERO_NAMED_STEPS, "ZERO_NAMED_STEPS")
+	process_steps(ZERO_NAMED_STEPS_WITH_PARAMS, "ZERO_NAMED_STEPS_WITH_PARAMS")
+	process_steps(ONE_STEP, "ONE_STEP")
+	process_steps(ONE_STEP_WITH_CACHE, "ONE_STEP_WITH_CACHE")
+}
+
+func process_steps(s string, name string) {
+	re := regexp.MustCompile(`(?m)^\s*# (?:\+|\-) ?(.*?)$`)
+	stepsFound := re.FindAllStringSubmatch(s, -1)
+	fmt.Printf("Steps for %v: %v\n", name, len(stepsFound))
+
+	for i, j := range stepsFound {
+		re_tags_text := `tags=\[([^\]]*)\]`
+		re_tags := regexp.MustCompile(re_tags_text)
+		tags_found := re_tags.FindAllStringSubmatch(j[1], -1)
+		fmt.Printf(" - Tags for %v[%v]: %v\n", name, i, len(tags_found))
+		if len(tags_found) > 0 {
+			all_tags := strings.Split(tags_found[0][1], ",")
+			for _, this_tag := range all_tags {
+				this_tag = strings.TrimSpace(this_tag)
+				if this_tag[0] == '"' {
+					this_tag = this_tag[1:]
+				}
+				if end := len(this_tag) - 1; this_tag[end] == '"' {
+					this_tag = this_tag[:end]
+				}
+				if strings.HasPrefix(this_tag, "cache=") {
+					fmt.Printf("   - Cache: %v\n", strings.Split(this_tag, "=")[1])
+				} else if strings.HasPrefix(this_tag, "same-step-") {
+					fmt.Printf("   - Step: %v\n", strings.Split(this_tag, "-")[2])
+				} else {
+					fmt.Printf("   - Generic tag: %v\n", this_tag)
+				}
+			}
+		}
+	}
 }

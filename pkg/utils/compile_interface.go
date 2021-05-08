@@ -8,20 +8,28 @@ import (
 )
 
 type CompileInterface interface {
-	FindAllSteps(string) ([][]string, []string, error)
-	CombineCodeSlicesToSteps([][]string, []string) (CodeBlocks, error)
-	CreateRootFile(CodeBlocks, loaders.SameConfig) (string, error)
-	WriteStepFiles(string, CodeBlocks) error
+	FindAllSteps(string) ([]FoundStep, error)
+	CombineCodeSlicesToSteps([]FoundStep) (map[string]CodeBlock, error)
+	CreateRootFile(map[string]CodeBlock, loaders.SameConfig) (string, error)
+	WriteStepFiles(string, map[string]CodeBlock) error
 }
 
 type CodeBlock struct {
-	step_identifier     string
-	code                string
-	parameters          map[string]string
-	packages_to_install []string
+	Step_Identifier     string
+	Code                string
+	Parameters          map[string]string
+	Packages_To_Install []string
+	Tags                []string
+	Cache_Value         string
 }
 
-type CodeBlocks map[string]*CodeBlock
+type FoundStep struct {
+	index       int
+	step_name   string
+	tags        []string
+	code_slice  string
+	cache_value string
+}
 
 func GetCompileFunctions() CompileInterface {
 	log.Tracef("Current TEST_PASS value: %v", os.Getenv("TEST_PASS"))

@@ -197,12 +197,12 @@ func compileFile(sameConfigFile loaders.SameConfig) (err error) {
 		return err
 	}
 
-	stepsFound, codeSlices, err := c.FindAllSteps(convertedText)
+	foundSteps, err := c.FindAllSteps(convertedText)
 	if err != nil {
 		return err
 	}
 
-	aggregatedSteps, err := c.CombineCodeSlicesToSteps(stepsFound, codeSlices)
+	aggregatedSteps, err := c.CombineCodeSlicesToSteps(foundSteps)
 	if err != nil {
 		return err
 	}
