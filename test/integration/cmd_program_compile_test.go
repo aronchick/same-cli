@@ -83,7 +83,7 @@ func (suite *ProgramCompileSuite) Test_SettingCacheValue_NoCache() {
 
 	foundSteps, _ := c.FindAllSteps(ONE_STEP)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
-	cb := codeBlocks["same-step-1"]
+	cb := codeBlocks["same_step_1"]
 	assert.Equal(suite.T(), cb.Cache_Value, "P0D", "Expected to set a missing cache value to P0D. Actual: %v", cb.Cache_Value)
 
 }
@@ -94,8 +94,19 @@ func (suite *ProgramCompileSuite) Test_SettingCacheValue_WithCache() {
 
 	foundSteps, _ := c.FindAllSteps(ONE_STEP_WITH_CACHE)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
-	cb := codeBlocks["same-step-1"]
+	cb := codeBlocks["same_step_1"]
 	assert.Equal(suite.T(), cb.Cache_Value, "P20D", "Expected to set a missing cache value to P20D. Actual: %v", cb.Cache_Value)
+
+}
+
+func (suite *ProgramCompileSuite) Test_ImportsWorkingProperly() {
+	os.Setenv("TEST_PASS", "1")
+	c := utils.GetCompileFunctions()
+
+	foundSteps, _ := c.FindAllSteps(NOTEBOOKS_WITH_IMPORT)
+	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
+	cb := codeBlocks["same_step_0"]
+	assert.Contains(suite.T(), cb.Packages_To_Install, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.Packages_To_Install)
 
 }
 
@@ -152,7 +163,7 @@ import tensorflow
 foo = "bar"
 
 # +
-# + tags=["same-step-1"]
+# + tags=["same_step_1"]
 import tensorflow
 `
 
@@ -163,7 +174,7 @@ import tensorflow
 foo = "bar"
 
 # +
-# + tags=["same-step-1", "cache=P20D"]
+# + tags=["same_step_1", "cache=P20D"]
 import tensorflow
 `
 
@@ -174,11 +185,11 @@ import tensorflow
 foo = "bar"
 
 # +
-# + tags=["same-step-1"]
+# + tags=["same_step_1"]
 import tensorflow
 
 # +
-# + tags=["same-step-2"]
+# + tags=["same_step_2"]
 import pytorch
 `
 
@@ -189,29 +200,62 @@ import pytorch
 foo = "bar"
 
 # +
-# + tags=["same-step-1"]
+# + tags=["same_step_1"]
 import tensorflow
 
 # +
-# + tags=["same-step-1"]
+# + tags=["same_step_1"]
 import numpy
 
 # +
-# + tags=["same-step-2"]
+# + tags=["same_step_2"]
 import pytorch
 `
 
 	TWO_STEPS_COMBINE_NO_PARAMS = `
 # +
-# + tags=["same-step-1"]
+# + tags=["same_step_1"]
 import tensorflow
 
 # +
-# + tags=["same-step-1"]
+# + tags=["same_step_1"]
 import numpy
 
 # +
-# + tags=["same-step-2"]
+# + tags=["same_step_2"]
 import pytorch
 `
+
+	NOTEBOOKS_WITH_IMPORT = `
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.11.1
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
+# + tags=["parameters"]
+foo = "bar"
+num = 17
+
+# +
+import tensorflow
+
+a = 4
+
+# +
+from IPython.display import Image
+
+b = a + 5
+
+url = 'https://same-project.github.io/SAME-samples/automated_notebook/FaroeIslands.jpeg'
+
+from IPython import display`
 )

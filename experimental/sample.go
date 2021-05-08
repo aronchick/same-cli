@@ -4,9 +4,7 @@
 package main
 
 import (
-	"fmt"
 	"regexp"
-	"strings"
 )
 
 // // Settings default user setting
@@ -188,81 +186,81 @@ func main() {
 	// fmt.Printf("Match: %v", all_imports)
 
 	var (
-		ZERO_NAMED_STEPS = `
+		// 	ZERO_NAMED_STEPS = `
+		// # ---
+
+		// foo = "bar"
+
+		// # +
+		// import tensorflow
+		// `
+		// 	ZERO_NAMED_STEPS_WITH_PARAMS = `
+		// # ---
+
+		// # + tags=["parameters"]
+		// foo = "bar"
+
+		// # +
+		// import tensorflow
+		// `
+
+		// 	ONE_STEP = `
+		// # ---
+
+		// # + tags=["parameters"]
+		// foo = "bar"
+
+		// # +
+		// # + tags=["same_step_1"]
+		// import tensorflow
+		// `
+
+		// 	ONE_STEP_WITH_CACHE = `
+		// # ---
+
+		// # + tags=["parameters"]
+		// foo = "bar"
+
+		// # +
+		// # + tags=["same_step_1", "cache=20d"]
+		// import tensorflow
+		// `
+		NOTEBOOKS_WITH_IMPORT = `
 	# ---
-
-	foo = "bar"
-
-	# +
-	import tensorflow
-	`
-		ZERO_NAMED_STEPS_WITH_PARAMS = `
+	# jupyter:
+	#   jupytext:
+	#     text_representation:
+	#       extension: .py
+	#       format_name: light
+	#       format_version: '1.5'
+	#       jupytext_version: 1.11.1
+	#   kernelspec:
+	#     display_name: Python 3
+	#     language: python
+	#     name: python3
 	# ---
 	
 	# + tags=["parameters"]
 	foo = "bar"
+	num = 17
 	
 	# +
 	import tensorflow
-	`
-
-		ONE_STEP = `
-	# ---
 	
-	# + tags=["parameters"]
-	foo = "bar"
+	a = 4
 	
 	# +
-	# + tags=["same-step-1"]
-	import tensorflow
-	`
-
-		ONE_STEP_WITH_CACHE = `
-	# ---
+	from IPython.display import Image
 	
-	# + tags=["parameters"]
-	foo = "bar"
+	b = a + 5
 	
-	# +
-	# + tags=["same-step-1", "cache=20d"]
-	import tensorflow
-	`
+	url = 'https://same-project.github.io/SAME-samples/automated_notebook/FaroeIslands.jpeg'
+	
+	from IPython import display`
 	)
 
-	process_steps(ZERO_NAMED_STEPS, "ZERO_NAMED_STEPS")
-	process_steps(ZERO_NAMED_STEPS_WITH_PARAMS, "ZERO_NAMED_STEPS_WITH_PARAMS")
-	process_steps(ONE_STEP, "ONE_STEP")
-	process_steps(ONE_STEP_WITH_CACHE, "ONE_STEP_WITH_CACHE")
-}
+	import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
+	all_imports := import_regex.FindAllStringSubmatch(NOTEBOOKS_WITH_IMPORT, -2)
 
-func process_steps(s string, name string) {
-	re := regexp.MustCompile(`(?m)^\s*# (?:\+|\-) ?(.*?)$`)
-	stepsFound := re.FindAllStringSubmatch(s, -1)
-	fmt.Printf("Steps for %v: %v\n", name, len(stepsFound))
-
-	for i, j := range stepsFound {
-		re_tags_text := `tags=\[([^\]]*)\]`
-		re_tags := regexp.MustCompile(re_tags_text)
-		tags_found := re_tags.FindAllStringSubmatch(j[1], -1)
-		fmt.Printf(" - Tags for %v[%v]: %v\n", name, i, len(tags_found))
-		if len(tags_found) > 0 {
-			all_tags := strings.Split(tags_found[0][1], ",")
-			for _, this_tag := range all_tags {
-				this_tag = strings.TrimSpace(this_tag)
-				if this_tag[0] == '"' {
-					this_tag = this_tag[1:]
-				}
-				if end := len(this_tag) - 1; this_tag[end] == '"' {
-					this_tag = this_tag[:end]
-				}
-				if strings.HasPrefix(this_tag, "cache=") {
-					fmt.Printf("   - Cache: %v\n", strings.Split(this_tag, "=")[1])
-				} else if strings.HasPrefix(this_tag, "same-step-") {
-					fmt.Printf("   - Step: %v\n", strings.Split(this_tag, "-")[2])
-				} else {
-					fmt.Printf("   - Generic tag: %v\n", this_tag)
-				}
-			}
-		}
-	}
+	_ = all_imports
 }

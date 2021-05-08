@@ -31,7 +31,7 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 	for i, thisStep := range stepsFound {
 		tagsFound[i] = ParseTagsForStep(thisStep[1])
 		for _, tag := range tagsFound[i] {
-			if strings.HasPrefix(tag, "same-step-") {
+			if strings.HasPrefix(tag, "same_step_") {
 				namedStepsFound = true
 			}
 		}
@@ -42,17 +42,17 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 		foundStep := FoundStep{}
 		foundStep.code_slice = convertedText
 		foundStep.index = 0
-		foundStep.step_name = "same-step-0"
+		foundStep.step_name = "same_step_0"
 		foundStep.tags = nil
 
 		return []FoundStep{foundStep}, nil
 	}
 
-	log.Trace("Found at least one step with a 'same-step-#' format, breaking up the file")
+	log.Trace("Found at least one step with a 'same_step_#' format, breaking up the file")
 
 	code_blocks_slices := re_steps.Split(convertedText, -1)
 	foundSteps = make([]FoundStep, 0)
-	current_step_name := "same-step-0"
+	current_step_name := "same_step_0"
 	current_index := 0
 	log.Tracef("Raw steps found: %v", len(stepsFound))
 	log.Tracef("Code slices found: %v", len(code_blocks_slices))
@@ -70,9 +70,9 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 
 		// Drop tags into one  of three categories (should be more extensible in the future)
 		for _, tag := range tagsFound[i] {
-			if strings.HasPrefix(tag, "same-step-") {
+			if strings.HasPrefix(tag, "same_step_") {
 				current_step_name = tag
-				current_index, _ = strconv.Atoi(strings.Split(tag, "-")[2])
+				current_index, _ = strconv.Atoi(strings.Split(tag, "_")[2])
 			} else if strings.HasPrefix(tag, "cache=") {
 				cacheValue = strings.Split(tag, "=")[1]
 			} else {
@@ -119,7 +119,7 @@ func ParseTagsForStep(s string) []string {
 
 func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[string]CodeBlock, error) {
 	aggregatedSteps := make(map[string]CodeBlock)
-	for _, foundStep := range foundSteps {
+	for i, foundStep := range foundSteps {
 
 		logrus.Tracef("Current step: %v\n", foundStep.step_name)
 		logrus.Tracef("Current slice: %v\n", foundStep.code_slice)
@@ -137,18 +137,18 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 		}
 
 		import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
-		all_imports := import_regex.FindAllStringSubmatch(aggregatedSteps[foundStep.step_name].Code, -2)
+		all_imports := import_regex.FindAllStringSubmatch(thisCodeBlock.Code, -2)
 
 		log.Tracef("Code: %v", aggregatedSteps[foundStep.step_name].Code)
 		if len(all_imports) > 1 {
 			log.Tracef("Packages:")
 			for i := range all_imports {
-				thisCodeBlock.Packages_To_Install = append(aggregatedSteps[foundStep.step_name].Packages_To_Install, all_imports[i][1])
+				thisCodeBlock.Packages_To_Install = append(thisCodeBlock.Packages_To_Install, all_imports[i][1])
 				logrus.Tracef("- \t%v\n", all_imports[i][1])
 			}
 
 		} else {
-			log.Tracef("No packages to install for step: %v\n", aggregatedSteps[foundStep.step_name].Step_Identifier)
+			log.Tracef("No packages to install for found step #: %v\n", i)
 		}
 		aggregatedSteps[foundStep.step_name] = thisCodeBlock
 	}
