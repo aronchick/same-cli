@@ -15,9 +15,10 @@ func CompileForKFP(pipelineDSLfilepath string) (compiledPipeline string, err err
 		return
 	}
 
+	log.Tracef("Pipeline DSL filepath: %v", pipelineDSLfilepath)
 	pipelineDSLfilepath, err = ResolveLocalFilePath(pipelineDSLfilepath)
 	if err != nil {
-		err = fmt.Errorf("could not find pipeline definition specified in SAME program: %v", pipelineDSLfilepath)
+		err = fmt.Errorf("kfputils.go: could not find pipeline definition specified in SAME program: %v", pipelineDSLfilepath)
 		return
 	}
 

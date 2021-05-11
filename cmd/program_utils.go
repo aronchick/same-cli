@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -22,7 +23,7 @@ import (
 	"github.com/azure-octo/same-cli/pkg/utils"
 )
 
-func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string) (uploadedPipeline *pipeline_upload_model.APIPipeline, err error) {
+func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string, persistTemporaryFiles bool) (uploadedPipeline *pipeline_upload_model.APIPipeline, err error) {
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
@@ -38,17 +39,28 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	uploadparams.Name = &pipelineName
 	uploadparams.Description = &pipelineDescription
 
-	pipelineRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
+	if strings.HasSuffix(strings.TrimSpace(sameConfigFile.Spec.Pipeline.Package), ".ipynb") {
+		tempCompileDir, updatedSameConfig, err := CompileFile(*sameConfigFile, true)
+		if err != nil {
+			return nil, err
+		}
+		if !persistTemporaryFiles {
+			defer os.Remove(tempCompileDir)
+		}
+		sameConfigFile.Spec.ConfigFilePath = updatedSameConfig.Spec.ConfigFilePath
+		sameConfigFile.Spec.Pipeline.Package = updatedSameConfig.Spec.Pipeline.Package
+	}
 
-	// TODO: We only support local compressed pipelines (for now)
-	pipelineFilePath, err := utils.CompileForKFP(filepath.Join(pipelineRootDir, sameConfigFile.Spec.Pipeline.Package))
-
+	pipelinePath, _ := filepath.Abs(sameConfigFile.Spec.Pipeline.Package)
+	pipelineFilePath, err := utils.CompileForKFP(pipelinePath)
 	if err != nil {
 		return nil, err
 	}
 
 	uploadedPipeline, err = uploadclient.UploadFile(pipelineFilePath, uploadparams)
-	defer os.Remove(pipelineFilePath)
+	if !persistTemporaryFiles {
+		defer os.Remove(pipelineFilePath)
+	}
 
 	if err != nil {
 		// It's not an error we know about, and we couldn't find the pipeline we uploaded, so assuming it didn't get uploaded
@@ -62,7 +74,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	return uploadedPipeline, nil
 }
 
-func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string) (uploadedPipelineVersion *pipeline_upload_model.APIPipelineVersion, err error) {
+func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string, persistTemporaryFiles bool) (uploadedPipelineVersion *pipeline_upload_model.APIPipelineVersion, err error) {
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
@@ -78,16 +90,27 @@ func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipel
 	uploadparams.Pipelineid = &pipelineID
 	uploadparams.Name = &pipelineVersion
 
-	pipelineRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
-
-	// TODO: We only support local compressed pipelines (for now)
-	pipelineFilePath, err := utils.CompileForKFP(filepath.Join(pipelineRootDir, sameConfigFile.Spec.Pipeline.Package))
+	if strings.HasSuffix(strings.TrimSpace(sameConfigFile.Spec.Pipeline.Package), ".ipynb") {
+		tempCompileDir, updatedSameConfig, err := CompileFile(*sameConfigFile, true)
+		if err != nil {
+			return nil, err
+		}
+		if !persistTemporaryFiles {
+			defer os.Remove(tempCompileDir)
+		}
+		sameConfigFile.Spec.ConfigFilePath = updatedSameConfig.Spec.ConfigFilePath
+		sameConfigFile.Spec.Pipeline.Package = updatedSameConfig.Spec.Pipeline.Package
+	}
+	pipelinePath, _ := filepath.Abs(sameConfigFile.Spec.Pipeline.Package)
+	pipelineFilePath, err := utils.CompileForKFP(pipelinePath)
 	if err != nil {
 		return nil, err
 	}
 
 	uploadedPipelineVersion, err = uploadclient.UploadPipelineVersion(pipelineFilePath, uploadparams)
-	defer os.Remove(pipelineFilePath)
+	if !persistTemporaryFiles {
+		defer os.Remove(pipelineFilePath)
+	}
 
 	if err != nil {
 		// It's not an error we know about, so assuming the version didn't get uploaded

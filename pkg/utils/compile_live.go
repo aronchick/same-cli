@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -121,8 +120,8 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 	aggregatedSteps := make(map[string]CodeBlock)
 	for i, foundStep := range foundSteps {
 
-		logrus.Tracef("Current step: %v\n", foundStep.step_name)
-		logrus.Tracef("Current slice: %v\n", foundStep.code_slice)
+		log.Tracef("Current step: %v\n", foundStep.step_name)
+		log.Tracef("Current slice: %v\n", foundStep.code_slice)
 
 		thisCodeBlock := CodeBlock{}
 		if _, exists := aggregatedSteps[foundStep.step_name]; exists {
@@ -144,7 +143,7 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 			log.Tracef("Packages:")
 			for i := range all_imports {
 				thisCodeBlock.Packages_To_Install = append(thisCodeBlock.Packages_To_Install, all_imports[i][1])
-				logrus.Tracef("- \t%v\n", all_imports[i][1])
+				log.Tracef("- \t%v\n", all_imports[i][1])
 			}
 
 		} else {
@@ -168,7 +167,7 @@ from kfp.dsl.types import Dict as KFPDict, List as KFPList
 `
 	import_section := ""
 	for i := range aggregatedSteps {
-		import_section += fmt.Sprintf("import step_%v\n", aggregatedSteps[i].Step_Identifier)
+		import_section += fmt.Sprintf("import %v\n", aggregatedSteps[i].Step_Identifier)
 	}
 
 	rootParameterString := ""
@@ -183,30 +182,69 @@ from kfp.dsl.types import Dict as KFPDict, List as KFPList
 	root_pre_code := fmt.Sprintf(`
 @dsl.pipeline(name="Compilation of pipelines",)
 def root(%v):
+	# The below is base64 encoding of an empty locals() output
+	_original_context="gAR9lC4="
 		`, rootParameterString)
 	all_code := ""
 	previous_step := ""
-	for i := range aggregatedSteps {
+	context_variable := ""
+	number_of_raw_steps := len(aggregatedSteps)
+	steps_left_to_parse := make(map[string]string)
+
+	for _, thisCodeBlock := range aggregatedSteps {
+		steps_left_to_parse[thisCodeBlock.Step_Identifier] = thisCodeBlock.Step_Identifier
+	}
+
+	for i := 0; i < number_of_raw_steps; i++ {
+		thisCodeBlock := CodeBlock{}
+		for _, test_step_identifier := range steps_left_to_parse {
+			if thisCodeBlock.Step_Identifier == "" || test_step_identifier <= thisCodeBlock.Step_Identifier {
+				thisCodeBlock = aggregatedSteps[test_step_identifier]
+			}
+		}
+
+		if thisCodeBlock.Step_Identifier == "" {
+			return "", fmt.Errorf("compile_live.go: got to the end of searching and did not assign a code block. Not sure how.")
+		}
+		delete(steps_left_to_parse, thisCodeBlock.Step_Identifier)
+
 		package_string := ""
-		if len(aggregatedSteps[i].Packages_To_Install) > 0 {
-			package_string = fmt.Sprintf("\"%v\"", strings.Join(aggregatedSteps[i].Packages_To_Install[:], "\",\""))
+		if len(thisCodeBlock.Packages_To_Install) > 0 {
+			package_string = fmt.Sprintf("\"%v\"", strings.Join(thisCodeBlock.Packages_To_Install[:], "\",\""))
+		}
+
+		context_variable = fmt.Sprintf("%v_task.outputs['context']", previous_step)
+		if previous_step == "" {
+			context_variable = "_original_context"
 		}
 
 		all_code += fmt.Sprintf(`
-	step_%v_op = func_to_container_op(
-		func=step_%v.main,
+	%v_op = func_to_container_op(
+		func=%v.main,
 		base_image="python:3.9-slim-buster",
-		packages_to_install=[%v],
+		packages_to_install=["dill", %v],
 	)
-	step_%v_task = step_%v_op()
-	step_%v_task.execution_options.caching_strategy.max_cache_staleness = "%v"
-		`, aggregatedSteps[i].Step_Identifier, aggregatedSteps[i].Step_Identifier, package_string, aggregatedSteps[i].Step_Identifier, aggregatedSteps[i].Step_Identifier, aggregatedSteps[i].Step_Identifier, aggregatedSteps[i].Cache_Value)
+	%v_task = %v_op(context=%v)
+	%v_task.execution_options.caching_strategy.max_cache_staleness = "%v"
+		`,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Step_Identifier,
+			package_string,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Step_Identifier,
+			context_variable,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Cache_Value)
+
 		if previous_step != "" {
 			all_code += fmt.Sprintf(`
-	step_%v_task.after(step_%v_task)
-		`, aggregatedSteps[i].Step_Identifier, previous_step)
+	%v_task.after(%v_task)
+		`,
+				thisCodeBlock.Step_Identifier,
+				previous_step)
 		}
-		previous_step = aggregatedSteps[i].Step_Identifier
+
+		previous_step = thisCodeBlock.Step_Identifier
 	}
 	return rootFile_pre_imports + import_section + root_pre_code + all_code, nil
 
@@ -215,10 +253,22 @@ def root(%v):
 func (c *CompileLive) WriteStepFiles(compiledDir string, aggregatedSteps map[string]CodeBlock) error {
 	for i := range aggregatedSteps {
 		parameter_string, _ := JoinMapKeysValues(aggregatedSteps[i].Parameters)
+		if parameter_string != "" {
+			parameter_string = "," + parameter_string
+		}
 
-		step_to_write := compiledDir + fmt.Sprintf("/step_%v.py", aggregatedSteps[i].Step_Identifier)
-		code_to_write := fmt.Sprintf(`
-def main(%v):
+		// Prepend an empty locals as the default
+		parameter_string = "context='gAR9lC4='" + parameter_string
+
+		step_to_write := compiledDir + fmt.Sprintf("/%v.py", aggregatedSteps[i].Step_Identifier)
+		code_to_write := fmt.Sprintf(`from typing import NamedTuple
+
+def main(%v) -> NamedTuple('FuncOutput',[('context', str),]):
+	import dill
+	from base64 import urlsafe_b64encode, urlsafe_b64decode
+	
+	base64_decode = urlsafe_b64decode(context)
+	globals().update(dill.loads(base64_decode))
 
 `, parameter_string)
 
@@ -226,6 +276,14 @@ def main(%v):
 		for scanner.Scan() {
 			code_to_write += fmt.Sprintf("\t" + scanner.Text() + "\n")
 		}
+		code_to_write += `
+	context_export = dill.dumps(globals())
+	b64_string = urlsafe_b64encode(context_export)
+
+	from collections import namedtuple
+	output = namedtuple('FuncOutput', ['context'])
+	return output(str(b64_string, encoding="ascii"))
+`
 
 		err := os.WriteFile(step_to_write, []byte(code_to_write), 0700)
 		if err != nil {

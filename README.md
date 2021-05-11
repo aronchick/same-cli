@@ -3,7 +3,6 @@
 - We're big on keeping our commitments, but we may break this one
 - that said, it's a good assumption that nothing you do here will last in any way other than for archival purposes
 
-
 ## TO GET STARTED
 
 Read up on our development environment [here](docs/development/setup-development-environment.md)
@@ -61,6 +60,21 @@ The above:
 - Includes all necessary services and infrastructure descriptions to recreate the system anywhere
 - Also offers a way to select metadata to export and include
 - Does not NECESSARILY include data, but could include pointers to the data
-
+
 With all this, we think we can make a breakthrough in the way that machine learning is reproduced across multiple environments.
 
+## Current Notebook Tag Support
+
+- Packages
+  - Must be in a cell - start at the left and match:
+  - ^from xxx import yyy
+  - ^from xxx import yyy as www
+  - ^import xxx
+  - ^import xxx as zzz
+  - We do NOT support - each package must be on its own line for now:
+  - ^import xxx, yyy, vvv
+- Steps:
+  - Must be of the form:
+  - "same-step-####" (where #### is an int-castable number)
+- Caching:
+  - Tag must be of the form "cache=XXX" where "X" is an [RFC3339 compliant duration](https://tools.ietf.org/html/rfc3339#page-12) - e.g. P30D is 30 day

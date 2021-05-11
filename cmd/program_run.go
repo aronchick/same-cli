@@ -73,6 +73,11 @@ var runProgramCmd = &cobra.Command{
 			runOnly = false
 		}
 
+		persistTemporaryFiles, err := cmd.Flags().GetBool("persist-temporary-files")
+		if err != nil {
+			persistTemporaryFiles = false
+		}
+
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
@@ -109,7 +114,7 @@ var runProgramCmd = &cobra.Command{
 				if sameConfigFile.Spec.Pipeline.Description != "" && programDescription == "" {
 					programDescription = sameConfigFile.Spec.Pipeline.Description
 				}
-				uploadedPipeline, err := UploadPipeline(sameConfigFile, programName, programDescription)
+				uploadedPipeline, err := UploadPipeline(sameConfigFile, programName, programDescription, persistTemporaryFiles)
 				if err != nil {
 					return err
 				}
@@ -123,7 +128,7 @@ ID: %v\n
 			} else {
 				pipelineID = pipeline.ID
 				newID, _ := uuid.NewRandom()
-				uploadedPipelineVersion, err := UpdatePipeline(sameConfigFile, pipelineID, newID.String())
+				uploadedPipelineVersion, err := UpdatePipeline(sameConfigFile, pipelineID, newID.String(), persistTemporaryFiles)
 				if err != nil {
 					return err
 				}
@@ -218,5 +223,6 @@ func init() {
 	runProgramCmd.Flags().String("program-description", "", "Brief description of the program")
 	runProgramCmd.Flags().StringP("program-name", "n", "", "The program name")
 	runProgramCmd.Flags().Bool("run-only", false, "Indicates whether to skip program upload")
+	runProgramCmd.Flags().BoolP("persist-temporary-files", "t", false, "Persist temporary files in /tmp.")
 
 }

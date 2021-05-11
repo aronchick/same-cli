@@ -1,0 +1,14 @@
+apiVersion: projectsame.io/v1alpha1
+metadata:
+  name: Sample Notebook
+  version: 0.0.1
+pipeline:
+  name: "Test Notebook"
+  description: "Test Notebook Discription"
+  package: test_notebook.ipynb
+run:
+  name: "Test Notebook - Run"
+  parameters:
+    sample_parameter_float: 0.2
+    sample_parameter_int: 2
+    sample_parameter_string: "test string"

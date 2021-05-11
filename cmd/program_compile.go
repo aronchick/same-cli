@@ -45,6 +45,11 @@ var compileProgramCmd = &cobra.Command{
 			return err
 		}
 
+		persistTempFiles, err := cmd.Flags().GetBool("persist-temp-files")
+		if err != nil {
+			return err
+		}
+
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
@@ -84,9 +89,12 @@ var compileProgramCmd = &cobra.Command{
 			runParams[parts[0]] = parts[1]
 		}
 
-		err = compileFile(*sameConfigFile)
+		compiledDir, _, err := CompileFile(*sameConfigFile, persistTempFiles)
 		if err != nil {
 			return err
+		}
+		if !persistTempFiles {
+			defer os.Remove(compiledDir)
 		}
 		return nil
 	},
@@ -101,7 +109,7 @@ func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, 
 	notebookRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
 	notebookFilePath, err := utils.ResolveLocalFilePath(filepath.Join(notebookRootDir, sameConfigFile.Spec.Pipeline.Package))
 	if err != nil {
-		return "", "", fmt.Errorf("could not find pipeline definition specified in SAME program: %v", notebookFilePath)
+		return "", "", fmt.Errorf("program_compile.go: could not find pipeline definition specified in SAME program: %v", notebookFilePath)
 	}
 
 	// cwd, err := os.Getwd()
@@ -116,7 +124,7 @@ func convertNotebook(jupytextExecutablePath string, notebookFilePath string) (st
 	log.Infof("Using notebook from here: %v\n", notebookFilePath)
 	notebookFile, err := os.Open(notebookFilePath)
 	if err != nil {
-		return "", fmt.Errorf("error reading from notebook file: %v", notebookFilePath)
+		return "", fmt.Errorf("program_compile.go: error reading from notebook file: %v", notebookFilePath)
 	}
 
 	scriptCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("%v --to py", jupytextExecutablePath))
@@ -185,61 +193,63 @@ func writeRootFile(compiledDir string, rootFileContents string) error {
 	return nil
 }
 
-func compileFile(sameConfigFile loaders.SameConfig) (err error) {
+func CompileFile(sameConfigFile loaders.SameConfig, persistTempFiles bool) (compileDirectory string, updatedSameConfig loaders.SameConfig, err error) {
 	var c = utils.GetCompileFunctions()
 	jupytextExecutablePath, notebookFilePath, err := checkExecutableAndFile(sameConfigFile)
 	if err != nil {
-		return err
+		return "", loaders.SameConfig{}, err
 	}
 
 	convertedText, err := convertNotebook(jupytextExecutablePath, notebookFilePath)
 	if err != nil {
-		return err
+		return "", loaders.SameConfig{}, err
 	}
 
 	foundSteps, err := c.FindAllSteps(convertedText)
 	if err != nil {
-		return err
+		return "", loaders.SameConfig{}, err
 	}
 
 	aggregatedSteps, err := c.CombineCodeSlicesToSteps(foundSteps)
 	if err != nil {
-		return err
+		return "", loaders.SameConfig{}, err
 	}
 
 	rootFileContents, err := c.CreateRootFile(aggregatedSteps, sameConfigFile)
 	if err != nil {
-		return err
+		return "", loaders.SameConfig{}, err
 	}
 
 	compiledDir, err := getTemporaryCompileDirectory()
 	if err != nil {
-		return err
+		return "", loaders.SameConfig{}, err
 	}
 
 	err = writeRootFile(compiledDir, rootFileContents)
 	if err != nil {
-		return err
+		return "", loaders.SameConfig{}, err
 	}
 
-	sameConfigFile.Spec.Pipeline.Package = "root.py"
+	sameConfigFile.Spec.Pipeline.Package = filepath.Join(compiledDir, "root.py")
 	err = writeSameConfigFile(compiledDir, sameConfigFile)
 	if err != nil {
-		return nil
+		return "", loaders.SameConfig{}, err
 	}
+	updatedSameConfig = sameConfigFile
 
 	err = c.WriteStepFiles(compiledDir, aggregatedSteps)
 	if err != nil {
-		return nil
+		return "", loaders.SameConfig{}, err
 	}
 
 	fmt.Printf("Compilation complete! In order to upload, go to this directory (%v) and execute 'same program run'.\n", compiledDir)
-	return nil
+	return compiledDir, updatedSameConfig, err
 
 }
 
 func init() {
 	programCmd.AddCommand(compileProgramCmd)
 
-	compileProgramCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml')")
+	compileProgramCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml').")
+	compileProgramCmd.Flags().BoolP("persist-temp-files", "t", false, "Persist the temporary compilation files.")
 }
