@@ -28,3 +28,9 @@ func (c *CompileMock) WriteStepFiles(compiledDir string, aggregatedSteps map[str
 	cl := &CompileLive{}
 	return cl.WriteStepFiles(compiledDir, aggregatedSteps)
 }
+
+func (c *CompileMock) ConvertNotebook(jupytextExecutablePath string, notebookFilePath string) (string, error) {
+	// Placeholder until we mock
+	cl := &CompileLive{}
+	return cl.ConvertNotebook(jupytextExecutablePath, notebookFilePath)
+}

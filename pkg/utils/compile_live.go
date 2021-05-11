@@ -3,7 +3,10 @@ package utils
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -139,10 +142,14 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 		all_imports := import_regex.FindAllStringSubmatch(thisCodeBlock.Code, -2)
 
 		log.Tracef("Code: %v", aggregatedSteps[foundStep.step_name].Code)
-		if len(all_imports) > 1 {
+		if len(all_imports) >= 1 {
 			log.Tracef("Packages:")
+			if thisCodeBlock.Packages_To_Install == nil {
+				thisCodeBlock.Packages_To_Install = make(map[string]string)
+			}
 			for i := range all_imports {
-				thisCodeBlock.Packages_To_Install = append(thisCodeBlock.Packages_To_Install, all_imports[i][1])
+				// TODO: Parse for versions eventually
+				thisCodeBlock.Packages_To_Install[all_imports[i][1]] = ""
 				log.Tracef("- \t%v\n", all_imports[i][1])
 			}
 
@@ -208,9 +215,9 @@ def root(%v):
 		}
 		delete(steps_left_to_parse, thisCodeBlock.Step_Identifier)
 
-		package_string := ""
-		if len(thisCodeBlock.Packages_To_Install) > 0 {
-			package_string = fmt.Sprintf("\"%v\"", strings.Join(thisCodeBlock.Packages_To_Install[:], "\",\""))
+		package_string := "'dill', "
+		for k := range thisCodeBlock.Packages_To_Install {
+			package_string = fmt.Sprintf("'%v',", k)
 		}
 
 		context_variable = fmt.Sprintf("%v_task.outputs['context']", previous_step)
@@ -222,7 +229,7 @@ def root(%v):
 	%v_op = func_to_container_op(
 		func=%v.main,
 		base_image="python:3.9-slim-buster",
-		packages_to_install=["dill", %v],
+		packages_to_install=[%v],
 	)
 	%v_task = %v_op(context=%v)
 	%v_task.execution_options.caching_strategy.max_cache_staleness = "%v"
@@ -293,4 +300,39 @@ def main(%v) -> NamedTuple('FuncOutput',[('context', str),]):
 
 	return nil
 
+}
+
+func (c *CompileLive) ConvertNotebook(jupytextExecutablePath string, notebookFilePath string) (string, error) {
+	log.Infof("Using notebook from here: %v\n", notebookFilePath)
+	notebookFile, err := os.Open(notebookFilePath)
+	if err != nil {
+		return "", fmt.Errorf("program_compile.go: error reading from notebook file: %v", notebookFilePath)
+	}
+
+	scriptCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("%v --to py", jupytextExecutablePath))
+	scriptStdin, err := scriptCmd.StdinPipe()
+
+	if err != nil {
+		return "", fmt.Errorf("Error building Stdin pipe for notebook file: %v", err.Error())
+	}
+
+	b, _ := ioutil.ReadAll(notebookFile)
+
+	go func() {
+		defer scriptStdin.Close()
+		_, _ = io.WriteString(scriptStdin, string(b))
+	}()
+
+	out, err := scriptCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("Error executing notebook conversion: %v", err.Error())
+	}
+
+	if err != nil {
+		return "", fmt.Errorf(`
+could not convert the file: %v
+full error message: %v`, notebookFilePath, string(out))
+	}
+
+	return string(out), nil
 }

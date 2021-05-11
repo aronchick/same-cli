@@ -3,6 +3,7 @@ package integration_test
 import (
 	"io/ioutil"
 	"os"
+	"os/exec"
 
 	"testing"
 
@@ -108,6 +109,18 @@ func (suite *ProgramCompileSuite) Test_ImportsWorkingProperly() {
 	cb := codeBlocks["same_step_0"]
 	assert.Contains(suite.T(), cb.Packages_To_Install, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.Packages_To_Install)
 
+}
+
+func (suite *ProgramCompileSuite) Test_FullNotebookExperience() {
+	os.Setenv("TEST_PASS", "1")
+	c := utils.GetCompileFunctions()
+	jupytextExecutable, _ := exec.LookPath("jupytext")
+
+	converted_text, _ := c.ConvertNotebook(jupytextExecutable, "../testdata/notebook/sample_notebook.ipynb")
+	foundSteps, _ := c.FindAllSteps(converted_text)
+	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
+	cb := codeBlocks["same_step_0"]
+	assert.Contains(suite.T(), cb.Packages_To_Install, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.Packages_To_Install)
 }
 
 func (suite *ProgramCompileSuite) TearDownAllSuite() {

@@ -11,6 +11,7 @@ type CompileInterface interface {
 	FindAllSteps(string) ([]FoundStep, error)
 	CombineCodeSlicesToSteps([]FoundStep) (map[string]CodeBlock, error)
 	CreateRootFile(map[string]CodeBlock, loaders.SameConfig) (string, error)
+	ConvertNotebook(string, string) (string, error)
 	WriteStepFiles(string, map[string]CodeBlock) error
 }
 
@@ -18,8 +19,8 @@ type CodeBlock struct {
 	Step_Identifier     string
 	Code                string
 	Parameters          map[string]string
-	Packages_To_Install []string
-	Tags                []string
+	Packages_To_Install map[string]string
+	Tags                map[string]string
 	Cache_Value         string
 }
 

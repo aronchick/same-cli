@@ -18,7 +18,6 @@ limitations under the License.
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -120,41 +119,6 @@ func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, 
 
 }
 
-func convertNotebook(jupytextExecutablePath string, notebookFilePath string) (string, error) {
-	log.Infof("Using notebook from here: %v\n", notebookFilePath)
-	notebookFile, err := os.Open(notebookFilePath)
-	if err != nil {
-		return "", fmt.Errorf("program_compile.go: error reading from notebook file: %v", notebookFilePath)
-	}
-
-	scriptCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("%v --to py", jupytextExecutablePath))
-	scriptStdin, err := scriptCmd.StdinPipe()
-
-	if err != nil {
-		return "", fmt.Errorf("Error building Stdin pipe for notebook file: %v", err.Error())
-	}
-
-	b, _ := ioutil.ReadAll(notebookFile)
-
-	go func() {
-		defer scriptStdin.Close()
-		_, _ = io.WriteString(scriptStdin, string(b))
-	}()
-
-	out, err := scriptCmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("Error executing notebook conversion: %v", err.Error())
-	}
-
-	if err != nil {
-		return "", fmt.Errorf(`
-could not convert the file: %v
-full error message: %v`, notebookFilePath, string(out))
-	}
-
-	return string(out), nil
-}
-
 func getTemporaryCompileDirectory() (string, error) {
 	dir, err := ioutil.TempDir(os.TempDir(), "SAME-compile-*")
 	if err != nil {
@@ -200,7 +164,7 @@ func CompileFile(sameConfigFile loaders.SameConfig, persistTempFiles bool) (comp
 		return "", loaders.SameConfig{}, err
 	}
 
-	convertedText, err := convertNotebook(jupytextExecutablePath, notebookFilePath)
+	convertedText, err := c.ConvertNotebook(jupytextExecutablePath, notebookFilePath)
 	if err != nil {
 		return "", loaders.SameConfig{}, err
 	}
