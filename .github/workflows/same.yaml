@@ -60,6 +60,9 @@ jobs:
         run: |
           pip3 install --upgrade pip
           pip3 install kfp
+      - name: Install Jupytext
+        run: |
+          pip3 install jupytext
       - name: Install Docker CE for buildx
         if: matrix.target_os == 'linux' && github.event_name != 'pull_request'
         run: |

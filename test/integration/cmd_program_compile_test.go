@@ -114,7 +114,10 @@ func (suite *ProgramCompileSuite) Test_ImportsWorkingProperly() {
 func (suite *ProgramCompileSuite) Test_FullNotebookExperience() {
 	os.Setenv("TEST_PASS", "1")
 	c := utils.GetCompileFunctions()
-	jupytextExecutable, _ := exec.LookPath("jupytext")
+	jupytextExecutable, err := exec.LookPath("jupytext")
+	if err != nil {
+		assert.Fail(suite.T(), "Jupytext not installed")
+	}
 
 	notebook_path := "../testdata/notebook/sample_notebook.ipynb"
 	if _, exists := os.Stat(notebook_path); exists != nil {
