@@ -116,7 +116,11 @@ func (suite *ProgramCompileSuite) Test_FullNotebookExperience() {
 	c := utils.GetCompileFunctions()
 	jupytextExecutable, _ := exec.LookPath("jupytext")
 
-	converted_text, _ := c.ConvertNotebook(jupytextExecutable, "../testdata/notebook/sample_notebook.ipynb")
+	notebook_path := "../testdata/notebook/sample_notebook.ipynb"
+	if _, exists := os.Stat(notebook_path); exists != nil {
+		assert.Fail(suite.T(), "Notebook not found at: %v", notebook_path)
+	}
+	converted_text, _ := c.ConvertNotebook(jupytextExecutable, notebook_path)
 	foundSteps, _ := c.FindAllSteps(converted_text)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
 	cb := codeBlocks["same_step_0"]
