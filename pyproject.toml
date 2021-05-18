@@ -11,6 +11,7 @@ pathlib2 = "^2.3.5"
 numpy = "^1.19.5"
 jupyter = "^1.0.0"
 kfp = "^1.4.0"
+dill = "^0.3.3"
 
 [tool.poetry.dev-dependencies]
 black = {version = "^20.8b1", allow-prereleases = true}

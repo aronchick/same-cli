@@ -170,6 +170,7 @@ import kfp.dsl as dsl
 from kfp.components import func_to_container_op, InputPath, OutputPath
 import kfp.compiler as compiler
 from kfp.dsl.types import Dict as KFPDict, List as KFPList
+from typing import NamedTuple
 
 `
 	import_section := ""
@@ -186,11 +187,64 @@ from kfp.dsl.types import Dict as KFPDict, List as KFPList
 		rootParameterString, _ = JoinMapKeysValues(rootParameters)
 	}
 
+	run_info_component := `
+def get_run_info(
+	run_id: str,
+) -> NamedTuple("RunInfoOutput", [("run_info", str),]):
+	"""Example of getting run info for current pipeline run"""
+	import kfp
+	import json
+	import dill
+	import base64
+	import datetime
+	from dateutil.tz import tzlocal
+	from pprint import pprint as pp
+
+	print(f"Current run ID is {run_id}.")
+	client = kfp.Client(host="http://ml-pipeline:8888")
+	run_info = client.get_run(run_id=run_id)
+	# Hide verbose info
+	run_info.run.pipeline_spec.workflow_manifest = None
+
+	from collections import namedtuple
+
+	pp(run_info.run)
+
+	run_info_dict = {
+		"run_id": run_info.run.id,
+		"name": run_info.run.name,
+		"created_at": run_info.run.created_at.isoformat(),
+		"pipeline_id": run_info.run.pipeline_spec.pipeline_id,
+	}
+	for r in run_info.run.resource_references:
+		run_info_dict[r.key.type.lower()] = r.key.id
+
+	output = namedtuple("RunInfoOutput", ["run_info"])
+	return output(
+		str(base64.urlsafe_b64encode(dill.dumps(run_info_dict)), encoding="ascii")
+	)
+
+get_run_info_component = kfp.components.create_component_from_func(
+	func=get_run_info,
+	packages_to_install=[
+		"kfp",
+		"dill",
+	],
+)
+`
+
 	root_pre_code := fmt.Sprintf(`
 @dsl.pipeline(name="Compilation of pipelines",)
-def root(%v):
+def root(%v, context='', metadata_url=''):
 	# The below is base64 encoding of an empty locals() output
-	_original_context="gAR9lC4="
+	if context == '':
+		_original_context = "gAR9lC4="
+	else:
+		_original_context = context
+
+	'''kfp.dsl.RUN_ID_PLACEHOOLDER inside a parameter will be populated with KFP Run ID at runtime.'''
+	run_info_op = get_run_info_component(run_id=kfp.dsl.RUN_ID_PLACEHOLDER)
+
 		`, rootParameterString)
 	all_code := ""
 	previous_step := ""
@@ -202,6 +256,11 @@ def root(%v):
 		steps_left_to_parse[thisCodeBlock.Step_Identifier] = thisCodeBlock.Step_Identifier
 	}
 
+	// Unfortunately, every early step's package includes also need to be included in later
+	// steps. This is become some objects (like IPython.image) require module imports.
+	// There's probably a more elegant way to handle this.
+	packages_to_install_global := make(map[string]string)
+	packages_to_install_global["dill"] = ""
 	for i := 0; i < number_of_raw_steps; i++ {
 		thisCodeBlock := CodeBlock{}
 		for _, test_step_identifier := range steps_left_to_parse {
@@ -215,9 +274,13 @@ def root(%v):
 		}
 		delete(steps_left_to_parse, thisCodeBlock.Step_Identifier)
 
-		package_string := "'dill', "
+		package_string := ""
 		for k := range thisCodeBlock.Packages_To_Install {
-			package_string = fmt.Sprintf("'%v',", k)
+			packages_to_install_global[k] = ""
+		}
+
+		for k := range packages_to_install_global {
+			package_string += fmt.Sprintf("'%v',", k)
 		}
 
 		context_variable = fmt.Sprintf("%v_task.outputs['context']", previous_step)
@@ -231,7 +294,7 @@ def root(%v):
 		base_image="python:3.9-slim-buster",
 		packages_to_install=[%v],
 	)
-	%v_task = %v_op(context=%v)
+	%v_task = %v_op(context=%v, run_info=run_info_op.outputs["run_info"], metadata_url=metadata_url)
 	%v_task.execution_options.caching_strategy.max_cache_staleness = "%v"
 		`,
 			thisCodeBlock.Step_Identifier,
@@ -253,7 +316,7 @@ def root(%v):
 
 		previous_step = thisCodeBlock.Step_Identifier
 	}
-	return rootFile_pre_imports + import_section + root_pre_code + all_code, nil
+	return rootFile_pre_imports + import_section + run_info_component + root_pre_code + all_code, nil
 
 }
 
@@ -265,32 +328,108 @@ func (c *CompileLive) WriteStepFiles(compiledDir string, aggregatedSteps map[str
 		}
 
 		// Prepend an empty locals as the default
-		parameter_string = "context='gAR9lC4='" + parameter_string
+		parameter_string = "__context='gAR9lC4=', __run_info={}, __metadata_url=''" + parameter_string
 
 		step_to_write := compiledDir + fmt.Sprintf("/%v.py", aggregatedSteps[i].Step_Identifier)
 		code_to_write := fmt.Sprintf(`from typing import NamedTuple
 
 def main(%v) -> NamedTuple('FuncOutput',[('context', str),]):
 	import dill
+	import base64
 	from base64 import urlsafe_b64encode, urlsafe_b64decode
-	
-	base64_decode = urlsafe_b64decode(context)
-	globals().update(dill.loads(base64_decode))
+	from copy import copy as __copy
+	from types import ModuleType as __ModuleType
+	from pprint import pprint as __pp
+	import datetime as __datetime
+	import requests
 
-`, parameter_string)
+	__run_info_dict = dill.loads(urlsafe_b64decode(__run_info))
+	__base64_decode = urlsafe_b64decode(__context)
+	__context_import_dict = dill.loads(__base64_decode)
+
+	__variables_to_mount = {}
+	__loc = {}
+
+	for __k in __context_import_dict:
+		__variables_to_mount[__k] = dill.loads(__context_import_dict[__k])
+
+	__json_data = {
+		"experiment_id": __run_info_dict["experiment"],
+		"run_id": __run_info_dict["run_id"],
+		"step_id": "%v",
+		"metadata_type": "input",
+		"metadata_value": __context,
+		"metadata_time": __datetime.datetime.now().isoformat(),
+	}
+
+	print(f"Metadata url: {__metadata_url}")
+	if __metadata_url != '':
+		print("Found metadata URL - executing.")
+		__pp(__json_data)
+		try:
+			__r = requests.post(__metadata_url, json=__json_data,)	
+			__r.raise_for_status()
+		except requests.exceptions.HTTPError as __err:
+			print(f"Error: {__err}")
+
+`, parameter_string, aggregatedSteps[i].Step_Identifier)
 
 		scanner := bufio.NewScanner(strings.NewReader(aggregatedSteps[i].Code))
-		for scanner.Scan() {
-			code_to_write += fmt.Sprintf("\t" + scanner.Text() + "\n")
-		}
-		code_to_write += `
-	context_export = dill.dumps(globals())
-	b64_string = urlsafe_b64encode(context_export)
+		inner_code_to_execute := `
+import dill
+import base64
+from base64 import urlsafe_b64encode, urlsafe_b64decode
+from types import ModuleType as __ModuleType
 
-	from collections import namedtuple
-	output = namedtuple('FuncOutput', ['context'])
-	return output(str(b64_string, encoding="ascii"))
 `
+		for scanner.Scan() {
+			inner_code_to_execute += fmt.Sprintln(scanner.Text())
+		}
+		inner_code_to_execute += `
+__locals_keys = frozenset(locals().keys())
+__globals_keys = frozenset(globals().keys())
+__context_export = {}
+for val in __locals_keys:
+	if not val.startswith("_") and not isinstance(val, __ModuleType):
+		__context_export[val] = dill.dumps(locals()[val])
+
+for val in __globals_keys:
+	if not val.startswith("_") and not isinstance(val, __ModuleType):
+		__context_export[val] = dill.dumps(globals()[val])
+
+__b64_string = str(urlsafe_b64encode(dill.dumps(__context_export)), encoding="ascii")
+
+`
+
+		code_to_write += fmt.Sprintf("\t__inner_code_to_execute = '''%v'''\n", inner_code_to_execute)
+		code_to_write += fmt.Sprintf(`
+	exec(__inner_code_to_execute, __variables_to_mount, __loc)
+
+	__json_output_data = {
+		"experiment_id": __run_info_dict["experiment"],
+		"run_id": __run_info_dict["run_id"],
+		"step_id": "%v",
+		"metadata_type": "output",
+		"metadata_value": __loc["__b64_string"],
+		"metadata_time": __datetime.datetime.now().isoformat(),
+	}
+
+	print(f"Metadata url: {__metadata_url}")
+	if __metadata_url != '':
+		print("Found metadata URL - executing.")
+		__pp(__json_data)
+		try:
+			__r = requests.post(__metadata_url, json=__json_output_data,)	
+			__r.raise_for_status()
+		except requests.exceptions.HTTPError as err:
+			print(f"Error: {err}")
+
+	
+	from collections import namedtuple
+
+	output = namedtuple("FuncOutput", ["context"])
+	return output(__loc["__b64_string"])
+`, aggregatedSteps[i].Step_Identifier)
 
 		err := os.WriteFile(step_to_write, []byte(code_to_write), 0700)
 		if err != nil {
