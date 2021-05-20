@@ -73,7 +73,7 @@ var compileProgramCmd = &cobra.Command{
 
 		params, _ := cmd.Flags().GetStringSlice("run-param")
 
-		runParams := make(map[string]string)
+		runParams := make(map[string]interface{})
 
 		if len(sameConfigFile.Spec.Run.Parameters) > 0 {
 			runParams = sameConfigFile.Spec.Run.Parameters

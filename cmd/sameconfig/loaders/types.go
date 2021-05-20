@@ -116,7 +116,25 @@ type DataSet struct {
 }
 
 // Run is the name and specific parameters to run against one of the previously created pipelines.
+// RunWrapper comes from here: https://medium.com/@nate510/dynamic-json-umarshalling-in-go-88095561d6a0
 type Run struct {
-	Name       string            `yaml:"name,omitempty"`
-	Parameters map[string]string `yaml:"parameters,omitempty"`
+	Name       string                 `yaml:"name,omitempty"`
+	Parameters map[string]interface{} `yaml:"parameters,omitempty"`
 }
+
+// type Parameter struct {
+// 	Parameter ParameterWrapper `yaml:"-,omitempty"`
+// }
+// type ParameterWrapper struct {
+// 	Parameter
+// 	Partial bool `json:”-”`
+// }
+
+// func (w *ParameterWrapper) UnmarshalJSON(data []byte) error {
+// 	if id, err := strconv.Atoi(string(data)); err == nil {
+// 		w.ID = id
+// 		w.Partial = true
+// 		return nil
+// 	}
+// 	return json.Unmarshal(data, &w.Sprocket)
+// }

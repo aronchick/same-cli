@@ -123,7 +123,7 @@ var runProgramCmd = &cobra.Command{
 				cmd.Printf(`
 Pipeline Uploaded.
 Name: %v
-ID: %v\n
+ID: %v
 `, uploadedPipeline.Name, uploadedPipeline.ID)
 			} else {
 				pipelineID = pipeline.ID
@@ -152,7 +152,7 @@ VersionID: %v
 
 		params, _ := cmd.Flags().GetStringSlice("run-param")
 
-		runParams := make(map[string]string)
+		runParams := make(map[string]interface{})
 
 		if len(sameConfigFile.Spec.Run.Parameters) > 0 {
 			runParams = sameConfigFile.Spec.Run.Parameters
@@ -162,8 +162,9 @@ VersionID: %v
 		for _, param := range params {
 			parts := strings.SplitN(param, "=", 2)
 			if len(parts) != 2 {
-				println(fmt.Sprintf("Invalid param format %q. Expect: key=value", param))
+				return fmt.Errorf("Invalid param format %q. Expect: key=value", param)
 			}
+
 			runParams[parts[0]] = parts[1]
 		}
 

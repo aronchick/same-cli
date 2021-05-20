@@ -1,0 +1,140 @@
+__run_info = "gAN9cQAoWAYAAABydW5faWRxAVgkAAAAZWNlY2M3MDQtMmU3NC00MjYxLTljOWUtYzk3OGI5ODhjOTcwcQJYBAAAAG5hbWVxA1gEAAAAMDAwM3EEWAoAAABjcmVhdGVkX2F0cQVYGQAAADIwMjEtMDUtMTlUMTY6NTM6MjYrMDA6MDBxBlgLAAAAcGlwZWxpbmVfaWRxB1gkAAAAZGI1OGI5NzAtMTEwNi00NzE2LThlOTEtN2UzOTliOTg1OWU2cQhYCgAAAGV4cGVyaW1lbnRxCVgkAAAANjIwNGVhMzUtYTFkNS00OWYxLTgyYTAtNWM4YzQ0MzA5ODMzcQpYEAAAAHBpcGVsaW5lX3ZlcnNpb25xC1gkAAAANmNjYWE1MTQtZTU4OS00YjZjLTljMzgtZjM3NzQ0NDI1MzNmcQx1Lg=="
+__context = "gASVihYAAAAAAAB9lCiMCXNvbWVfbWF0aJRCiQIAAIAElX4CAAAAAAAAjApkaWxsLl9kaWxslIwQX2NyZWF0ZV9mdW5jdGlvbpSTlChoAIwMX2NyZWF0ZV9jb2RllJOUKEsCSwBLAEsCSwRLQ0McdAB8AHwBFwBkAYMCdAB8AHwBGwBkAYMCZgJTAJROSwKGlIwFcm91bmSUhZSMAXiUjAF6lIaUjAg8c3RyaW5nPpSMCXNvbWVfbWF0aJRLC0MCAAGUKSl0lFKUfZQojAp0ZW5zb3JmbG93lGgAjA5faW1wb3J0X21vZHVsZZSTlIwKdGVuc29yZmxvd5SFlFKUjAFilEsZjBF1cmxzYWZlX2I2NGRlY29kZZSMBmJhc2U2NJSMEXVybHNhZmVfYjY0ZGVjb2RllJOUjAZiYXNlNjSUaBRoGoWUUpSMB2RhdGFzZXSUjAtzYW1wbGVfZGF0YZSMBGRpbGyUaBSMBGRpbGyUhZRSlIwFSW1hZ2WUjBRJUHl0aG9uLmNvcmUuZGlzcGxheZSMBUltYWdllJOUjAhkYXRldGltZZRoFIwIZGF0ZXRpbWWUhZRSlIwDdXJslIxQaHR0cHM6Ly9zYW1lLXByb2plY3QuZ2l0aHViLmlvL1NBTUUtc2FtcGxlcy9hdXRvbWF0ZWRfbm90ZWJvb2svRmFyb2VJc2xhbmRzLmpwZWeUjBF1cmxzYWZlX2I2NGVuY29kZZRoGowRdXJsc2FmZV9iNjRlbmNvZGWUk5SMB2Rpc3BsYXmUaBSMD0lQeXRob24uZGlzcGxheZSFlFKUjAhncHVfdHlwZZSMBEExMDCUjAFhlEsPjAxfX2J1aWx0aW5zX1-UY2J1aWx0aW5zCl9fZGljdF9fCnVoDU5OfZROdJRSlC6UjAF4lEIKBAAAgASV_wMAAAAAAACMCmRpbGwuX2RpbGyUjA1fY3JlYXRlX2FycmF5lJOUKGgAjAlfZ2V0X2F0dHKUk5RoAIwOX2ltcG9ydF9tb2R1bGWUk5SMHG51bXB5LmNvcmUuX211bHRpYXJyYXlfdW1hdGiUhZRSlIwMX3JlY29uc3RydWN0lIaUUpSMBW51bXB5lIwHbmRhcnJheZSTlEsAhZRDAWKUh5QoSwFLZIWUaA2MBWR0eXBllJOUjAJmOJSJiIeUUpQoSwOMATyUTk5OSv____9K_____0sAdJRiiUIgAwAAAAAAAAAAEMAFav1KgVoPwArU-pUCtQ7AED744IMPDsAVqPUrBWoNwBoS83aGxAzAH3zwwQcfDMAk5u0MiXkLwClQ61cK1ArALrrooosuCsA0JObtDIkJwDmO4ziO4wjAPvjggw8-CMBDYt7OkJgHwEjM2xkS8wbATjbZZJNNBsBSoNavFKgFwFgK1PqVAgXAXXTRRRddBMBi3s6QmLcDwGdIzNsZEgPAbLLJJptsAsByHMdxHMcBwHaGxLydIQHAfPDBBx98AMACtX6lQK3_vwyJeTtDYv6_Fl100UUX_b8gMW9nSMz7vywFav1Kgfq_Ntlkk002-b9ArV8pUOv3v0qBWr9SoPa_VFVVVVVV9b9eKVDrVwr0v2j9SoFav_K_dNFFF1108b9-pUCtXynwvxDzdobEvO2_JJtssskm6784Q2LezpDov0zrVwrU-uW_ZJNNNtlk4794O0Ni3s7gvxjHcRzHcdy_QBdddNFF179oZ0jM2xnSvyBvZ0jM28m_AB988MEHv79Av1Kg1q-kv4C_UqDWr6Q_QB988MEHvz9Ab2dIzNvJP3BnSMzbGdI_UBdddNFF1z8gx3Ecx3HcP4A7Q2LezuA_aJNNNtlk4z9Q61cK1PrlP0BDYt7OkOg_KJtssskm6z8Y83aGxLztP4ClQK1fKfA_eNFFF1108T9s_UqBWr_yP2ApUOtXCvQ_WFVVVVVV9T9MgVq_UqD2P0StXylQ6_c_ONlkk002-T8wBWr9SoH6PyQxb2dIzPs_GF100UUX_T8QiXk7Q2L-PwS1fqVArf8_fvDBBx98AEB4hsS8nSEBQHIcx3EcxwFAbrLJJptsAkBoSMzbGRIDQGTezpCYtwNAXnTRRRddBEBaCtT6lQIFQFSg1q8UqAVATjbZZJNNBkBKzNsZEvMGQERi3s6QmAdAQPjggw8-CEA6juM4juMIQDYk5u0MiQlAMLrooosuCkAqUOtXCtQKQCbm7QyJeQtAIHzwwQcfDEAcEvN2hsQMQBao9SsFag1AED744IMPDkAM1PqVArUOQAZq_UqBWg9AAAAAAAAAEECUdJROdJRSlC6UjAJwZJRDOYAElS4AAAAAAAAAjApkaWxsLl9kaWxslIwOX2ltcG9ydF9tb2R1bGWUk5SMBnBhbmRhc5SFlFKULpSMAXmUQgoEAACABJX_AwAAAAAAAIwKZGlsbC5fZGlsbJSMDV9jcmVhdGVfYXJyYXmUk5QoaACMCV9nZXRfYXR0cpSTlGgAjA5faW1wb3J0X21vZHVsZZSTlIwcbnVtcHkuY29yZS5fbXVsdGlhcnJheV91bWF0aJSFlFKUjAxfcmVjb25zdHJ1Y3SUhpRSlIwFbnVtcHmUjAduZGFycmF5lJOUSwCFlEMBYpSHlChLAUtkhZRoDYwFZHR5cGWUk5SMAmY4lImIh5RSlChLA4wBPJROTk5K_____0r_____SwB0lGKJQiADAAC1tMDimIohPxjFr5fsJyg_jHCLtCyGMD8TiEWyt3U2PxIYwcg8VD4_xDGXoitYRD9j6XZnsh1LP_bqwXQA9FE_mWUhpUmeVz8VdYIHct5eP-FN6v-ZCmQ_BUerW6XaaT_KUYGNWZFwP8ynQ0Z9GHU_CW5W2Kivej97Xv0N7cSAP3ST7DIf8IQ_njVxZg75iT80L3OIIAGQPxNxirRomJM_el759PnVlz-NvQBcJ86cP0B1U63HSqE_hdmQNEqgpD8SHGccXnGoP_3ZsZr7xqw__6RB6HTUsD_nyfxNqI6zP_Me0PsilLY_illBfa3luT9thIaeloK9P0RLD3xAtMA_KpzoEZzJwj8kVXk5SP7EP9jkHO8pTsc_T0CyTh-0yT9eK7yvBirMP1Ex0j7PqM4_5k_ur0mU0D--qXpaXtDRPyF7vJYYBNM_1IwuA8Qq1D-JJL6Xoj_VP7HKWpAMPtY_VtpVapEh1z-Sq_6xGObXP096_08BiNg_BklCCT4E2T8f8B_5bVjZP5BJtfPvgtk_kEm18--C2T8e8B_5bVjZPwVJQgk-BNk_Tnr_TwGI2D-Pq_6xGObXP1XaVWqRIdc_rspakAw-1j-HJL6Xoj_VP9GMLgPEKtQ_HXu8lhgE0z-9qXpaXtDRP-JP7q9JlNA_TjHSPs-ozj9WK7yvBirMP0dAsk4ftMk_1OQc7ylOxz8dVXk5SP7EPyac6BGcycI_PksPfEC0wD9ohIaeloK9P39ZQX2t5bk_6R7Q-yKUtj_iyfxNqI6zP_akQeh01LA_99mxmvvGrD8FHGccXnGoP3jZkDRKoKQ_QHVTrcdKoT9_vQBcJ86cP3Fe-fT51Zc_B3GKtGiYkz8uL3OIIAGQP441cWYO-Yk_ZpPsMh_whD97Xv0N7cSAP_RtVtior3o_x6dDRn0YdT--UYGNWZFwP_ZGq1ul2mk_zU3q_5kKZD_9dIIHct5eP41lIaVJnlc_4-rBdAD0UT9W6XZnsh1LP7Axl6IrWEQ_AxjByDxUPj8TiEWyt3U2P3twi7QshjA_C8Wvl-wnKD-1tMDimIohP5R0lE50lFKULpSMAWKUQwWABEsZLpSMCHJlcXVlc3RzlEM7gASVMAAAAAAAAACMCmRpbGwuX2RpbGyUjA5faW1wb3J0X21vZHVsZZSTlIwIcmVxdWVzdHOUhZRSlC6UjAJkZpRCagYAAIAElV8GAAAAAAAAjBFwYW5kYXMuY29yZS5mcmFtZZSMCURhdGFGcmFtZZSTlCmBlH2UKIwEX21ncpSMHnBhbmRhcy5jb3JlLmludGVybmFscy5tYW5hZ2Vyc5SMDEJsb2NrTWFuYWdlcpSTlCmBlChdlCiMGHBhbmRhcy5jb3JlLmluZGV4ZXMuYmFzZZSMCl9uZXdfSW5kZXiUk5RoC4wFSW5kZXiUk5R9lCiMBGRhdGGUjApkaWxsLl9kaWxslIwNX2NyZWF0ZV9hcnJheZSTlChoEowJX2dldF9hdHRylJOUaBKMDl9pbXBvcnRfbW9kdWxllJOUjBxudW1weS5jb3JlLl9tdWx0aWFycmF5X3VtYXRolIWUUpSMDF9yZWNvbnN0cnVjdJSGlFKUjAVudW1weZSMB25kYXJyYXmUk5RLAIWUQwFilIeUKEsBSwiFlGgfjAVkdHlwZZSTlIwCTziUiYiHlFKUKEsDjAF8lE5OTkr_____Sv____9LP3SUYoldlCiMAmlklIwDYWdllIwDc2V4lIwCYnCUjAtjaG9sZXN0ZXJvbJSMB25hX3RvX2uUjARkcnVnlIwKY3JlYXRlZF9hdJRldJROdJRSlIwEbmFtZZROdYaUUpRoDYwZcGFuZGFzLmNvcmUuaW5kZXhlcy5yYW5nZZSMClJhbmdlSW5kZXiUk5R9lChoOU6MBXN0YXJ0lEsAjARzdG9wlEsJjARzdGVwlEsBdYaUUpRlXZQoaBQoaB5oIUsAhZRoI4eUKEsBSwFLCYaUaCeMAmY4lImIh5RSlChLA4wBPJROTk5K_____0r_____SwB0lGKJQ0ht5_up8TIzQI2XbhKDwC5A_tR46SbxNEAOLbKd72cpQNV46SYxCC9AKVyPwvXoJkCLbOf7qfErQP7UeOkmMR1A001iEFj5OUCUdJROdJRSlGgUKGgeaCFLAIWUaCOHlChLAUsBSwmGlGgnjAJpOJSJiIeUUpQoSwNoTE5OTkr_____Sv____9LAHSUYolDSCIAAAAAAAAAKwAAAAAAAABKAAAAAAAAADIAAAAAAAAAEAAAAAAAAABFAAAAAAAAACsAAAAAAAAAFwAAAAAAAAAgAAAAAAAAAJR0lE50lFKUaBQoaB5oIUsAhZRoI4eUKEsBSwZLCYaUaCqJXZQojAdURVNUXzEylIwHVEVTVF8xM5SMB1RFU1RfMTSUjAdURVNUXzE1lIwHVEVTVF8xNpSMB1RFU1RfMTeUjAdURVNUXzE4lIwHVEVTVF8xOZSMB1RFU1RfMjCUjAFGlIwBTZRoamhqaGpoa2hraGtoaowESElHSJSMA0xPV5RobYwGTk9STUFMlGhsaG1obGhtaGyMBk5PUk1BTJSMBEhJR0iUaHBocGhvaG9ocGhwaG-MBURydWdZlGhxaHGMBWRydWdYlGhxaHKMBWRydWdBlIwFZHJ1Z0OUaHGMHTIwMjEtMDQtMDUgMTg6NDc6MjkuNTc5NTM1KzAwlGh1aHVodWh1aHVodWh1aHVldJROdJRSlGVdlChoDWgPfZQoaBFoFChoHmghSwCFlGgjh5QoSwFLAYWUaCqJXZRoM2F0lE50lFKUaDlOdYaUUpRoDWgPfZQoaBFoFChoHmghSwCFlGgjh5QoSwFLAYWUaCqJXZRoL2F0lE50lFKUaDlOdYaUUpRoDWgPfZQoaBFoFChoHmghSwCFlGgjh5QoSwFLBoWUaCqJXZQoaC5oMGgxaDJoNGg1ZXSUTnSUUpRoOU51hpRSlGV9lIwGMC4xNC4xlH2UKIwEYXhlc5RoCowGYmxvY2tzlF2UKH2UKIwGdmFsdWVzlGhRjAhtZ3JfbG9jc5RoEowKX2xvYWRfdHlwZZSTlIwFc2xpY2WUhZRSlEsFSwZLAYeUUpR1fZQoaJ9oXGigaKVLAUsCSwGHlFKUdX2UKGifaHhooGgUKGgeaCFLAIWUaCOHlChLAUsGhZRoV4lDMAAAAAAAAAAAAgAAAAAAAAADAAAAAAAAAAQAAAAAAAAABgAAAAAAAAAHAAAAAAAAAJR0lE50lFKUdWV1c3SUYowEX3R5cJSMCWRhdGFmcmFtZZSMCV9tZXRhZGF0YZRdlIwFYXR0cnOUfZSMBl9mbGFnc5R9lIwXYWxsb3dzX2R1cGxpY2F0ZV9sYWJlbHOUiHN1Yi6UjBF1cmxzYWZlX2I2NGRlY29kZZRDK4AElSAAAAAAAAAAjAZiYXNlNjSUjBF1cmxzYWZlX2I2NGRlY29kZZSTlC6UjAFhlEMFgARLDy6UjAJmZpRDSIAElT0AAAAAAAAAjApkaWxsLl9kaWxslIwOX2ltcG9ydF9tb2R1bGWUk5SMFXBsb3RseS5maWd1cmVfZmFjdG9yeZSFlFKULpSMEXVybHNhZmVfYjY0ZW5jb2RllEMrgASVIAAAAAAAAACMBmJhc2U2NJSMEXVybHNhZmVfYjY0ZW5jb2RllJOULpSMA3N0ZJRDBYAESwEulIwGcGxvdGx5lEM5gASVLgAAAAAAAACMCmRpbGwuX2RpbGyUjA5faW1wb3J0X21vZHVsZZSTlIwGcGxvdGx5lIWUUpQulIwEZGlsbJRDN4AElSwAAAAAAAAAjApkaWxsLl9kaWxslIwOX2ltcG9ydF9tb2R1bGWUk5SMBGRpbGyUhZRSlC6UjAJweZRDRoAElTsAAAAAAAAAjApkaWxsLl9kaWxslIwOX2ltcG9ydF9tb2R1bGWUk5SME2NoYXJ0X3N0dWRpby5wbG90bHmUhZRSlC6UjAZiYXNlNjSUQzmABJUuAAAAAAAAAIwKZGlsbC5fZGlsbJSMDl9pbXBvcnRfbW9kdWxllJOUjAZiYXNlNjSUhZRSlC6UjAJucJRDOIAElS0AAAAAAAAAjApkaWxsLl9kaWxslIwOX2ltcG9ydF9tb2R1bGWUk5SMBW51bXB5lIWUUpQulIwDdXJslENfgASVVAAAAAAAAACMUGh0dHBzOi8vc2FtZS1wcm9qZWN0LmdpdGh1Yi5pby9TQU1FLXNhbXBsZXMvYXV0b21hdGVkX25vdGVib29rL0Zhcm9lSXNsYW5kcy5qcGVnlC6UjANwbHSUQ0SABJU5AAAAAAAAAIwKZGlsbC5fZGlsbJSMDl9pbXBvcnRfbW9kdWxllJOUjBFtYXRwbG90bGliLnB5cGxvdJSFlFKULpSMBXN0YXRzlEM-gASVMwAAAAAAAACMCmRpbGwuX2RpbGyUjA5faW1wb3J0X21vZHVsZZSTlIwLc2NpcHkuc3RhdHOUhZRSlC6UjAJtdZRDBYAESwAulIwKdGVuc29yZmxvd5RDPYAElTIAAAAAAAAAjApkaWxsLl9kaWxslIwOX2ltcG9ydF9tb2R1bGWUk5SMCnRlbnNvcmZsb3eUhZRSlC6UjAhncHVfdHlwZZRDE4AElQgAAAAAAAAAjARBMTAwlC6UjAVJbWFnZZRDLYAElSIAAAAAAAAAjBRJUHl0aG9uLmNvcmUuZGlzcGxheZSMBUltYWdllJOULpSMCGRhdGV0aW1llEM7gASVMAAAAAAAAACMCmRpbGwuX2RpbGyUjA5faW1wb3J0X21vZHVsZZSTlIwIZGF0ZXRpbWWUhZRSlC6UjAdkaXNwbGF5lENCgASVNwAAAAAAAACMCmRpbGwuX2RpbGyUjA5faW1wb3J0X21vZHVsZZSTlIwPSVB5dGhvbi5kaXNwbGF5lIWUUpQulIwHZGF0YXNldJRDGoAElQ8AAAAAAAAAjAtzYW1wbGVfZGF0YZQulHUu"
+__metadata_url = ""
+
+import dill
+import base64
+from base64 import urlsafe_b64encode, urlsafe_b64decode
+from copy import copy as __copy
+from types import ModuleType as __ModuleType
+from pprint import pprint as __pp
+import datetime as __datetime
+import requests
+import pprint
+
+__run_info_dict = dill.loads(urlsafe_b64decode(__run_info))
+__base64_decode = urlsafe_b64decode(__context)
+__context_import_dict = dill.loads(__base64_decode)
+
+__variables_to_mount = {}
+__loc = {}
+
+for __k in __context_import_dict:
+    __variables_to_mount[__k] = dill.loads(__context_import_dict[__k])
+
+__json_data = {
+    "experiment_id": __run_info_dict["experiment"],
+    "run_id": __run_info_dict["run_id"],
+    "step_id": "%v",
+    "metadata_type": "input",
+    "metadata_value": __context,
+    "metadata_time": __datetime.datetime.now().isoformat(),
+}
+
+pprint.pp(__variables_to_mount)
+
+print(f"Metadata url: {__metadata_url}")
+if __metadata_url != "":
+    print("Found metadata URL - executing.")
+    __pp(__json_data)
+    try:
+        __r = requests.post(
+            __metadata_url,
+            json=__json_data,
+        )
+        __r.raise_for_status()
+    except requests.exceptions.HTTPError as __err:
+        print(f"Error: {__err}")
+
+__inner_code_to_execute = """
+import dill
+import base64
+from base64 import urlsafe_b64encode, urlsafe_b64decode
+from types import ModuleType as __ModuleType
+
+
+a = a + 5
+b = b + 10
+print(f"Time: {datetime.datetime.now()}")
+
+
+g = some_math(8, 21)
+print(f"Time: {datetime.datetime.now()}")
+
+j = g[0]
+k = g[1]
+
+print(f"Time: {datetime.datetime.now()}")
+
+a = a + 5
+b = b + 10
+
+print(f"j: {j}")
+
+print(f"k: {k}")
+
+print(f"Time: {datetime.datetime.now()}")
+
+a = a + 5
+b = b + 10
+
+
+print("0.0.2")
+print(f"Time: {datetime.datetime.now()}")
+
+print(f"Accessing the value of B: {b}")
+print(f"Time: {datetime.datetime.now()}")
+
+
+
+
+
+__locals_keys = frozenset(locals().keys())
+__globals_keys = frozenset(globals().keys())
+__context_export = {}
+
+for val in __globals_keys:
+	if not val.startswith("_") and not isinstance(val, __ModuleType):
+		__context_export[val] = dill.dumps(globals()[val])
+
+for val in __locals_keys:
+	if not val.startswith("_") and not isinstance(val, __ModuleType):
+		__context_export[val] = dill.dumps(locals()[val])
+
+__b64_string = str(urlsafe_b64encode(dill.dumps(__context_export)), encoding="ascii")
+
+"""
+
+exec(__inner_code_to_execute, __variables_to_mount, __loc)
+
+__json_output_data = {
+    "experiment_id": __run_info_dict["experiment"],
+    "run_id": __run_info_dict["run_id"],
+    "step_id": "same_step_2",
+    "metadata_type": "output",
+    "metadata_value": __loc["__b64_string"],
+    "metadata_time": __datetime.datetime.now().isoformat(),
+}
+
+print(f"Metadata url: {__metadata_url}")
+if __metadata_url != "":
+    print("Found metadata URL - executing.")
+    __pp(__json_data)
+    try:
+        __r = requests.post(
+            __metadata_url,
+            json=__json_output_data,
+        )
+        __r.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        print(f"Error: {err}")
+
+
+__context_import_dict_2 = dill.loads(urlsafe_b64decode(__loc["__b64_string"]))
+
+__variables_to_mount_2 = {}
+
+for __k in __context_import_dict_2:
+    __variables_to_mount_2[__k] = dill.loads(__context_import_dict_2[__k])
+
+pprint.pp(__variables_to_mount_2)

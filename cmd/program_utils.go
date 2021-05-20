@@ -51,7 +51,11 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 		sameConfigFile.Spec.Pipeline.Package = updatedSameConfig.Spec.Pipeline.Package
 	}
 
-	pipelinePath, _ := filepath.Abs(sameConfigFile.Spec.Pipeline.Package)
+	sameConfigDir, _ := filepath.Split(sameConfigFile.Spec.ConfigFilePath)
+
+	log.Tracef("ConfigFilePath: %v", sameConfigFile.Spec.ConfigFilePath)
+	pipelinePath, _ := filepath.Abs(filepath.Join(sameConfigDir, sameConfigFile.Spec.Pipeline.Package))
+	log.Tracef("PipelinePath: %v", pipelinePath)
 	pipelineFilePath, err := utils.CompileForKFP(pipelinePath)
 	if err != nil {
 		return nil, err
@@ -101,7 +105,11 @@ func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipel
 		sameConfigFile.Spec.ConfigFilePath = updatedSameConfig.Spec.ConfigFilePath
 		sameConfigFile.Spec.Pipeline.Package = updatedSameConfig.Spec.Pipeline.Package
 	}
-	pipelinePath, _ := filepath.Abs(sameConfigFile.Spec.Pipeline.Package)
+
+	sameConfigDir, _ := filepath.Split(sameConfigFile.Spec.ConfigFilePath)
+	log.Tracef("ConfigFilePath: %v", sameConfigFile.Spec.ConfigFilePath)
+	pipelinePath, _ := filepath.Abs(filepath.Join(sameConfigDir, sameConfigFile.Spec.Pipeline.Package))
+	log.Tracef("PipelinePath: %v", pipelinePath)
 	pipelineFilePath, err := utils.CompileForKFP(pipelinePath)
 	if err != nil {
 		return nil, err
@@ -251,7 +259,7 @@ func CreateExperiment(experimentName string, experimentDescription string) (*exp
 	return createdExperiment, nil
 }
 
-func CreateRun(runName string, pipelineID string, pipelineVersionID string, experimentID string, runDescription string, runParameters map[string]string) (*run_model.APIRunDetail, error) {
+func CreateRun(runName string, pipelineID string, pipelineVersionID string, experimentID string, runDescription string, runParameters map[string]interface{}) (*run_model.APIRunDetail, error) {
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
@@ -259,8 +267,18 @@ func CreateRun(runName string, pipelineID string, pipelineVersionID string, expe
 
 	runParams := make([]*run_model.APIParameter, 0)
 
-	for name, value := range runParameters {
-		runParams = append(runParams, &run_model.APIParameter{Name: name, Value: value})
+	for name, untyped_value := range runParameters {
+
+		// Probably don't need to do this - should just convert to JSON. Should investigate.
+		value_string := ""
+		switch untyped_value.(type) {
+		case int, int8, uint8, int16, uint16, int32, uint32, int64, uint64, uint, uintptr, float32, float64, bool, string:
+			value_string = fmt.Sprintf("%v", untyped_value)
+		default:
+			log.Warnf("We only support numeric, bool and strings as default parameters (no dicts or lists). Skipping '%v'.", name)
+			continue
+		}
+		runParams = append(runParams, &run_model.APIParameter{Name: name, Value: value_string})
 	}
 
 	runclient, err := apiclient.NewRunClient(kfpconfig, false)

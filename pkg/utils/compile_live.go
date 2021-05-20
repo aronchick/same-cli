@@ -181,8 +181,15 @@ from typing import NamedTuple
 	rootParameterString := ""
 	if len(sameConfigFile.Spec.Run.Parameters) > 0 {
 		rootParameters := make(map[string]string, len(sameConfigFile.Spec.Run.Parameters))
-		for k, v := range sameConfigFile.Spec.Run.Parameters {
-			rootParameters[k] = v
+		for k, untyped_v := range sameConfigFile.Spec.Run.Parameters {
+			switch untyped_v.(type) {
+			case int, int8, uint8, int16, uint16, int32, uint32, int64, uint64, uint, uintptr, float32, float64, bool, string:
+				rootParameters[k] = fmt.Sprintf("%v", untyped_v)
+			default:
+				log.Warnf("We only support numeric, bool and strings as default parameters (no dicts or lists). We're setting the default value for '%v' to ''.", k)
+				rootParameters[k] = ""
+			}
+
 		}
 		rootParameterString, _ = JoinMapKeysValues(rootParameters)
 	}
@@ -389,13 +396,15 @@ from types import ModuleType as __ModuleType
 __locals_keys = frozenset(locals().keys())
 __globals_keys = frozenset(globals().keys())
 __context_export = {}
-for val in __locals_keys:
-	if not val.startswith("_") and not isinstance(val, __ModuleType):
-		__context_export[val] = dill.dumps(locals()[val])
 
 for val in __globals_keys:
 	if not val.startswith("_") and not isinstance(val, __ModuleType):
 		__context_export[val] = dill.dumps(globals()[val])
+
+# Locals needs to come after globals in case we made changes
+for val in __locals_keys:
+	if not val.startswith("_") and not isinstance(val, __ModuleType):
+		__context_export[val] = dill.dumps(locals()[val])
 
 __b64_string = str(urlsafe_b64encode(dill.dumps(__context_export)), encoding="ascii")
 

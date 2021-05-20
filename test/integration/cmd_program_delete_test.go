@@ -85,7 +85,8 @@ func (suite *ProgramDeleteSuite) SetupTest() {
 	// }
 
 	runID, _ := uuid.NewRandom()
-	commandString := fmt.Sprintf("same program run -f %v -e DELETE_SUITE-test-experiment -r %v", tmpConfigFile, runID.String())
+	commandString := fmt.Sprintf("../bin/same program run -f %v -e DELETE_SUITE-test-experiment -r %v", tmpConfigFile, runID.String())
+	log.Tracef("about to execute: %v", commandString)
 	out, err := exec.Command("/bin/bash", "-c", commandString).CombinedOutput()
 	if err != nil {
 		message := fmt.Errorf("could not start delete test suite because we could not create a sample pipeline: %v", err)
