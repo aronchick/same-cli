@@ -54,6 +54,25 @@ var compileProgramCmd = &cobra.Command{
 			target = "kubeflow"
 		}
 
+		requiredFields := []string{"AML_SP_PASSWORD_VALUE",
+			"AML_SP_TENANT_ID",
+			"AML_SP_APP_ID",
+			"WORKSPACE_SUBSCRIPTION_ID",
+			"WORKSPACE_RESOURCE_GROUP",
+			"WORKSPACE_NAME",
+			"AML_COMPUTE_NAME"}
+
+		missingFields := make([]string, 0)
+		for _, field := range requiredFields {
+			if os.Getenv(field) == "" {
+				missingFields = append(missingFields, field)
+			}
+		}
+
+		if len(missingFields) > 0 {
+			return fmt.Errorf("missing environment variables for: %v", strings.Join(missingFields, ", "))
+		}
+
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
@@ -167,6 +186,10 @@ func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFi
 	jupytextExecutablePath, notebookFilePath, err := checkExecutableAndFile(sameConfigFile)
 	if err != nil {
 		return "", loaders.SameConfig{}, err
+	}
+
+	if sameConfigFile.Spec.Metadata.Name == "" {
+		return "", loaders.SameConfig{}, fmt.Errorf("no experiment name detected in Metadata.Name")
 	}
 
 	convertedText, err := c.ConvertNotebook(jupytextExecutablePath, notebookFilePath)
