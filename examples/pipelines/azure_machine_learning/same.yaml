@@ -1,0 +1,11 @@
+apiVersion: projectsame.io/v1alpha1
+metadata:
+  name: SameToAMLPipeline
+  version: 0.0.1
+pipeline:
+  name: "SAME to AML Pipeline"
+  package: same_to_aml_notebook.ipynb
+run:
+  name: "SAME to AML Pipeline - Run"
+  parameters:
+    sample_parameter: 0.1

@@ -17,16 +17,16 @@ func (c *CompileMock) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 	return cl.CombineCodeSlicesToSteps(foundSteps)
 }
 
-func (c *CompileMock) CreateRootFile(aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
+func (c *CompileMock) CreateRootFile(target string, aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
 	// Placeholder until we mock
 	cl := &CompileLive{}
-	return cl.CreateRootFile(aggregatedSteps, sameConfigFile)
+	return cl.CreateRootFile(target, aggregatedSteps, sameConfigFile)
 }
 
-func (c *CompileMock) WriteStepFiles(compiledDir string, aggregatedSteps map[string]CodeBlock) error {
+func (c *CompileMock) WriteStepFiles(target string, compiledDir string, aggregatedSteps map[string]CodeBlock) error {
 	// Placeholder until we mock
 	cl := &CompileLive{}
-	return cl.WriteStepFiles(compiledDir, aggregatedSteps)
+	return cl.WriteStepFiles(target, compiledDir, aggregatedSteps)
 }
 
 func (c *CompileMock) ConvertNotebook(jupytextExecutablePath string, notebookFilePath string) (string, error) {

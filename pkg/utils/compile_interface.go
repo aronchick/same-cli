@@ -10,9 +10,9 @@ import (
 type CompileInterface interface {
 	FindAllSteps(string) ([]FoundStep, error)
 	CombineCodeSlicesToSteps([]FoundStep) (map[string]CodeBlock, error)
-	CreateRootFile(map[string]CodeBlock, loaders.SameConfig) (string, error)
+	CreateRootFile(string, map[string]CodeBlock, loaders.SameConfig) (string, error)
 	ConvertNotebook(string, string) (string, error)
-	WriteStepFiles(string, map[string]CodeBlock) error
+	WriteStepFiles(string, string, map[string]CodeBlock) error
 }
 
 type CodeBlock struct {

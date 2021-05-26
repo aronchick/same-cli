@@ -5,19 +5,20 @@ description = ""
 authors = ["David Aronchick <aronchick@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "3.8.*"
 pre-commit = "^2.9.3"
 pathlib2 = "^2.3.5"
-numpy = "^1.19.5"
+numpy = "^1.19.3"
 jupyter = "^1.0.0"
 kfp = "^1.4.0"
 dill = "^0.3.3"
 tensorflow = "^2.5.0"
 plotly = "^4.14.3"
 matplotlib = "^3.4.2"
-scipy = {version = "^1.6.3", python = ">=3.9,<3.10"}
 pandas = "^1.2.4"
 chart-studio = "^1.1.0"
+azureml-core = {version = "^1.29.0", python = ">=3.8,<3.9"}
+azureml-pipeline = {version = "^1.29.0", python = ">=3.8,<3.9p"}
 
 [tool.poetry.dev-dependencies]
 black = {version = "^20.8b1", allow-prereleases = true}

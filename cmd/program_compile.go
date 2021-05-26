@@ -49,6 +49,11 @@ var compileProgramCmd = &cobra.Command{
 			return err
 		}
 
+		target, err := cmd.Flags().GetString("target")
+		if err != nil {
+			target = "kubeflow"
+		}
+
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
 			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
@@ -88,7 +93,7 @@ var compileProgramCmd = &cobra.Command{
 			runParams[parts[0]] = parts[1]
 		}
 
-		compiledDir, _, err := CompileFile(*sameConfigFile, persistTempFiles)
+		compiledDir, _, err := CompileFile(target, *sameConfigFile, persistTempFiles)
 		if err != nil {
 			return err
 		}
@@ -157,7 +162,7 @@ func writeRootFile(compiledDir string, rootFileContents string) error {
 	return nil
 }
 
-func CompileFile(sameConfigFile loaders.SameConfig, persistTempFiles bool) (compileDirectory string, updatedSameConfig loaders.SameConfig, err error) {
+func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFiles bool) (compileDirectory string, updatedSameConfig loaders.SameConfig, err error) {
 	var c = utils.GetCompileFunctions()
 	jupytextExecutablePath, notebookFilePath, err := checkExecutableAndFile(sameConfigFile)
 	if err != nil {
@@ -179,7 +184,7 @@ func CompileFile(sameConfigFile loaders.SameConfig, persistTempFiles bool) (comp
 		return "", loaders.SameConfig{}, err
 	}
 
-	rootFileContents, err := c.CreateRootFile(aggregatedSteps, sameConfigFile)
+	rootFileContents, err := c.CreateRootFile(target, aggregatedSteps, sameConfigFile)
 	if err != nil {
 		return "", loaders.SameConfig{}, err
 	}
@@ -201,7 +206,7 @@ func CompileFile(sameConfigFile loaders.SameConfig, persistTempFiles bool) (comp
 	}
 	updatedSameConfig = sameConfigFile
 
-	err = c.WriteStepFiles(compiledDir, aggregatedSteps)
+	err = c.WriteStepFiles(target, compiledDir, aggregatedSteps)
 	if err != nil {
 		return "", loaders.SameConfig{}, err
 	}
@@ -215,5 +220,7 @@ func init() {
 	programCmd.AddCommand(compileProgramCmd)
 
 	compileProgramCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml').")
-	compileProgramCmd.Flags().BoolP("persist-temp-files", "t", false, "Persist the temporary compilation files.")
+	compileProgramCmd.Flags().Bool("persist-temp-files", false, "Persist the temporary compilation files.")
+	compileProgramCmd.Flags().StringP("target", "t", "kubeflow", "Enter one of 'kubeflow', 'aml'. Defaults to: kubeflow")
+
 }
