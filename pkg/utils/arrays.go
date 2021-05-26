@@ -30,3 +30,10 @@ func JoinMapKeysValues(s map[string]string) (string, error) {
 	}
 	return strings.Join(values, ", "), nil
 }
+
+func AppendIfMissing(slice []string, s string) []string {
+	if ContainsString(slice, s) {
+		return slice
+	}
+	return append(slice, s)
+}

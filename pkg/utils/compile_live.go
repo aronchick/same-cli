@@ -162,7 +162,18 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 	return aggregatedSteps, nil
 }
 
-func (c *CompileLive) CreateRootFile(aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
+func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
+	switch target {
+	case "kubeflow":
+		return compileRootFileKubeflow(aggregatedSteps, sameConfigFile)
+	case "aml":
+		return compileRootFileAML(aggregatedSteps, sameConfigFile)
+	default:
+		return "", fmt.Errorf("unknown compilation target: %v", target)
+	}
+}
+
+func compileRootFileKubeflow(aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
 	// Create the root file
 	rootFile_pre_imports := `
 import kfp
@@ -197,6 +208,8 @@ from typing import NamedTuple
 	run_info_component := `
 def get_run_info(
 	run_id: str,
+	mlflow_run_id: str = '',
+	mlflow_tracking_url: str = '',
 ) -> NamedTuple("RunInfoOutput", [("run_info", str),]):
 	"""Example of getting run info for current pipeline run"""
 	import kfp
@@ -327,7 +340,279 @@ def root(%v, context='', metadata_url=''):
 
 }
 
-func (c *CompileLive) WriteStepFiles(compiledDir string, aggregatedSteps map[string]CodeBlock) error {
+func compileRootFileAML(aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
+	// Create the root file
+	rootFile_pre_imports := `
+from typing import NamedTuple
+import azureml.core
+
+# import dotenv
+import dill
+import base64
+
+import os
+from azureml.core import Workspace
+from azureml.core.authentication import ServicePrincipalAuthentication
+from azureml.core.compute import ComputeTarget, AmlCompute
+from azureml.core.runconfig import RunConfiguration
+from azureml.core.conda_dependencies import CondaDependencies
+from azureml.core import Environment
+from azureml.pipeline.core import Pipeline, PipelineData, PipelineParameter
+from azureml.pipeline.steps import PythonScriptStep
+from azureml.core import Run, Experiment, Datastore
+`
+	rootParameterString := ""
+	if len(sameConfigFile.Spec.Run.Parameters) > 0 {
+		rootParameters := make(map[string]string, len(sameConfigFile.Spec.Run.Parameters))
+		for k, untyped_v := range sameConfigFile.Spec.Run.Parameters {
+			switch untyped_v.(type) {
+			case int, int8, uint8, int16, uint16, int32, uint32, int64, uint64, uint, uintptr, float32, float64, bool, string:
+				rootParameters[k] = fmt.Sprintf("%v", untyped_v)
+			default:
+				log.Warnf("We only support numeric, bool and strings as default parameters (no dicts or lists). We're setting the default value for '%v' to ''.", k)
+				rootParameters[k] = ""
+			}
+
+		}
+		rootParameterString, _ = JoinMapKeysValues(rootParameters)
+	}
+
+	get_aml_workspace := `
+def get_aml_workspace(aml_workspace_credentials):
+    svc_pr_password = aml_workspace_credentials.get("AML_SP_PASSWORD_VALUE")
+
+    svc_pr = ServicePrincipalAuthentication(
+        tenant_id=aml_workspace_credentials.get("AML_SP_TENANT_ID"),
+        service_principal_id=aml_workspace_credentials.get("AML_SP_APP_ID"),
+        service_principal_password=svc_pr_password,
+    )
+
+    return Workspace(
+        subscription_id=aml_workspace_credentials.get("WORKSPACE_SUBSCRIPTION_ID"),
+        resource_group=aml_workspace_credentials.get("WORKSPACE_RESOURCE_GROUP"),
+        workspace_name=aml_workspace_credentials.get("WORKSPACE_NAME"),
+        auth=svc_pr,
+    )
+
+`
+
+	root_pre_code := fmt.Sprintf(`
+def root(
+    %v,
+    context="",
+    metadata_url="",
+    aml_workspace_credentials={},
+):
+	# The below is base64 encoding of an empty locals() output
+	if context == '':
+		_original_context = "gAR9lC4="
+	else:
+		_original_context = context
+
+
+    expected_fields = [
+        "AML_SP_PASSWORD_VALUE",
+        "AML_SP_TENANT_ID",
+        "AML_SP_APP_ID",
+        "WORKSPACE_SUBSCRIPTION_ID",
+        "WORKSPACE_RESOURCE_GROUP",
+        "WORKSPACE_NAME",
+        "AML_COMPUTE_NAME",
+    ]
+
+    missing_fields = [
+        field
+        for field in expected_fields
+        if not aml_workspace_credentials.get(field, None)
+    ]
+    if len(missing_fields) > 0:
+        raise ValueError(
+            f"Missing expected fields in credential dictionary: {','.join(missing_fields)}"
+        )
+
+    ws = get_aml_workspace(aml_workspace_credentials)
+    experiment = Experiment(ws, "%v")
+
+    run_info_dict = {
+        "experiment_id": experiment.id,
+        "step_id": "same_step_0",
+    }
+
+    output = {}
+    output["run_info"] = str(
+        base64.urlsafe_b64encode(dill.dumps(run_info_dict)), encoding="ascii"
+    )
+
+		`, rootParameterString, sameConfigFile.GetName())
+
+	provision_aml_compute := `
+compute_name = aml_workspace_credentials.get("AML_COMPUTE_NAME")
+vm_size = "STANDARD_NC6"
+if compute_name in ws.compute_targets:
+	compute_target = ws.compute_targets[compute_name]
+	if compute_target and type(compute_target) is AmlCompute:
+		print("Found compute target: " + compute_name)
+else:
+	print("Creating a new compute target...")
+	provisioning_config = AmlCompute.provisioning_configuration(
+		vm_size=vm_size, min_nodes=0, max_nodes=4  # STANDARD_NC6 is GPU-enabled
+	)
+	# create the compute target
+	compute_target = ComputeTarget.create(ws, compute_name, provisioning_config)
+
+	# Can poll for a minimum number of nodes and for a specific timeout.
+	# If no min node count is provided it will use the scale settings for the cluster
+	compute_target.wait_for_completion(
+		show_output=True, min_node_count=None, timeout_in_minutes=20
+	)
+
+	# For a more detailed view of current cluster status, use the 'status' property
+	print(compute_target.status.serialize())
+`
+	all_code := ""
+	previous_step := ""
+	context_variable := ""
+	number_of_raw_steps := len(aggregatedSteps)
+	all_steps := make([]string, 0)
+	steps_left_to_parse := make(map[string]string)
+
+	for _, thisCodeBlock := range aggregatedSteps {
+		steps_left_to_parse[thisCodeBlock.Step_Identifier] = thisCodeBlock.Step_Identifier
+	}
+
+	// Unfortunately, every early step's package includes also need to be included in later
+	// steps. This is become some objects (like IPython.image) require module imports.
+	// There's probably a more elegant way to handle this.
+	packages_to_install_global := make(map[string]string)
+	packages_to_install_global["dill"] = ""
+	for i := 0; i < number_of_raw_steps; i++ {
+		thisCodeBlock := CodeBlock{}
+		for _, test_step_identifier := range steps_left_to_parse {
+			if thisCodeBlock.Step_Identifier == "" || test_step_identifier <= thisCodeBlock.Step_Identifier {
+				thisCodeBlock = aggregatedSteps[test_step_identifier]
+			}
+		}
+
+		if thisCodeBlock.Step_Identifier == "" {
+			return "", fmt.Errorf("compile_live.go: got to the end of searching and did not assign a code block. Not sure how.")
+		}
+
+		all_steps = AppendIfMissing(all_steps, thisCodeBlock.Step_Identifier)
+		delete(steps_left_to_parse, thisCodeBlock.Step_Identifier)
+
+		for k := range thisCodeBlock.Packages_To_Install {
+			packages_to_install_global[k] = ""
+		}
+
+		context_variable = fmt.Sprintf("__pipelinedata_context_%v", previous_step)
+		if previous_step == "" {
+			context_variable = "__original_context_param"
+		}
+
+		all_code += fmt.Sprintf(`
+entry_point = "%v.py"
+__original_context_param = PipelineParameter(
+	name="input_string", default_value=__original_context
+)
+__original_context_param = PipelineParameter(
+	name="input_string", default_value=__original_context
+)
+__pipelinedata_context_%v = PipelineData(
+	"__pipelinedata_context_%v", output_mode="mount"
+)
+
+%v_step = PythonScriptStep(
+	source_directory="%v",
+	script_name=entry_point,
+	arguments=[
+		"--input_context",
+		%v,
+		"--run_info",
+		output["run_info"],
+		"--metadata_url",
+		metadata_url,
+		"--output_context",
+		__pipelinedata_context_%v,
+	],
+	outputs=[__pipelinedata_context_%v],
+	compute_target=compute_target,
+	runconfig=aml_run_config,
+	allow_reuse=False,
+    )
+`,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Step_Identifier,
+			context_variable,
+			thisCodeBlock.Step_Identifier,
+			thisCodeBlock.Step_Identifier)
+
+		previous_step = thisCodeBlock.Step_Identifier
+	}
+
+	step_string := fmt.Sprintf(`"%v"
+`, strings.Join(all_steps, `","`))
+
+	package_string := ""
+	for k := range packages_to_install_global {
+		package_string += fmt.Sprintf("'%v',", k)
+	}
+	global_packages_to_install := fmt.Sprintf(`
+aml_run_config = RunConfiguration()
+aml_run_config.target = compute_target
+aml_run_config.environment = Environment(name="AML_COMPUTE_ENVIRONMENT")
+conda_dep = CondaDependencies()
+
+all_packages = [%v]
+for package in all_packages:
+	conda_dep.add_pip_package(package)
+
+# Adds dependencies to PythonSection of myenv
+aml_run_config.environment.python.conda_dependencies = conda_dep
+aml_run_config.environment.python.conda_dependencies.set_python_version("3.8")
+`, package_string)
+
+	pipeline_submit := fmt.Sprintf(`
+run_pipeline_definition = [%v]
+
+built_pipeline = Pipeline(workspace=ws, steps=[run_pipeline_definition])
+pipeline_run = experiment.submit(built_pipeline)
+`, step_string)
+
+	main_section := `
+
+if __name__ == "__main__":
+    # dotenv.load_dotenv()
+
+    credentials_dict = {
+        "AML_SP_PASSWORD_VALUE": os.environ.get("AML_SP_PASSWORD_VALUE"),
+        "AML_SP_TENANT_ID": os.environ.get("AML_SP_TENANT_ID"),
+        "AML_SP_APP_ID": os.environ.get("AML_SP_APP_ID"),
+        "WORKSPACE_SUBSCRIPTION_ID": os.environ.get("WORKSPACE_SUBSCRIPTION_ID"),
+        "WORKSPACE_RESOURCE_GROUP": os.environ.get("WORKSPACE_RESOURCE_GROUP"),
+        "WORKSPACE_NAME": os.environ.get("WORKSPACE_NAME"),
+        "AML_COMPUTE_NAME": os.environ.get("AML_COMPUTE_NAME"),
+    }
+
+    # execute only if run as a script
+    root(
+        context="gAR9lC4=", metadata_url="", aml_workspace_credentials=credentials_dict
+    )
+
+`
+	return rootFile_pre_imports +
+		get_aml_workspace +
+		provision_aml_compute +
+		global_packages_to_install +
+		root_pre_code +
+		all_code +
+		pipeline_submit +
+		main_section, nil
+}
+
+func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregatedSteps map[string]CodeBlock) error {
 	for i := range aggregatedSteps {
 		parameter_string, _ := JoinMapKeysValues(aggregatedSteps[i].Parameters)
 		if parameter_string != "" {
@@ -338,7 +623,19 @@ func (c *CompileLive) WriteStepFiles(compiledDir string, aggregatedSteps map[str
 		parameter_string = "__context='gAR9lC4=', __run_info={}, __metadata_url=''" + parameter_string
 
 		step_to_write := compiledDir + fmt.Sprintf("/%v.py", aggregatedSteps[i].Step_Identifier)
-		code_to_write := fmt.Sprintf(`from typing import NamedTuple
+		code_to_write := fmt.Sprintf(`
+import argparse as __argparse
+from multiprocessing import context
+import pathlib
+from typing import NamedTuple
+import dotenv
+from azureml.core import Run
+from pprint import pprint as __pp
+import os
+from pathlib import Path as __Path
+from azureml.pipeline.core import (
+    PipelineData as __PipelineData,
+    PipelineParameter as __PipelineParameter,
 
 def main(%v) -> NamedTuple('FuncOutput',[('context', str),]):
 	import dill
@@ -434,11 +731,43 @@ __b64_string = str(urlsafe_b64encode(dill.dumps(__context_export)), encoding="as
 			print(f"Error: {err}")
 
 	
-	from collections import namedtuple
-
-	output = namedtuple("FuncOutput", ["context"])
-	return output(__loc["__b64_string"])
+    return __loc["__b64_string"]
 `, aggregatedSteps[i].Step_Identifier)
+
+		code_to_write += `
+if __name__ == "__main__":
+    dotenv.load_dotenv()
+
+    __run = Run.get_context()
+    __parser = __argparse.ArgumentParser("cleanse")
+    __parser.add_argument("--input_context", type=str, help="Context to run as string")
+    __parser.add_argument("--run_info", type=str, help="Run info")
+    __parser.add_argument("--output_context_path", type=str, help="Output context path")
+    __parser.add_argument("--metadata_url", type=str, help="Metadata URL")
+
+    __args = __parser.parse_args()
+
+    __input_context_string = "gAR9lC4="
+    __context_filename = "context.txt"
+    if "__pipelinedata_context" in __args.input_context:
+        context_full_path = __Path(__args.input_context) / __context_filename
+        print(f"reading file: {context_full_path}")
+        __input_context_string = context_full_path.read_text()
+    elif __args.input_context and __args.input_context.strip():
+        __input_context_string = __args.input_context.strip()
+
+    __output_context_string = main(
+        __context=__input_context_string,
+        __run_info=__args.run_info,
+        __metadata_url=__args.metadata_url,
+    )
+
+    __p = __Path(__args.output_context_path)
+    __p.mkdir(parents=True, exist_ok=True)
+    __filepath = __p / __context_filename
+    with __filepath.open("w+") as __f:
+        __f.write(__output_context_string)
+`
 
 		err := os.WriteFile(step_to_write, []byte(code_to_write), 0700)
 		if err != nil {

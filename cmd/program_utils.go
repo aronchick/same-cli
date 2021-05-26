@@ -23,7 +23,7 @@ import (
 	"github.com/azure-octo/same-cli/pkg/utils"
 )
 
-func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string, persistTemporaryFiles bool) (uploadedPipeline *pipeline_upload_model.APIPipeline, err error) {
+func UploadPipeline(target string, sameConfigFile *loaders.SameConfig, pipelineName string, pipelineDescription string, persistTemporaryFiles bool) (uploadedPipeline *pipeline_upload_model.APIPipeline, err error) {
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	uploadparams.Description = &pipelineDescription
 
 	if strings.HasSuffix(strings.TrimSpace(sameConfigFile.Spec.Pipeline.Package), ".ipynb") {
-		tempCompileDir, updatedSameConfig, err := CompileFile(*sameConfigFile, true)
+		tempCompileDir, updatedSameConfig, err := CompileFile(target, *sameConfigFile, true)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func UploadPipeline(sameConfigFile *loaders.SameConfig, pipelineName string, pip
 	return uploadedPipeline, nil
 }
 
-func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string, persistTemporaryFiles bool) (uploadedPipelineVersion *pipeline_upload_model.APIPipelineVersion, err error) {
+func UpdatePipeline(target string, sameConfigFile *loaders.SameConfig, pipelineID string, pipelineVersion string, persistTemporaryFiles bool) (uploadedPipelineVersion *pipeline_upload_model.APIPipelineVersion, err error) {
 	kfpconfig, err := utils.NewKFPConfig()
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func UpdatePipeline(sameConfigFile *loaders.SameConfig, pipelineID string, pipel
 	uploadparams.Name = &pipelineVersion
 
 	if strings.HasSuffix(strings.TrimSpace(sameConfigFile.Spec.Pipeline.Package), ".ipynb") {
-		tempCompileDir, updatedSameConfig, err := CompileFile(*sameConfigFile, true)
+		tempCompileDir, updatedSameConfig, err := CompileFile(target, *sameConfigFile, true)
 		if err != nil {
 			return nil, err
 		}
