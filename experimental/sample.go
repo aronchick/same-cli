@@ -5,11 +5,12 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"regexp"
+	"strings"
 
-	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
+	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/pkg/utils"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 // // Settings default user setting
@@ -160,40 +161,70 @@ func main() {
 	// }
 	// fmt.Println(v)
 
-	configFilePath := "../test/testdata/notebook/sample_notebook_same.yaml"
+	// configFilePath := "../test/testdata/notebook/sample_notebook_same.yaml"
 
-	configFileBytes, _ := ioutil.ReadFile(configFilePath)
+	// configFileBytes, _ := ioutil.ReadFile(configFilePath)
 
-	var obj map[string]interface{}
-	_ = yaml.Unmarshal(configFileBytes, &obj)
+	// var obj map[string]interface{}
+	// _ = yaml.Unmarshal(configFileBytes, &obj)
 
-	// First create the struct to unmarshall the yaml into
-	sameConfigFromFile := &loaders.SameSpec{}
+	// // First create the struct to unmarshall the yaml into
+	// sameConfigFromFile := &loaders.SameSpec{}
 
-	bytes, _ := yaml.Marshal(obj)
-	_ = yaml.Unmarshal(bytes, sameConfigFromFile)
-	sameConfig := &loaders.SameConfig{
-		Spec: loaders.SameSpec{
-			APIVersion: sameConfigFromFile.APIVersion,
-			Version:    sameConfigFromFile.Version,
-		},
+	// bytes, _ := yaml.Marshal(obj)
+	// _ = yaml.Unmarshal(bytes, sameConfigFromFile)
+	// sameConfig := &loaders.SameConfig{
+	// 	Spec: loaders.SameSpec{
+	// 		APIVersion: sameConfigFromFile.APIVersion,
+	// 		Version:    sameConfigFromFile.Version,
+	// 	},
+	// }
+
+	// sameConfig.Spec.Metadata = sameConfigFromFile.Metadata
+	// sameConfig.Spec.Bases = sameConfigFromFile.Bases
+	// sameConfig.Spec.EnvFiles = sameConfigFromFile.EnvFiles
+	// sameConfig.Spec.Resources = sameConfigFromFile.Resources
+	// sameConfig.Spec.Workflow.Parameters = sameConfigFromFile.Workflow.Parameters
+	// sameConfig.Spec.Pipeline = sameConfigFromFile.Pipeline
+	// sameConfig.Spec.DataSets = sameConfigFromFile.DataSets
+	// sameConfig.Spec.Run = sameConfigFromFile.Run
+	// sameConfig.Spec.ConfigFilePath = sameConfigFromFile.ConfigFilePath
+
+	// fmt.Printf("Parameter 1: %v", sameConfig.Spec.Run.Parameters["sample_parameter"])
+	// fmt.Printf("Parameter 2: %v", sameConfig.Spec.Run.Parameters["sample_complicated_parameter"])
+
+	// // a, _ := yaml.Marshal(sameConfig)
+	// // fmt.Println(string(a))
+	// log.Trace("Loaded SAME")
+
+	cmd := cmd.RootCmd
+
+	pipCommand := `
+	#!/bin/bash
+	set -e
+	python3 -m pip freeze
+	`
+
+	cmdReturn, err := utils.ExecuteInlineBashScript(cmd, pipCommand, "Pip output failed", false)
+
+	if err != nil {
+		log.Tracef("Error executing: %v\n", err.Error())
+	}
+	requiredLibraries := []string{"azureml.core", "azureml.pipeline"}
+
+	missingLibraries := make([]string, 0)
+	for _, lib := range requiredLibraries {
+		r, _ := regexp.Compile(lib)
+		if r.FindString(cmdReturn) == "" {
+			missingLibraries = append(missingLibraries, lib)
+		}
 	}
 
-	sameConfig.Spec.Metadata = sameConfigFromFile.Metadata
-	sameConfig.Spec.Bases = sameConfigFromFile.Bases
-	sameConfig.Spec.EnvFiles = sameConfigFromFile.EnvFiles
-	sameConfig.Spec.Resources = sameConfigFromFile.Resources
-	sameConfig.Spec.Workflow.Parameters = sameConfigFromFile.Workflow.Parameters
-	sameConfig.Spec.Pipeline = sameConfigFromFile.Pipeline
-	sameConfig.Spec.DataSets = sameConfigFromFile.DataSets
-	sameConfig.Spec.Run = sameConfigFromFile.Run
-	sameConfig.Spec.ConfigFilePath = sameConfigFromFile.ConfigFilePath
-
-	fmt.Printf("Parameter 1: %v", sameConfig.Spec.Run.Parameters["sample_parameter"])
-	fmt.Printf("Parameter 2: %v", sameConfig.Spec.Run.Parameters["sample_complicated_parameter"])
-
-	// a, _ := yaml.Marshal(sameConfig)
-	// fmt.Println(string(a))
-	log.Trace("Loaded SAME")
-
+	if len(missingLibraries) > 0 {
+		err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
+pip3 install %v`, strings.Join(missingLibraries, " "))
+		fmt.Println(err.Error())
+	}
+	a := cmdReturn
+	_ = a
 }

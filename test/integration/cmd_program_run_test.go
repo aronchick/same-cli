@@ -95,7 +95,7 @@ func (suite *ProgramRunSuite) Test_ExecuteWithCreateAndNoArgs() {
 	os.Setenv("TEST_PASS", "1")
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
 	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "--config", configFileName, "--", "NO-ARGS-TEST")
-	assert.Regexp(suite.T(), regexp.MustCompile(`required flag\(s\).+?"experiment-name".+? not set`), string(out))
+	assert.Regexp(suite.T(), regexp.MustCompile(`could not resolve SAME config file path`), string(out))
 }
 
 func (suite *ProgramRunSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
@@ -103,7 +103,7 @@ func (suite *ProgramRunSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 	origKubeconfig := os.Getenv("KUBECONFIG")
 	os.Setenv("KUBECONFIG", "/dev/null/baddir")
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/same.yaml", "-e", "Test_ExecuteWithCreateWithNoKubeconfig-experiment", "-r", suite.runID, "--config", configFileName)
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "../testdata/same.yaml", "--config", configFileName)
 	assert.Contains(suite.T(), string(out), "open /dev/null/baddir: not a directory")
 
 	if origKubeconfig != "" {
@@ -116,7 +116,7 @@ func (suite *ProgramRunSuite) Test_ExecuteWithCreateWithNoKubeconfig() {
 func (suite *ProgramRunSuite) Test_ExecuteWithCreateWithBadFile() {
 	os.Setenv("TEST_PASS", "1")
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "/dev/null/same.yaml", "-e", "Test_ExecuteWithCreateWithBadFile-experiment", "-r", suite.runID, "--config", configFileName)
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "/dev/null/same.yaml", "--config", configFileName)
 	assert.Contains(suite.T(), string(out), "could not find sameFile", "Attempting to start same run with a bad file did not fail (as expected).")
 }
 
@@ -124,7 +124,7 @@ func (suite *ProgramRunSuite) Test_GetRemoteBadURL() {
 	os.Setenv("TEST_PASS", "1")
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
 	// Use a URL with a control character
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://\n", "-e", "Test_GetRemoteBadURL-experiment", "-r", suite.runID, "--config", configFileName)
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://\n", "--config", configFileName)
 	assert.Contains(suite.T(), string(out), "unable to parse")
 }
 
@@ -133,10 +133,10 @@ func (suite *ProgramRunSuite) Test_GetRemoteNoSAME() {
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
 
 	// The URL 'https://github.com/dapr/dapr' does not have a 'same.yaml' file in it, so it should fail
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://github.com/dapr/dapr", "-e", "Test_GetRemoteNoSAME-experiment", "-r", suite.runID, "--config", configFileName, "--", mocks.UTILS_TEST_BAD_CONFIG_FILE_DETECT_PROBE)
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://github.com/dapr/dapr", "--config", configFileName, "--", mocks.UTILS_TEST_BAD_CONFIG_FILE_DETECT_PROBE)
 	assert.Contains(suite.T(), string(out), mocks.UTILS_TEST_BAD_CONFIG_FILE_DETECT_RESULT)
 
-	_, out, _ = utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://github.com/dapr/dapr", "-e", "Test_GetRemoteNoSAME-experiment", "-r", suite.runID, "--config", configFileName, "--", mocks.UTILS_TEST_BAD_RETRIEVE_SAME_FILE_PROBE)
+	_, out, _ = utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", "https://github.com/dapr/dapr", "--config", configFileName, "--", mocks.UTILS_TEST_BAD_RETRIEVE_SAME_FILE_PROBE)
 	assert.Contains(suite.T(), string(out), mocks.UTILS_TEST_BAD_RETRIEVE_SAME_FILE_RESULT)
 
 }
@@ -145,7 +145,7 @@ func (suite *ProgramRunSuite) Test_GetRemoteSAMEWithBadPipelineFile() {
 	os.Setenv("TEST_PASS", "1")
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
 	sameFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/samefiles/badpipelinedirectory.yaml")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", sameFileName, "-e", "Test_GetRemoteSAMEWithBadPipelineFile-experiment", "-r", suite.runID, "--config", configFileName, "--", "BAD_PIPELINE_TEST")
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", sameFileName, "--config", configFileName, "--", "BAD_PIPELINE_TEST")
 	assert.Contains(suite.T(), string(out), "could not find pipeline definition specified in SAME program")
 }
 
@@ -153,7 +153,7 @@ func (suite *ProgramRunSuite) Test_GetRemoteSAMEWithBadPipelineDirectory() {
 	os.Setenv("TEST_PASS", "1")
 	configFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/config/notarget.yaml")
 	sameFileName, _ := utils.GetTmpConfigFile("RUN", suite.tmpConfigDirectory, "../testdata/samefiles/badpipelinefile.yaml")
-	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", sameFileName, "-e", "Test_GetRemoteSAMEWithBadPipelineDirectory-experiment", "-r", suite.runID, "--config", configFileName)
+	_, out, _ := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", sameFileName, "--config", configFileName)
 	assert.Contains(suite.T(), string(out), "could not find pipeline definition specified in SAME program")
 }
 
@@ -171,7 +171,7 @@ func (suite *ProgramRunSuite) Test_GetRemoteSAMEGoodPipeline() {
 	_, _ = utils.CopyFilesInDir("../testdata/pipelines", suite.tmpConfigDirectory, false)
 	origDir, _ := os.Getwd()
 	_ = os.Chdir(suite.tmpConfigDirectory)
-	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", sameFileName, "-e", "Test_GetRemoteSAMEGoodPipeline-experiment", "-r", suite.runID, "--config", configFileName)
+	_, out, err := utils.ExecuteCommandC(suite.T(), suite.rootCmd, "program", "run", "-f", sameFileName, "--config", configFileName)
 
 	_ = out
 	assert.NoError(suite.T(), err, fmt.Sprintf("Error found (non expected): %v", err))

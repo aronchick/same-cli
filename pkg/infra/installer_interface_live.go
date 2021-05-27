@@ -36,7 +36,7 @@ func (i *LiveInstallers) InstallKFP() (err error) {
 	`, kubectlCommand)
 
 	log.Tracef("About to execute: %v\n", kfpInstall)
-	if err := utils.ExecuteInlineBashScript(cmd, kfpInstall, "KFP failed to install."); err != nil {
+	if _, err := utils.ExecuteInlineBashScript(cmd, kfpInstall, "KFP failed to install.", true); err != nil {
 		log.Tracef("Error executing: %v\n", err.Error())
 		return err
 	}

@@ -1,4 +1,9 @@
 apiVersion: projectsame.io/v1alpha1
+metadata:
+  name: TestGoodPipeline
+  version: 0.0.1
+run:
+  name: "Test Good Pipeline  - Run"
 pipeline:
   name: "good_pipeline"
   package: "pipeline.py"

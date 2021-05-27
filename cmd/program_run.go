@@ -18,6 +18,9 @@ limitations under the License.
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -49,18 +52,9 @@ var runProgramCmd = &cobra.Command{
 			return err
 		}
 
-		runName, err := cmd.Flags().GetString("run-name")
-		if err != nil {
-			return err
-		}
 		runDescription, err := cmd.Flags().GetString("run-description")
 		if err != nil {
 			runDescription = ""
-		}
-
-		experimentName, err := cmd.Flags().GetString("experiment-name")
-		if err != nil {
-			return err
 		}
 
 		experimentDescription, err := cmd.Flags().GetString("experiment-description")
@@ -109,54 +103,6 @@ var runProgramCmd = &cobra.Command{
 			programName = sameConfigFile.Spec.Pipeline.Name
 		}
 
-		pipelineID := ""
-		pipelineVersionID := ""
-		pipeline, err := FindPipelineByName(programName)
-		if runOnly {
-			if err == nil {
-				pipelineID = pipeline.ID
-			}
-		} else {
-			if err != nil {
-				if sameConfigFile.Spec.Pipeline.Description != "" && programDescription == "" {
-					programDescription = sameConfigFile.Spec.Pipeline.Description
-				}
-				uploadedPipeline, err := UploadPipeline(target, sameConfigFile, programName, programDescription, persistTemporaryFiles)
-				if err != nil {
-					return err
-				}
-				pipelineID = uploadedPipeline.ID
-
-				cmd.Printf(`
-Pipeline Uploaded.
-Name: %v
-ID: %v
-`, uploadedPipeline.Name, uploadedPipeline.ID)
-			} else {
-				pipelineID = pipeline.ID
-				newID, _ := uuid.NewRandom()
-				uploadedPipelineVersion, err := UpdatePipeline(target, sameConfigFile, pipelineID, newID.String(), persistTemporaryFiles)
-				if err != nil {
-					return err
-				}
-				pipelineVersionID = uploadedPipelineVersion.ID
-
-				cmd.Printf(`
-Pipeline Updated.
-Name: %v
-ID: %v
-VersionID: %v
-
-`, uploadedPipelineVersion.Name, pipeline.ID, uploadedPipelineVersion.ID)
-			}
-		}
-
-		// if ID is still blank we must exit
-		if pipelineID == "" {
-			log.Errorf("Could not find pipeline ID. Did you create the program?")
-			return fmt.Errorf("could not determine program ID for run")
-		}
-
 		params, _ := cmd.Flags().GetStringSlice("run-param")
 
 		runParams := make(map[string]interface{})
@@ -175,28 +121,140 @@ VersionID: %v
 			runParams[parts[0]] = parts[1]
 		}
 
-		experimentID := ""
-		experiment, err := FindExperimentByName(experimentName)
-		if experiment == nil || err != nil {
-			experimentEntity, err := CreateExperiment(experimentName, experimentDescription)
+		if target == "kubeflow" {
+			pipelineID := ""
+			pipelineVersionID := ""
+			pipeline, err := FindPipelineByName(programName)
+			if runOnly {
+				if err == nil {
+					pipelineID = pipeline.ID
+				}
+			} else {
+				if err != nil {
+					if sameConfigFile.Spec.Pipeline.Description != "" && programDescription == "" {
+						programDescription = sameConfigFile.Spec.Pipeline.Description
+					}
+					uploadedPipeline, err := UploadPipeline(target, sameConfigFile, programName, programDescription, persistTemporaryFiles)
+					if err != nil {
+						return err
+					}
+					pipelineID = uploadedPipeline.ID
+
+					cmd.Printf(`
+Pipeline Uploaded.
+Name: %v
+ID: %v
+`, uploadedPipeline.Name, uploadedPipeline.ID)
+				} else {
+					pipelineID = pipeline.ID
+					newID, _ := uuid.NewRandom()
+					uploadedPipelineVersion, err := UpdatePipeline(target, sameConfigFile, pipelineID, newID.String(), persistTemporaryFiles)
+					if err != nil {
+						return err
+					}
+					pipelineVersionID = uploadedPipelineVersion.ID
+
+					cmd.Printf(`
+Pipeline Updated.
+Name: %v
+ID: %v
+VersionID: %v
+
+`, uploadedPipelineVersion.Name, pipeline.ID, uploadedPipelineVersion.ID)
+				}
+			}
+
+			// if ID is still blank we must exit
+			if pipelineID == "" {
+				log.Errorf("Could not find pipeline ID. Did you create the program?")
+				return fmt.Errorf("could not determine program ID for run")
+			}
+
+			experimentID := ""
+			experiment, err := FindExperimentByName(sameConfigFile.Spec.Metadata.Name)
+			if experiment == nil || err != nil {
+				experimentEntity, err := CreateExperiment(sameConfigFile.Spec.Metadata.Name, experimentDescription)
+				if err != nil {
+					return err
+				}
+				experimentID = experimentEntity.ID
+			} else {
+				experimentID = experiment.ID
+			}
+
+			runDetails, err := CreateRun(sameConfigFile.Spec.Run.Name, pipelineID, pipelineVersionID, experimentID, runDescription, runParams)
 			if err != nil {
 				return err
 			}
-			experimentID = experimentEntity.ID
-		} else {
-			experimentID = experiment.ID
-		}
 
-		if runName == "" && sameConfigFile.Spec.Run.Name != "" {
-			runName = sameConfigFile.Spec.Run.Name
-		}
+			fmt.Printf("Program run created with ID %s.\n", runDetails.Run.ID)
+		} else if target == "aml" {
+			pipCommand := `
+	#!/bin/bash
+	set -e
+	python3 -m pip freeze
+	`
 
-		runDetails, err := CreateRun(runName, pipelineID, pipelineVersionID, experimentID, runDescription, runParams)
-		if err != nil {
-			return err
-		}
+			cmdReturn, err := utils.ExecuteInlineBashScript(cmd, pipCommand, "Pip output failed", false)
 
-		fmt.Printf("Program run created with ID %s.\n", runDetails.Run.ID)
+			if err != nil {
+				log.Tracef("Error executing: %v\n", err.Error())
+			}
+			requiredLibraries := []string{"azureml.core", "azureml.pipeline"}
+
+			missingLibraries := make([]string, 0)
+			for _, lib := range requiredLibraries {
+				r, _ := regexp.Compile(lib)
+				if r.FindString(cmdReturn) == "" {
+					missingLibraries = append(missingLibraries, lib)
+				}
+			}
+
+			if len(missingLibraries) > 0 {
+				err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
+pip3 install %v`, strings.Join(missingLibraries, " "))
+				fmt.Println(err.Error())
+			}
+
+			requiredFields := []string{"AML_SP_PASSWORD_VALUE",
+				"AML_SP_TENANT_ID",
+				"AML_SP_APP_ID",
+				"WORKSPACE_SUBSCRIPTION_ID",
+				"WORKSPACE_RESOURCE_GROUP",
+				"WORKSPACE_NAME",
+				"AML_COMPUTE_NAME"}
+
+			missingFields := make([]string, 0)
+			for _, field := range requiredFields {
+				if os.Getenv(field) == "" {
+					missingFields = append(missingFields, field)
+				}
+			}
+
+			if len(missingFields) > 0 {
+				return fmt.Errorf("missing environment variables for: %v", strings.Join(missingFields, ", "))
+			}
+
+			compileDir, _, err := CompileFile("aml", *sameConfigFile, persistTemporaryFiles)
+			if err != nil {
+				return err
+			}
+
+			executeAMLPipeline := fmt.Sprintf(`
+#!/bin/bash
+set -e
+cd %v
+python3 %v
+`, compileDir, filepath.Join(compileDir, "root.py"))
+
+			log.Tracef("About to execute: %v\n", executeAMLPipeline)
+			if cmdOut, err := utils.ExecuteInlineBashScript(cmd, executeAMLPipeline, "Running against AML pipelines failed:", true); err != nil {
+				log.Tracef("Error executing: %v\n", err.Error())
+				log.Tracef("Command output: %v\n", cmdOut)
+				return err
+			}
+
+		}
 
 		return nil
 	},
@@ -209,22 +267,7 @@ func init() {
 
 	runProgramCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml')")
 
-	runProgramCmd.Flags().StringP("experiment-name", "e", "", "The name of a SAME Experiment to be created or reused.")
-	err := runProgramCmd.MarkFlagRequired("experiment-name")
-	if err != nil {
-		message := "'experiment-name' is required for this to run.: %v\n"
-		fmt.Printf(message, err)
-		return
-	}
-
 	runProgramCmd.Flags().String("experiment-description", "", "The description of a SAME Experiment to be created.")
-	runProgramCmd.Flags().StringP("run-name", "r", "", "The name of the SAME program run.")
-	err = runProgramCmd.MarkFlagRequired("run-name")
-	if err != nil {
-		message := "'run-name' is required for this to run."
-		fmt.Printf(message+"%v", err)
-		return
-	}
 
 	runProgramCmd.Flags().String("run-description", "", "A description of the SAME program run.")
 	runProgramCmd.Flags().StringSliceP("run-param", "p", nil, "A paramater to pass to the program in key=value form. Repeat for multiple params.")
