@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	log "github.com/sirupsen/logrus"
@@ -396,6 +397,11 @@ def get_aml_workspace(aml_workspace_credentials):
 	)
 
 `
+	if sameConfigFile.Spec.Metadata.Name == "" {
+		return "", fmt.Errorf("no name found for the experiment")
+	}
+
+	experimentName := removeIllegalExperimentNameCharacters(sameConfigFile.Spec.Metadata.Name)
 
 	root_pre_code := fmt.Sprintf(`
 def root(
@@ -444,7 +450,7 @@ def root(
 	output["run_info"] = str(
 		base64.urlsafe_b64encode(dill.dumps(run_info_dict)), encoding="ascii"
 	)
-		`, rootParameterString, sameConfigFile.Spec.Metadata.Name)
+		`, rootParameterString, experimentName)
 
 	provision_aml_compute := `
 	compute_name = aml_workspace_credentials.get("AML_COMPUTE_NAME")
@@ -853,4 +859,16 @@ full error message: %v`, notebookFilePath, string(out))
 	}
 
 	return string(out), nil
+}
+
+func removeIllegalExperimentNameCharacters(s string) string {
+	return strings.Map(
+		func(r rune) rune {
+			if r == '-' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+				return r
+			}
+			return -1
+		},
+		s,
+	)
 }
