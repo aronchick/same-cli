@@ -16,9 +16,10 @@ limitations under the License.
 package cmd
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
+	"math/big"
 	"os"
 	"os/exec"
 	"time"
@@ -65,9 +66,9 @@ func init() {
 // ExecuteInit executes a full initialization of the directory.
 func ExecuteInit(sameRepoName string) {
 	// Using a fixed seed will produce the same output on every run.
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r, _ := rand.Int(rand.Reader, big.NewInt(1000000))
 	if randSuffix {
-		sameRepoName = fmt.Sprintf("%v-%v", sameRepoName, r.Int31())
+		sameRepoName = fmt.Sprintf("%v-%v", sameRepoName, r.Int64())
 	}
 
 	log.Info(fmt.Sprintf("SameRepoName is %v", sameRepoName))

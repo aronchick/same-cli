@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,9 +12,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 	"unicode"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
+	"github.com/azure-octo/same-cli/internal/box"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -176,22 +179,11 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 }
 
 func compileRootFileKubeflow(aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
-	// Create the root file
-	rootFile_pre_imports := `
-import kfp
-import kfp.dsl as dsl
-from kfp.components import func_to_container_op, InputPath, OutputPath
-import kfp.compiler as compiler
-from kfp.dsl.types import Dict as KFPDict, List as KFPList
-from typing import NamedTuple
-
-`
-	import_section := ""
+	rootFileContent := RootFile{}
 	for i := range aggregatedSteps {
-		import_section += fmt.Sprintf("import %v\n", aggregatedSteps[i].Step_Identifier)
+		rootFileContent.Step_imports = append(rootFileContent.Step_imports, aggregatedSteps[i].Step_Identifier)
 	}
 
-	rootParameterString := ""
 	if len(sameConfigFile.Spec.Run.Parameters) > 0 {
 		rootParameters := make(map[string]string, len(sameConfigFile.Spec.Run.Parameters))
 		for k, untyped_v := range sameConfigFile.Spec.Run.Parameters {
@@ -204,77 +196,16 @@ from typing import NamedTuple
 			}
 
 		}
-		rootParameterString, _ = JoinMapKeysValues(rootParameters)
+		rootFileContent.Root_parameter_string, _ = JoinMapKeysValues(rootParameters)
 	}
 
-	run_info_component := `
-def get_run_info(
-	run_id: str,
-	mlflow_run_id: str = '',
-	mlflow_tracking_url: str = '',
-) -> NamedTuple("RunInfoOutput", [("run_info", str),]):
-	"""Example of getting run info for current pipeline run"""
-	import kfp
-	import json
-	import dill
-	import base64
-	import datetime
-	from dateutil.tz import tzlocal
-	from pprint import pprint as pp
-
-	print(f"Current run ID is {run_id}.")
-	client = kfp.Client(host="http://ml-pipeline:8888")
-	run_info = client.get_run(run_id=run_id)
-	# Hide verbose info
-	run_info.run.pipeline_spec.workflow_manifest = None
-
-	from collections import namedtuple
-
-	pp(run_info.run)
-
-	run_info_dict = {
-		"run_id": run_info.run.id,
-		"name": run_info.run.name,
-		"created_at": run_info.run.created_at.isoformat(),
-		"pipeline_id": run_info.run.pipeline_spec.pipeline_id,
-	}
-	for r in run_info.run.resource_references:
-		run_info_dict[f"{r.key.type.lower()}_id"] = r.key.id
-
-	output = namedtuple("RunInfoOutput", ["run_info"])
-	return output(
-		str(base64.urlsafe_b64encode(dill.dumps(run_info_dict)), encoding="ascii")
-	)
-
-get_run_info_component = kfp.components.create_component_from_func(
-	func=get_run_info,
-	packages_to_install=[
-		"kfp",
-		"dill",
-	],
-)
-`
-
-	root_pre_code := fmt.Sprintf(`
-@dsl.pipeline(name="Compilation of pipelines",)
-def root(%v, context='', metadata_url=''):
-	# The below is base64 encoding of an empty locals() output
-	__original_context = ""
-	if context == '':
-		__original_context = "gAR9lC4="
-	else:
-		__original_context = context
-
-	'''kfp.dsl.RUN_ID_PLACEHOOLDER inside a parameter will be populated with KFP Run ID at runtime.'''
-	run_info_op = get_run_info_component(run_id=kfp.dsl.RUN_ID_PLACEHOLDER)
-
-		`, rootParameterString)
-	all_code := ""
 	previous_step := ""
 	context_variable := ""
 	number_of_raw_steps := len(aggregatedSteps)
 	steps_left_to_parse := make(map[string]string)
+	rootFileContent.Steps = make(map[string]RootStep)
 
+	// Copying this to a new variable so that we can delete them
 	for _, thisCodeBlock := range aggregatedSteps {
 		steps_left_to_parse[thisCodeBlock.Step_Identifier] = thisCodeBlock.Step_Identifier
 	}
@@ -286,6 +217,10 @@ def root(%v, context='', metadata_url=''):
 	packages_to_install_global["dill"] = ""
 	for i := 0; i < number_of_raw_steps; i++ {
 		thisCodeBlock := CodeBlock{}
+
+		// Make the of steps in alpha order - we'll need to change this if we want
+		// to allow more complex graphs. Basically, we're copying from the aggregatedSteps
+		// to thisCodeBlock just do do alpha ordering.
 		for _, test_step_identifier := range steps_left_to_parse {
 			if thisCodeBlock.Step_Identifier == "" || test_step_identifier <= thisCodeBlock.Step_Identifier {
 				thisCodeBlock = aggregatedSteps[test_step_identifier]
@@ -297,6 +232,8 @@ def root(%v, context='', metadata_url=''):
 		}
 		delete(steps_left_to_parse, thisCodeBlock.Step_Identifier)
 
+		// Another hacky work-around - we're just building every package into every container
+		// ...definitely should be more efficient (only build in what we need per container)
 		package_string := ""
 		for k := range thisCodeBlock.Packages_To_Install {
 			packages_to_install_global[k] = ""
@@ -311,35 +248,32 @@ def root(%v, context='', metadata_url=''):
 			context_variable = "__original_context"
 		}
 
-		all_code += fmt.Sprintf(`
-	%v_op = func_to_container_op(
-		func=%v.main,
-		base_image="python:3.9-slim-buster",
-		packages_to_install=[%v],
-	)
-	%v_task = %v_op(context=%v, run_info=run_info_op.outputs["run_info"], metadata_url=metadata_url)
-	%v_task.execution_options.caching_strategy.max_cache_staleness = "%v"
-		`,
-			thisCodeBlock.Step_Identifier,
-			thisCodeBlock.Step_Identifier,
-			package_string,
-			thisCodeBlock.Step_Identifier,
-			thisCodeBlock.Step_Identifier,
-			context_variable,
-			thisCodeBlock.Step_Identifier,
-			thisCodeBlock.Cache_Value)
+		thisRootStep := RootStep{}
+		thisRootStep.Name = thisCodeBlock.Step_Identifier
+		thisRootStep.Package_string = package_string
+		thisRootStep.Context_variable_name = context_variable
+		thisRootStep.Cache_value = thisCodeBlock.Cache_Value
 
 		if previous_step != "" {
-			all_code += fmt.Sprintf(`
-	%v_task.after(%v_task)
-		`,
-				thisCodeBlock.Step_Identifier,
-				previous_step)
+			thisRootStep.Previous_step = previous_step
 		}
 
 		previous_step = thisCodeBlock.Step_Identifier
+
+		rootFileContent.Steps[thisCodeBlock.Step_Identifier] = thisRootStep
+
 	}
-	return rootFile_pre_imports + import_section + run_info_component + root_pre_code + all_code, nil
+
+	builder := &bytes.Buffer{}
+	root_file_text := box.Get("/kfp/root.tmpl")
+	tmpl := template.Must(template.New("").Parse(string(root_file_text)))
+
+	err := tmpl.Execute(builder, rootFileContent)
+	if err != nil {
+		return "", fmt.Errorf("Error executing template: %v", err)
+	}
+
+	return builder.String(), nil
 
 }
 
@@ -645,7 +579,7 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 			stepDirectoryName := filepath.Join(compiledDir, aggregatedSteps[i].Step_Identifier)
 			_, err := os.Stat(stepDirectoryName)
 			if os.IsNotExist(err) {
-				errDir := os.MkdirAll(stepDirectoryName, 0755)
+				errDir := os.MkdirAll(stepDirectoryName, 0700)
 				if errDir != nil {
 					return fmt.Errorf("error creating step directory for %v: %v", stepDirectoryName, err)
 				}
@@ -816,7 +750,7 @@ if __name__ == "__main__":
 		__f.write(__output_context_tuple[0])
 `
 
-		err := os.WriteFile(step_to_write, []byte(code_to_write), 0700)
+		err := os.WriteFile(step_to_write, []byte(code_to_write), 0400)
 		if err != nil {
 			return fmt.Errorf("Error writing step %v: %v", step_to_write, err.Error())
 		}

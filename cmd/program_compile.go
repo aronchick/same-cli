@@ -54,23 +54,24 @@ var compileProgramCmd = &cobra.Command{
 			target = "kubeflow"
 		}
 
-		requiredFields := []string{"AML_SP_PASSWORD_VALUE",
-			"AML_SP_TENANT_ID",
-			"AML_SP_APP_ID",
-			"WORKSPACE_SUBSCRIPTION_ID",
-			"WORKSPACE_RESOURCE_GROUP",
-			"WORKSPACE_NAME",
-			"AML_COMPUTE_NAME"}
+		if target == "aml" {
+			requiredFields := []string{"AML_SP_PASSWORD_VALUE",
+				"AML_SP_TENANT_ID",
+				"AML_SP_APP_ID",
+				"WORKSPACE_SUBSCRIPTION_ID",
+				"WORKSPACE_RESOURCE_GROUP",
+				"WORKSPACE_NAME",
+				"AML_COMPUTE_NAME"}
 
-		missingFields := make([]string, 0)
-		for _, field := range requiredFields {
-			if os.Getenv(field) == "" {
-				missingFields = append(missingFields, field)
+			missingFields := make([]string, 0)
+			for _, field := range requiredFields {
+				if os.Getenv(field) == "" {
+					missingFields = append(missingFields, field)
+				}
 			}
-		}
-
-		if len(missingFields) > 0 {
-			return fmt.Errorf("missing environment variables for: %v", strings.Join(missingFields, ", "))
+			if len(missingFields) > 0 {
+				return fmt.Errorf("missing environment variables for: %v", strings.Join(missingFields, ", "))
+			}
 		}
 
 		if err := infra.GetDependencyCheckers(cmd, args).CheckDependenciesInstalled(); err != nil {
@@ -157,7 +158,7 @@ func writeSameConfigFile(compiledDir string, sameConfigFile loaders.SameConfig) 
 	if err != nil {
 		return fmt.Errorf("error marshaling same config file: %v", err.Error())
 	}
-	err = os.WriteFile(path.Join(compiledDir, "same.yaml"), []byte(sameConfigFileYaml), 0700)
+	err = os.WriteFile(path.Join(compiledDir, "same.yaml"), []byte(sameConfigFileYaml), 0400)
 	if err != nil {
 		return fmt.Errorf("error writing root.py file: %v", err.Error())
 	}
@@ -173,7 +174,7 @@ func writeRootFile(compiledDir string, rootFileContents string) error {
 	file_to_write := path.Join(compiledDir, "root.py")
 	logrus.Tracef("File: %v\n", file_to_write)
 
-	err = os.WriteFile(file_to_write, []byte(rootFileContents), 0700)
+	err = os.WriteFile(file_to_write, []byte(rootFileContents), 0400)
 	if err != nil {
 		return fmt.Errorf("Error writing root.py file: %v", err.Error())
 	}

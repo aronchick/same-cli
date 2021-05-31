@@ -76,16 +76,21 @@ func GetTmpConfigFile(runType string, tmpConfigDirectory string, fileToCopy stri
 }
 
 // File copies a single file from src to dst
-func CopyFile(src, dst string) (string, error) {
-	var err error
+func CopyFile(src string, dst string) (string, error) {
 	var srcfd *os.File
 	var dstfd *os.File
 	var srcinfo os.FileInfo
 
-	if srcfd, err = os.Open(src); err != nil {
+	srcfd, err := os.Open(src)
+	if err != nil {
 		return "", err
 	}
-	defer srcfd.Close()
+	defer func() {
+		cerr := srcfd.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	fileInfo, err := os.Stat(dst)
 	if fileInfo != nil && fileInfo.IsDir() {
@@ -105,8 +110,12 @@ func CopyFile(src, dst string) (string, error) {
 		return "", fmt.Errorf("could not get information about the file: %v", dst)
 	}
 
-	defer dstfd.Close()
-
+	defer func() {
+		cerr := dstfd.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 	if _, err = io.Copy(dstfd, srcfd); err != nil {
 		return "", err
 	}

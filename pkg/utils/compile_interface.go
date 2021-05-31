@@ -32,6 +32,20 @@ type FoundStep struct {
 	cache_value string
 }
 
+type RootFile struct {
+	Step_imports          []string
+	Root_parameter_string string
+	Steps                 map[string]RootStep
+}
+
+type RootStep struct {
+	Name                  string
+	Package_string        string
+	Context_variable_name string
+	Cache_value           string
+	Previous_step         string
+}
+
 func GetCompileFunctions() CompileInterface {
 	log.Tracef("Current TEST_PASS value: %v", os.Getenv("TEST_PASS"))
 	log.Tracef("Current GITHUB_ACTIONS value: %v", os.Getenv("GITHUB_ACTIONS"))

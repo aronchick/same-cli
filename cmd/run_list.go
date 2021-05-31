@@ -130,7 +130,7 @@ func prettyPrintRunList(runs []*run_model.APIRun, pipelineVersionLookupMap map[s
 		}
 		fmt.Fprintln(w)
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func getMetricsNames(runs []*run_model.APIRun) []string {

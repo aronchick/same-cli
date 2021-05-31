@@ -61,7 +61,7 @@ func LoadConfig(configPath string) (err error) {
 			_, findDirErr := os.Stat(defaultSameConfigDir)
 			if findDirErr != nil {
 				log.Infof("No config directory found at %v, creating one.\n", defaultSameConfigDir)
-				createDirErr := os.Mkdir(defaultSameConfigDir, 0755)
+				createDirErr := os.Mkdir(defaultSameConfigDir, 0750)
 				if createDirErr != nil {
 					return fmt.Errorf("Failed to write to create config directory: %v", createDirErr)
 				}

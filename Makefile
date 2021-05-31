@@ -106,7 +106,7 @@ build: build-same
 # Target: build-same                                                           #
 ################################################################################
 .PHONY: build-same
-build-same: fmt vet
+build-same: fmt vet generate
 	CGO_ENABLED=0 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 	cp bin/$(ARCH)/same bin/same
 
@@ -242,6 +242,16 @@ test-init: clean install dockerfordesktop.init none.init-no-platform
 test-generate: test-init dockerfordesktop.generate none.generate
 
 test-apply: test-generate dockerfordesktop.apply none.apply
+
+.PHONY: generate
+generate:
+	go generate ./...
+	echo "[OK] Files added to pipeline template directory!"
+
+.PHONY: security
+security:
+	gosec -exclude=G204,G304 -exclude-dir=test ./... 
+	echo "[OK] Go security check was completed!"
 
 release:
 	echo "Executing 'make release'"
