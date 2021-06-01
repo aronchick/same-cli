@@ -1,0 +1,168 @@
+from typing import NamedTuple
+import azureml.core
+
+import dill
+import base64
+
+import os
+from azureml.core import Workspace
+from azureml.core.authentication import ServicePrincipalAuthentication
+from azureml.core.compute import ComputeTarget, AmlCompute
+from azureml.core.runconfig import RunConfiguration
+from azureml.core.conda_dependencies import CondaDependencies
+from azureml.core import Environment
+from azureml.pipeline.core import Pipeline, PipelineData, PipelineParameter
+from azureml.pipeline.steps import PythonScriptStep
+from azureml.core import Run, Experiment, Datastore
+
+def get_aml_workspace(aml_workspace_credentials):
+	svc_pr_password = aml_workspace_credentials.get("AML_SP_PASSWORD_VALUE")
+
+	svc_pr = ServicePrincipalAuthentication(
+		tenant_id=aml_workspace_credentials.get("AML_SP_TENANT_ID"),
+		service_principal_id=aml_workspace_credentials.get("AML_SP_APP_ID"),
+		service_principal_password=svc_pr_password,
+	)
+
+	return Workspace(
+		subscription_id=aml_workspace_credentials.get("WORKSPACE_SUBSCRIPTION_ID"),
+		resource_group=aml_workspace_credentials.get("WORKSPACE_RESOURCE_GROUP"),
+		workspace_name=aml_workspace_credentials.get("WORKSPACE_NAME"),
+		auth=svc_pr,
+	)
+
+def root(
+	{{ .Root_parameter_string }},
+	context="",
+	metadata_url="",
+	aml_workspace_credentials={},
+):
+	# The below is base64 encoding of an empty locals() output
+	__original_context = ""
+	if context == '':
+		__original_context = "gAR9lC4="
+	else:
+		__original_context = context
+
+
+	expected_fields = [
+		"AML_SP_PASSWORD_VALUE",
+		"AML_SP_TENANT_ID",
+		"AML_SP_APP_ID",
+		"WORKSPACE_SUBSCRIPTION_ID",
+		"WORKSPACE_RESOURCE_GROUP",
+		"WORKSPACE_NAME",
+		"AML_COMPUTE_NAME",
+	]
+
+	missing_fields = [
+		field
+		for field in expected_fields
+		if not aml_workspace_credentials.get(field, None)
+	]
+	if len(missing_fields) > 0:
+		raise ValueError(
+			f"Missing expected fields in credential dictionary: {','.join(missing_fields)}"
+		)
+
+	ws = get_aml_workspace(aml_workspace_credentials)
+	experiment = Experiment(ws, "{{.ExperimentName}}")
+
+
+	compute_name = aml_workspace_credentials.get("AML_COMPUTE_NAME")
+	vm_size = "STANDARD_NC6"
+	if compute_name in ws.compute_targets:
+		compute_target = ws.compute_targets[compute_name]
+		if compute_target and type(compute_target) is AmlCompute:
+			print("Found compute target: " + compute_name)
+	else:
+		print("Creating a new compute target...")
+		provisioning_config = AmlCompute.provisioning_configuration(
+			vm_size=vm_size, min_nodes=0, max_nodes=4  # STANDARD_NC6 is GPU-enabled
+		)
+		# create the compute target
+		compute_target = ComputeTarget.create(ws, compute_name, provisioning_config)
+
+		# Can poll for a minimum number of nodes and for a specific timeout.
+		# If no min node count is provided it will use the scale settings for the cluster
+		compute_target.wait_for_completion(
+			show_output=True, min_node_count=None, timeout_in_minutes=20
+		)
+
+		# For a more detailed view of current cluster status, use the 'status' property
+		print(compute_target.status.serialize())
+
+	run_info_dict = {
+		"experiment_id": experiment.id,
+		"step_id": "same_step_0",
+	}
+
+	output = {}
+	output["run_info"] = str(
+		base64.urlsafe_b64encode(dill.dumps(run_info_dict)), encoding="ascii"
+	)
+
+	aml_run_config = RunConfiguration()
+	aml_run_config.target = compute_target
+	aml_run_config.environment = Environment(name="AML_COMPUTE_ENVIRONMENT")
+	conda_dep = CondaDependencies()
+
+	all_packages = [{{.Global_packages_to_install}}]
+	for package in all_packages:
+		conda_dep.add_pip_package(package)
+
+	# Adds dependencies to PythonSection of myenv
+	aml_run_config.environment.python.conda_dependencies = conda_dep
+	aml_run_config.environment.python.conda_dependencies.set_python_version("3.8")
+
+
+{{range .Steps}}
+	entry_point = "{{.Name}}.py"
+	__original_context_param = PipelineParameter(
+		name="input_context", default_value=__original_context
+	)
+	__pipelinedata_context_{{.Name}} = PipelineData(
+		"__pipelinedata_context_{{.Name}}", output_mode="mount"
+	)
+
+	{{.Name}}_step = PythonScriptStep(
+		source_directory="{{.Name}}",
+		script_name=entry_point,
+		arguments=[
+			"--input_context",
+			{{.Context_variable_name}},
+			"--run_info",
+			output["run_info"],
+			"--metadata_url",
+			metadata_url,
+			"--output_context",
+			__pipelinedata_context_{{.Name}},
+		],
+		inputs=[{{with .Previous_step -}}{{.}}{{- end}}],
+		outputs=[__pipelinedata_context_{{.Name}}],
+		compute_target=compute_target,
+		runconfig=aml_run_config,
+		allow_reuse=False,
+		)
+{{end}}
+
+	run_pipeline_definition = [{{ .Step_string }}]
+
+	built_pipeline = Pipeline(workspace=ws, steps=[run_pipeline_definition])
+	pipeline_run = experiment.submit(built_pipeline)
+
+if __name__ == "__main__":
+	credentials_dict = {
+		"AML_SP_PASSWORD_VALUE": os.environ.get("AML_SP_PASSWORD_VALUE"),
+		"AML_SP_TENANT_ID": os.environ.get("AML_SP_TENANT_ID"),
+		"AML_SP_APP_ID": os.environ.get("AML_SP_APP_ID"),
+		"WORKSPACE_SUBSCRIPTION_ID": os.environ.get("WORKSPACE_SUBSCRIPTION_ID"),
+		"WORKSPACE_RESOURCE_GROUP": os.environ.get("WORKSPACE_RESOURCE_GROUP"),
+		"WORKSPACE_NAME": os.environ.get("WORKSPACE_NAME"),
+		"AML_COMPUTE_NAME": os.environ.get("AML_COMPUTE_NAME"),
+	}
+
+	# execute only if run as a script
+	root(
+		context="gAR9lC4=", metadata_url="", aml_workspace_credentials=credentials_dict
+	)

@@ -33,9 +33,12 @@ type FoundStep struct {
 }
 
 type RootFile struct {
-	Step_imports          []string
-	Root_parameter_string string
-	Steps                 map[string]RootStep
+	Step_imports               []string
+	Root_parameter_string      string
+	Steps                      map[string]RootStep
+	ExperimentName             string
+	Step_string                string
+	Global_packages_to_install string
 }
 
 type RootStep struct {
