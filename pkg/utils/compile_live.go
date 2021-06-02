@@ -286,9 +286,12 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 		parameter_string = `__context="gAR9lC4=", __run_info="gAR9lC4=", __metadata_url=""` + parameter_string
 
 		step_to_write := ""
-		if target == "kubeflow" {
+		var step_file_bytes []byte
+		switch target {
+		case "kubeflow":
 			step_to_write = filepath.Join(compiledDir, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
-		} else if target == "aml" {
+			step_file_bytes = box.Get("/kfp/step.tmpl")
+		case "aml":
 			// AML requires each step to be in its own directory, with the same name as the python file
 			stepDirectoryName := filepath.Join(compiledDir, aggregatedSteps[i].StepIdentifier)
 			_, err := os.Stat(stepDirectoryName)
@@ -301,170 +304,30 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 			}
 
 			step_to_write = filepath.Join(stepDirectoryName, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
-		} else {
+			step_file_bytes = box.Get("/aml/step.tmpl")
+		default:
 			return fmt.Errorf("unknown target: %v", target)
 		}
 
-		code_to_write := fmt.Sprintf(`
-import argparse as __argparse
-from multiprocessing import context
-import pathlib
-from typing import NamedTuple
-from azureml.core import Run
-from pprint import pprint as __pp
-import os
-from pathlib import Path as __Path
-from azureml.pipeline.core import (
-	PipelineData as __PipelineData,
-	PipelineParameter as __PipelineParameter,
-)
-import dill
-from base64 import (
-	urlsafe_b64encode as __urlsafe_b64encode,
-	urlsafe_b64decode as __urlsafe_b64decode,
-)
-
-def main(%v) -> NamedTuple('FuncOutput',[('context', str),]):
-	import dill
-	import base64
-	from base64 import urlsafe_b64encode, urlsafe_b64decode
-	from copy import copy as __copy
-	from types import ModuleType as __ModuleType
-	from pprint import pprint as __pp
-	import datetime as __datetime
-	import requests
-
-	__run_info_dict = dill.loads(urlsafe_b64decode(__run_info))
-	__base64_decode = urlsafe_b64decode(__context)
-	__context_import_dict = dill.loads(__base64_decode)
-
-	__variables_to_mount = {}
-	__loc = {}
-
-	for __k in __context_import_dict:
-		__variables_to_mount[__k] = dill.loads(__context_import_dict[__k])
-
-	__json_data = {
-		"experiment_id": __run_info_dict["experiment_id"],
-		"run_id": __run_info_dict["run_id"],
-		"step_id": "%v",
-		"metadata_type": "input",
-		"metadata_value": __context,
-		"metadata_time": __datetime.datetime.now().isoformat(),
-	}
-
-	print(f"Metadata url: {__metadata_url}")
-	if __metadata_url != '':
-		print("Found metadata URL - executing.")
-		__pp(__json_data)
-		try:
-			__r = requests.post(__metadata_url, json=__json_data,)	
-			__r.raise_for_status()
-		except requests.exceptions.HTTPError as __err:
-			print(f"Error: {__err}")
-
-`, parameter_string, aggregatedSteps[i].StepIdentifier)
-
+		inner_code_to_execute := ""
 		scanner := bufio.NewScanner(strings.NewReader(aggregatedSteps[i].Code))
-		inner_code_to_execute := `
-import dill
-import base64
-from base64 import urlsafe_b64encode, urlsafe_b64decode
-from types import ModuleType as __ModuleType
-
-`
 		for scanner.Scan() {
 			inner_code_to_execute += fmt.Sprintln(scanner.Text())
 		}
-		inner_code_to_execute += `
-__locals_keys = frozenset(locals().keys())
-__globals_keys = frozenset(globals().keys())
-__context_export = {}
 
-for val in __globals_keys:
-	if not val.startswith("_") and not isinstance(val, __ModuleType):
-		__context_export[val] = dill.dumps(globals()[val])
+		stepFileContext := pongo2.Context{
+			"Name":             aggregatedSteps[i].StepIdentifier,
+			"Parameter_String": parameter_string,
+			"Inner_Code":       inner_code_to_execute,
+		}
 
-# Locals needs to come after globals in case we made changes
-for val in __locals_keys:
-	if not val.startswith("_") and not isinstance(val, __ModuleType):
-		__context_export[val] = dill.dumps(locals()[val])
+		tmpl := pongo2.Must(pongo2.FromBytes(step_file_bytes))
+		stepFileString, err := tmpl.Execute(stepFileContext)
+		if err != nil {
+			return fmt.Errorf("error writing step %v: %v", aggregatedSteps[i].StepIdentifier, err.Error())
+		}
 
-__b64_string = str(urlsafe_b64encode(dill.dumps(__context_export)), encoding="ascii")
-
-`
-
-		code_to_write += fmt.Sprintf("\t__inner_code_to_execute = '''%v'''\n", inner_code_to_execute)
-		code_to_write += fmt.Sprintf(`
-	exec(__inner_code_to_execute, __variables_to_mount, __loc)
-
-	__json_output_data = {
-		"experiment_id": __run_info_dict["experiment_id"],
-		"run_id": __run_info_dict["run_id"],
-		"step_id": "%v",
-		"metadata_type": "output",
-		"metadata_value": __loc["__b64_string"],
-		"metadata_time": __datetime.datetime.now().isoformat(),
-	}
-
-	print(f"Metadata url: {__metadata_url}")
-	if __metadata_url != '':
-		print("Found metadata URL - executing.")
-		__pp(__json_data)
-		try:
-			__r = requests.post(__metadata_url, json=__json_output_data,)	
-			__r.raise_for_status()
-		except requests.exceptions.HTTPError as err:
-			print(f"Error: {err}")
-
-	from collections import namedtuple
-	output = namedtuple("FuncOutput", ["context"])
-	return output(__loc["__b64_string"])
-`, aggregatedSteps[i].StepIdentifier)
-
-		code_to_write += `
-if __name__ == "__main__":
-	__run = Run.get_context()
-	__parser = __argparse.ArgumentParser("cleanse")
-	__parser.add_argument("--input_context", type=str, help="Context to run as string")
-	__parser.add_argument("--run_info", type=str, help="Run info")
-	__parser.add_argument("--output_context_path", type=str, help="Output context path")
-	__parser.add_argument("--metadata_url", type=str, help="Metadata URL")
-
-	__args = __parser.parse_args()
-
-	__input_context_string = "gAR9lC4="
-	__context_filename = "context.txt"
-	if "__pipelinedata_context" in __args.input_context:
-		context_full_path = __Path(__args.input_context) / __context_filename
-		print(f"reading file: {context_full_path}")
-		__input_context_string = context_full_path.read_text()
-	elif __args.input_context and __args.input_context.strip():
-		__input_context_string = __args.input_context.strip()
-
-	# Need to unpack and do this here, because AML only gives
-	# us the run id inside the container. Unpacking and repacking so
-	# bulk of the code is unchanged.
-	__run_info_dict = dill.loads(__urlsafe_b64decode(__args.run_info))
-	__run_info_dict["run_id"] = __run.get_details()["runId"]
-
-	# Returns a tuple, where the zeroth index is the string
-	__output_context_tuple = main(
-		__context=__input_context_string,
-		__run_info=str(
-			__urlsafe_b64encode(dill.dumps(__run_info_dict)), encoding="ascii"
-		),
-		__metadata_url=__args.metadata_url,
-	)
-
-	__p = __Path(__args.output_context_path)
-	__p.mkdir(parents=True, exist_ok=True)
-	__filepath = __p / __context_filename
-	with __filepath.open("w+") as __f:
-		__f.write(__output_context_tuple[0])
-`
-
-		err := os.WriteFile(step_to_write, []byte(code_to_write), 0400)
+		err = os.WriteFile(step_to_write, []byte(stepFileString), 0400)
 		if err != nil {
 			return fmt.Errorf("Error writing step %v: %v", step_to_write, err.Error())
 		}
