@@ -11,6 +11,7 @@ replace (
 require (
 	cloud.google.com/go v0.76.0 // indirect
 	github.com/argoproj/argo v0.0.0-20210125193418-4cb5b7eb8075
+	github.com/flosch/pongo2/v4 v4.0.2
 	github.com/go-git/go-git/v5 v5.2.0
 	github.com/go-openapi/strfmt v0.19.11
 	github.com/google/uuid v1.1.2

@@ -3,7 +3,6 @@ package infra
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -63,12 +62,12 @@ func (dc *LiveDependencyCheckers) CheckDependenciesInstalled() error {
 
 	log.Tracef("Error")
 
-	kubeconfigValue := os.Getenv("KUBECONFIG")
-	if kubeconfigValue == "" {
-		// From here: https://github.com/k3s-io/k3s/issues/3087
-		message := INIT_ERROR_KUBECONFIG_UNSET_WARN
-		cmd.Println(message)
-	}
+	// kubeconfigValue := os.Getenv("KUBECONFIG")
+	// if kubeconfigValue == "" {
+	// 	// From here: https://github.com/k3s-io/k3s/issues/3087
+	// 	message := INIT_ERROR_KUBECONFIG_UNSET_WARN
+	// 	cmd.Println(message)
+	// }
 
 	if clusters, err := dc.HasClusters(); len(clusters) > 0 && err != nil {
 		message := MISSING_CLUSTERS

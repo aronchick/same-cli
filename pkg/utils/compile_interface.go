@@ -16,37 +16,37 @@ type CompileInterface interface {
 }
 
 type CodeBlock struct {
-	Step_Identifier     string
-	Code                string
-	Parameters          map[string]string
-	Packages_To_Install map[string]string
-	Tags                map[string]string
-	Cache_Value         string
+	StepIdentifier    string
+	Code              string
+	Parameters        map[string]string
+	PackagesToInstall map[string]string
+	Tags              map[string]string
+	CacheValue        string
 }
 
 type FoundStep struct {
-	index       int
-	step_name   string
-	tags        []string
-	code_slice  string
-	cache_value string
+	Index      int
+	StepName   string
+	Tags       []string
+	CodeSlice  string
+	CacheValue string
 }
 
 type RootFile struct {
-	Step_imports               []string
-	Root_parameter_string      string
-	Steps                      map[string]RootStep
-	ExperimentName             string
-	Step_string                string
-	Global_packages_to_install string
+	StepImports             []string
+	RootParameterString     string
+	Steps                   map[string]RootStep
+	ExperimentName          string
+	StepString              string
+	GlobalPackagesToInstall string
 }
 
 type RootStep struct {
-	Name                  string
-	Package_string        string
-	Context_variable_name string
-	Cache_value           string
-	Previous_step         string
+	Name                string
+	PackageString       string
+	ContextVariableName string
+	CacheValue          string
+	PreviousStep        string
 }
 
 func GetCompileFunctions() CompileInterface {

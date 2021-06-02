@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,10 +9,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
-	"text/template"
 	"unicode"
+
+	pongo2 "github.com/flosch/pongo2/v4"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	"github.com/azure-octo/same-cli/internal/box"
@@ -47,10 +48,10 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 	if !namedStepsFound {
 		log.Tracef("no steps found in the file - treating the entire file as a single step.")
 		foundStep := FoundStep{}
-		foundStep.code_slice = convertedText
-		foundStep.index = 0
-		foundStep.step_name = "same_step_0"
-		foundStep.tags = nil
+		foundStep.CodeSlice = convertedText
+		foundStep.Index = 0
+		foundStep.StepName = "same_step_0"
+		foundStep.Tags = nil
 
 		return []FoundStep{foundStep}, nil
 	}
@@ -87,11 +88,11 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 			}
 		}
 		thisFoundStep := FoundStep{}
-		thisFoundStep.step_name = current_step_name
-		thisFoundStep.cache_value = cacheValue
-		thisFoundStep.tags = genericTags
-		thisFoundStep.index = current_index
-		thisFoundStep.code_slice = code_blocks_slices[i]
+		thisFoundStep.StepName = current_step_name
+		thisFoundStep.CacheValue = cacheValue
+		thisFoundStep.Tags = genericTags
+		thisFoundStep.Index = current_index
+		thisFoundStep.CodeSlice = code_blocks_slices[i]
 		foundSteps = append(foundSteps, thisFoundStep)
 
 	}
@@ -128,162 +129,53 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 	aggregatedSteps := make(map[string]CodeBlock)
 	for i, foundStep := range foundSteps {
 
-		log.Tracef("Current step: %v\n", foundStep.step_name)
-		log.Tracef("Current slice: %v\n", foundStep.code_slice)
+		log.Tracef("Current step: %v\n", foundStep.StepName)
+		log.Tracef("Current slice: %v\n", foundStep.CodeSlice)
 
 		thisCodeBlock := CodeBlock{}
-		if _, exists := aggregatedSteps[foundStep.step_name]; exists {
-			thisCodeBlock = aggregatedSteps[foundStep.step_name]
+		if _, exists := aggregatedSteps[foundStep.StepName]; exists {
+			thisCodeBlock = aggregatedSteps[foundStep.StepName]
 		}
 
-		thisCodeBlock.Code += foundStep.code_slice
-		thisCodeBlock.Step_Identifier = foundStep.step_name
-		thisCodeBlock.Cache_Value = "P0D"
-		if foundStep.cache_value != "" {
-			thisCodeBlock.Cache_Value = foundStep.cache_value
+		thisCodeBlock.Code += foundStep.CodeSlice
+		thisCodeBlock.StepIdentifier = foundStep.StepName
+		thisCodeBlock.CacheValue = "P0D"
+		if foundStep.CacheValue != "" {
+			thisCodeBlock.CacheValue = foundStep.CacheValue
 		}
 
 		import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
 		all_imports := import_regex.FindAllStringSubmatch(thisCodeBlock.Code, -2)
 
-		log.Tracef("Code: %v", aggregatedSteps[foundStep.step_name].Code)
+		log.Tracef("Code: %v", aggregatedSteps[foundStep.StepName].Code)
 		if len(all_imports) >= 1 {
 			log.Tracef("Packages:")
-			if thisCodeBlock.Packages_To_Install == nil {
-				thisCodeBlock.Packages_To_Install = make(map[string]string)
+			if thisCodeBlock.PackagesToInstall == nil {
+				thisCodeBlock.PackagesToInstall = make(map[string]string)
 			}
 			for i := range all_imports {
 				// TODO: Parse for versions eventually
-				thisCodeBlock.Packages_To_Install[all_imports[i][1]] = ""
+				thisCodeBlock.PackagesToInstall[all_imports[i][1]] = ""
 				log.Tracef("- \t%v\n", all_imports[i][1])
 			}
 
 		} else {
 			log.Tracef("No packages to install for found step #: %v\n", i)
 		}
-		aggregatedSteps[foundStep.step_name] = thisCodeBlock
+		aggregatedSteps[foundStep.StepName] = thisCodeBlock
 	}
 
 	return aggregatedSteps, nil
 }
 
 func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
-	switch target {
-	case "kubeflow":
-		return compileRootFileKubeflow(aggregatedSteps, sameConfigFile)
-	case "aml":
-		return compileRootFileAML(aggregatedSteps, sameConfigFile)
-	default:
+
+	if !ContainsString([]string{"kubeflow", "aml"}, target) {
 		return "", fmt.Errorf("unknown compilation target: %v", target)
-	}
-}
-
-func compileRootFileKubeflow(aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
-	rootFileContent := RootFile{}
-	for i := range aggregatedSteps {
-		rootFileContent.Step_imports = append(rootFileContent.Step_imports, aggregatedSteps[i].Step_Identifier)
-	}
-
-	if len(sameConfigFile.Spec.Run.Parameters) > 0 {
-		rootParameters := make(map[string]string, len(sameConfigFile.Spec.Run.Parameters))
-		for k, untyped_v := range sameConfigFile.Spec.Run.Parameters {
-			switch untyped_v.(type) {
-			case int, int8, uint8, int16, uint16, int32, uint32, int64, uint64, uint, uintptr, float32, float64, bool, string:
-				rootParameters[k] = fmt.Sprintf("%v", untyped_v)
-			default:
-				log.Warnf("We only support numeric, bool and strings as default parameters (no dicts or lists). We're setting the default value for '%v' to ''.", k)
-				rootParameters[k] = ""
-			}
-
-		}
-		rootFileContent.Root_parameter_string, _ = JoinMapKeysValues(rootParameters)
-	}
-
-	previous_step := ""
-	context_variable := ""
-	number_of_raw_steps := len(aggregatedSteps)
-	steps_left_to_parse := make(map[string]string)
-	rootFileContent.Steps = make(map[string]RootStep)
-
-	// Copying this to a new variable so that we can delete them
-	for _, thisCodeBlock := range aggregatedSteps {
-		steps_left_to_parse[thisCodeBlock.Step_Identifier] = thisCodeBlock.Step_Identifier
-	}
-
-	// Unfortunately, every early step's package includes also need to be included in later
-	// steps. This is become some objects (like IPython.image) require module imports.
-	// There's probably a more elegant way to handle this.
-	packages_to_install_global := make(map[string]string)
-	packages_to_install_global["dill"] = ""
-	for i := 0; i < number_of_raw_steps; i++ {
-		thisCodeBlock := CodeBlock{}
-
-		// Make the of steps in alpha order - we'll need to change this if we want
-		// to allow more complex graphs. Basically, we're copying from the aggregatedSteps
-		// to thisCodeBlock just do do alpha ordering.
-		for _, test_step_identifier := range steps_left_to_parse {
-			if thisCodeBlock.Step_Identifier == "" || test_step_identifier <= thisCodeBlock.Step_Identifier {
-				thisCodeBlock = aggregatedSteps[test_step_identifier]
-			}
-		}
-
-		if thisCodeBlock.Step_Identifier == "" {
-			return "", fmt.Errorf("compile_live.go: got to the end of searching and did not assign a code block. Not sure how.")
-		}
-		delete(steps_left_to_parse, thisCodeBlock.Step_Identifier)
-
-		// Another hacky work-around - we're just building every package into every container
-		// ...definitely should be more efficient (only build in what we need per container)
-		package_string := ""
-		for k := range thisCodeBlock.Packages_To_Install {
-			packages_to_install_global[k] = ""
-		}
-
-		for k := range packages_to_install_global {
-			package_string += fmt.Sprintf("'%v',", k)
-		}
-
-		context_variable = fmt.Sprintf("%v_task.outputs['context']", previous_step)
-		if previous_step == "" {
-			context_variable = "__original_context"
-		}
-
-		thisRootStep := RootStep{}
-		thisRootStep.Name = thisCodeBlock.Step_Identifier
-		thisRootStep.Package_string = package_string
-		thisRootStep.Context_variable_name = context_variable
-		thisRootStep.Cache_value = thisCodeBlock.Cache_Value
-
-		if previous_step != "" {
-			thisRootStep.Previous_step = previous_step
-		}
-
-		previous_step = thisCodeBlock.Step_Identifier
-
-		rootFileContent.Steps[thisCodeBlock.Step_Identifier] = thisRootStep
-
-	}
-
-	builder := &bytes.Buffer{}
-	root_file_text := box.Get("/kfp/root.tmpl")
-	tmpl := template.Must(template.New("").Parse(string(root_file_text)))
-
-	err := tmpl.Execute(builder, rootFileContent)
-	if err != nil {
-		return "", fmt.Errorf("Error executing template: %v", err)
-	}
-
-	return builder.String(), nil
-
-}
-
-func compileRootFileAML(aggregatedSteps map[string]CodeBlock, sameConfigFile loaders.SameConfig) (string, error) {
-	rootFileContent := RootFile{}
-	for i := range aggregatedSteps {
-		rootFileContent.Step_imports = append(rootFileContent.Step_imports, aggregatedSteps[i].Step_Identifier)
 	}
 
 	rootParameterString := ""
+
 	if len(sameConfigFile.Spec.Run.Parameters) > 0 {
 		rootParameters := make(map[string]string, len(sameConfigFile.Spec.Run.Parameters))
 		for k, untyped_v := range sameConfigFile.Spec.Run.Parameters {
@@ -299,94 +191,96 @@ func compileRootFileAML(aggregatedSteps map[string]CodeBlock, sameConfigFile loa
 		rootParameterString, _ = JoinMapKeysValues(rootParameters)
 	}
 
-	if sameConfigFile.Spec.Metadata.Name == "" {
-		return "", fmt.Errorf("no name found for the experiment")
-	}
-	rootFileContent.Root_parameter_string = rootParameterString
-	rootFileContent.ExperimentName = removeIllegalExperimentNameCharacters(sameConfigFile.Spec.Metadata.Name)
-
 	previous_step := ""
-	context_variable := ""
-	number_of_raw_steps := len(aggregatedSteps)
-	all_steps := make([]string, 0)
-	steps_left_to_parse := make(map[string]string)
-	rootFileContent.Steps = make(map[string]RootStep)
+	contextVariable := ""
+	steps_left_to_parse_map := make(map[string]string)
+	allSteps := map[string]map[string]string{}
 
+	// Copying this to a new variable so that we can delete them
 	for _, thisCodeBlock := range aggregatedSteps {
-		steps_left_to_parse[thisCodeBlock.Step_Identifier] = thisCodeBlock.Step_Identifier
+		steps_left_to_parse_map[thisCodeBlock.StepIdentifier] = thisCodeBlock.StepIdentifier
 	}
+
+	steps_to_parse := make([]string, 0, len(steps_left_to_parse_map))
+	for key := range steps_left_to_parse_map {
+		steps_to_parse = append(steps_to_parse, key)
+	}
+	sort.Strings(steps_to_parse)
 
 	// Unfortunately, every early step's package includes also need to be included in later
 	// steps. This is become some objects (like IPython.image) require module imports.
 	// There's probably a more elegant way to handle this.
 	packages_to_install_global := make(map[string]string)
-	packages_to_install_global["dill"] = ""
-	packages_to_install_global["azureml.pipeline"] = ""
-	packages_to_install_global["azureml.core"] = ""
-	for i := 0; i < number_of_raw_steps; i++ {
-		thisRootStep := RootStep{}
+	globalPackagesString := ""
+	for i := 0; i < len(steps_to_parse); i++ {
 		thisCodeBlock := CodeBlock{}
-		for _, test_step_identifier := range steps_left_to_parse {
-			if thisCodeBlock.Step_Identifier == "" || test_step_identifier <= thisCodeBlock.Step_Identifier {
-				thisCodeBlock = aggregatedSteps[test_step_identifier]
-			}
-		}
+		thisCodeBlock.StepIdentifier = steps_to_parse[i]
 
-		if thisCodeBlock.Step_Identifier == "" {
-			return "", fmt.Errorf("compile_live.go: got to the end of searching and did not assign a code block. Not sure how.")
-		}
-
-		all_steps = AppendIfMissing(all_steps, thisCodeBlock.Step_Identifier)
-		delete(steps_left_to_parse, thisCodeBlock.Step_Identifier)
-
-		for k := range thisCodeBlock.Packages_To_Install {
+		// Another hacky work-around - we're just building every package into every container
+		// ...definitely should be more efficient (only build in what we need per container)
+		packageString := ""
+		for k := range thisCodeBlock.PackagesToInstall {
 			packages_to_install_global[k] = ""
 		}
 
-		context_variable = fmt.Sprintf("__pipelinedata_context_%v", previous_step)
+		for k := range packages_to_install_global {
+			packageString += fmt.Sprintf("'%v',", k)
+			globalPackagesString += fmt.Sprintf("'%v',", k)
+		}
+
+		contextVariable = fmt.Sprintf("%v_task.outputs['context']", previous_step)
 		if previous_step == "" {
-			context_variable = "__original_context_param"
+			contextVariable = "__original_context"
 		}
 
-		previous_pipeline_step := ""
-		if previous_step != "" {
-			previous_pipeline_step = fmt.Sprintf("__pipelinedata_context_%v", previous_step)
+		allSteps[thisCodeBlock.StepIdentifier] = map[string]string{
+			"Name":                thisCodeBlock.StepIdentifier,
+			"PackageString":       packageString,
+			"ContextVariableName": contextVariable,
+			"CacheValue":          thisCodeBlock.CacheValue,
+			"PreviousStep":        previous_step,
 		}
-		previous_step = thisCodeBlock.Step_Identifier
 
-		thisRootStep.Name = thisCodeBlock.Step_Identifier
-		thisRootStep.Context_variable_name = context_variable
-		thisRootStep.Previous_step = previous_pipeline_step
-		thisRootStep.Package_string = ""
-		rootFileContent.Steps[thisRootStep.Name] = thisRootStep
+		previous_step = thisCodeBlock.StepIdentifier
 
 	}
 
+	experimentName := removeIllegalExperimentNameCharacters(sameConfigFile.Spec.Metadata.Name)
 	step_string := ""
-	for _, step := range all_steps {
+	for _, step := range steps_to_parse {
 		if step_string != "" {
 			step_string += ", "
 		}
 		step_string += fmt.Sprintf("%v_step", step)
 	}
 
-	package_string := ""
-	for k := range packages_to_install_global {
-		package_string += fmt.Sprintf("'%v',", k)
+	rootFileContext := pongo2.Context{
+		"RootParameterString":  rootParameterString,
+		"GlobalPackagesString": globalPackagesString,
+		"Steps":                allSteps,
+		"StepString":           step_string,
+		"ExperimentName":       experimentName,
 	}
-	rootFileContent.Global_packages_to_install = package_string
-	rootFileContent.Step_string = step_string
 
-	builder := &bytes.Buffer{}
-	root_file_text := box.Get("/aml/root.tmpl")
-	tmpl := template.Must(template.New("").Parse(string(root_file_text)))
+	var root_file_bytes []byte
+	switch target {
+	case "kubeflow":
+		root_file_bytes = box.Get("/kfp/root.tmpl")
+	case "aml":
+		root_file_bytes = box.Get("/aml/root.tmpl")
+	default:
+		return "", fmt.Errorf("unknown compilation target: %v", target)
+	}
 
-	err := tmpl.Execute(builder, rootFileContent)
+	tmpl := pongo2.Must(pongo2.FromBytes(root_file_bytes))
+
+	rootFileString, err := tmpl.Execute(rootFileContext)
 	if err != nil {
 		return "", fmt.Errorf("Error executing template: %v", err)
 	}
 
-	return builder.String(), nil
+	return rootFileString, nil
+
 }
 
 func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregatedSteps map[string]CodeBlock) error {
@@ -401,10 +295,10 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 
 		step_to_write := ""
 		if target == "kubeflow" {
-			step_to_write = filepath.Join(compiledDir, fmt.Sprintf("%v.py", aggregatedSteps[i].Step_Identifier))
+			step_to_write = filepath.Join(compiledDir, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
 		} else if target == "aml" {
 			// AML requires each step to be in its own directory, with the same name as the python file
-			stepDirectoryName := filepath.Join(compiledDir, aggregatedSteps[i].Step_Identifier)
+			stepDirectoryName := filepath.Join(compiledDir, aggregatedSteps[i].StepIdentifier)
 			_, err := os.Stat(stepDirectoryName)
 			if os.IsNotExist(err) {
 				errDir := os.MkdirAll(stepDirectoryName, 0700)
@@ -414,7 +308,7 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 
 			}
 
-			step_to_write = filepath.Join(stepDirectoryName, fmt.Sprintf("%v.py", aggregatedSteps[i].Step_Identifier))
+			step_to_write = filepath.Join(stepDirectoryName, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
 		} else {
 			return fmt.Errorf("unknown target: %v", target)
 		}
@@ -477,7 +371,7 @@ def main(%v) -> NamedTuple('FuncOutput',[('context', str),]):
 		except requests.exceptions.HTTPError as __err:
 			print(f"Error: {__err}")
 
-`, parameter_string, aggregatedSteps[i].Step_Identifier)
+`, parameter_string, aggregatedSteps[i].StepIdentifier)
 
 		scanner := bufio.NewScanner(strings.NewReader(aggregatedSteps[i].Code))
 		inner_code_to_execute := `
@@ -534,7 +428,7 @@ __b64_string = str(urlsafe_b64encode(dill.dumps(__context_export)), encoding="as
 	from collections import namedtuple
 	output = namedtuple("FuncOutput", ["context"])
 	return output(__loc["__b64_string"])
-`, aggregatedSteps[i].Step_Identifier)
+`, aggregatedSteps[i].StepIdentifier)
 
 		code_to_write += `
 if __name__ == "__main__":

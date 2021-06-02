@@ -80,6 +80,11 @@ github.com/emirpasic/gods/lists/arraylist
 github.com/emirpasic/gods/trees
 github.com/emirpasic/gods/trees/binaryheap
 github.com/emirpasic/gods/utils
+# github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
+## explicit
+# github.com/flosch/pongo2/v4 v4.0.2
+## explicit
+github.com/flosch/pongo2/v4
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
 # github.com/ghodss/yaml v1.0.0

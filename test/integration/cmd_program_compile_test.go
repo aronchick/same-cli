@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/azure-octo/same-cli/cmd"
+	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	"github.com/azure-octo/same-cli/pkg/infra"
 	"github.com/azure-octo/same-cli/pkg/utils"
 	"github.com/onsi/gomega/gbytes"
@@ -85,7 +86,7 @@ func (suite *ProgramCompileSuite) Test_SettingCacheValue_NoCache() {
 	foundSteps, _ := c.FindAllSteps(ONE_STEP)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
 	cb := codeBlocks["same_step_1"]
-	assert.Equal(suite.T(), cb.Cache_Value, "P0D", "Expected to set a missing cache value to P0D. Actual: %v", cb.Cache_Value)
+	assert.Equal(suite.T(), cb.CacheValue, "P0D", "Expected to set a missing cache value to P0D. Actual: %v", cb.CacheValue)
 
 }
 
@@ -96,7 +97,7 @@ func (suite *ProgramCompileSuite) Test_SettingCacheValue_WithCache() {
 	foundSteps, _ := c.FindAllSteps(ONE_STEP_WITH_CACHE)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
 	cb := codeBlocks["same_step_1"]
-	assert.Equal(suite.T(), cb.Cache_Value, "P20D", "Expected to set a missing cache value to P20D. Actual: %v", cb.Cache_Value)
+	assert.Equal(suite.T(), cb.CacheValue, "P20D", "Expected to set a missing cache value to P20D. Actual: %v", cb.CacheValue)
 
 }
 
@@ -107,7 +108,7 @@ func (suite *ProgramCompileSuite) Test_ImportsWorkingProperly() {
 	foundSteps, _ := c.FindAllSteps(NOTEBOOKS_WITH_IMPORT)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
 	cb := codeBlocks["same_step_0"]
-	assert.Contains(suite.T(), cb.Packages_To_Install, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.Packages_To_Install)
+	assert.Contains(suite.T(), cb.PackagesToInstall, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.PackagesToInstall)
 
 }
 
@@ -119,15 +120,78 @@ func (suite *ProgramCompileSuite) Test_FullNotebookExperience() {
 		assert.Fail(suite.T(), "Jupytext not installed")
 	}
 
+	notebookPath := "../testdata/notebook/sample_notebook.ipynb"
+	if _, exists := os.Stat(notebookPath); exists != nil {
+		assert.Fail(suite.T(), "Notebook not found at: %v", notebookPath)
+	}
+	convertedText, _ := c.ConvertNotebook(jupytextExecutable, notebookPath)
+	foundSteps, _ := c.FindAllSteps(convertedText)
+	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
+	cb := codeBlocks["same_step_0"]
+	assert.Contains(suite.T(), cb.PackagesToInstall, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.PackagesToInstall)
+}
+
+func (suite *ProgramCompileSuite) Test_KubeflowRootCompile() {
+	os.Setenv("TEST_PASS", "1")
+	c := utils.GetCompileFunctions()
+
+	sameConfigFile, err := loaders.V1{}.LoadSAME("../testdata/notebook/sample_notebook_same.yaml")
+	if err != nil {
+		assert.Fail(suite.T(), "could not load SAME config file: %v", err)
+	}
+
+	jupytextExecutable, err := exec.LookPath("jupytext")
+	if err != nil {
+		assert.Fail(suite.T(), "Jupytext not installed")
+	}
+
 	notebook_path := "../testdata/notebook/sample_notebook.ipynb"
 	if _, exists := os.Stat(notebook_path); exists != nil {
 		assert.Fail(suite.T(), "Notebook not found at: %v", notebook_path)
 	}
-	converted_text, _ := c.ConvertNotebook(jupytextExecutable, notebook_path)
-	foundSteps, _ := c.FindAllSteps(converted_text)
-	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
-	cb := codeBlocks["same_step_0"]
-	assert.Contains(suite.T(), cb.Packages_To_Install, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.Packages_To_Install)
+	convertedText, _ := c.ConvertNotebook(jupytextExecutable, notebook_path)
+	foundSteps, _ := c.FindAllSteps(convertedText)
+	aggregatedSteps, _ := c.CombineCodeSlicesToSteps(foundSteps)
+	fullRootFile, _ := c.CreateRootFile("kubeflow", aggregatedSteps, *sameConfigFile)
+
+	assert.Contains(suite.T(), fullRootFile, "import kfp", "Does not contain pre-steps import")
+	assert.Contains(suite.T(), fullRootFile, "import same_step_2", "Does not contain multi-step import")
+	assert.Contains(suite.T(), fullRootFile, "def get_run_info(", "Does not contain run info import")
+	assert.Contains(suite.T(), fullRootFile, "sample_parameter='0.841'", "Does not contain default parameter")
+	assert.Contains(suite.T(), fullRootFile, "run_info_op = get_run_info_component(run_id=kfp.dsl.RUN_ID_PLACEHOLDER)\n\n\n\tsame_step_0_op", "SAME Step 0 is not the first step")
+	assert.Contains(suite.T(), fullRootFile, "same_step_2_op = func_to_container_op(", "Does not contain the third step")
+	assert.Contains(suite.T(), fullRootFile, "same_step_2_task.after(same_step_1_task)", "Does not have the final DAG step")
+}
+
+func (suite *ProgramCompileSuite) Test_AMLRootCompile() {
+	os.Setenv("TEST_PASS", "1")
+	c := utils.GetCompileFunctions()
+
+	sameConfigFile, err := loaders.V1{}.LoadSAME("../testdata/notebook/sample_notebook_same.yaml")
+	if err != nil {
+		assert.Fail(suite.T(), "could not load SAME config file: %v", err)
+	}
+
+	jupytextExecutable, err := exec.LookPath("jupytext")
+	if err != nil {
+		assert.Fail(suite.T(), "Jupytext not installed")
+	}
+
+	notebook_path := "../testdata/notebook/sample_notebook.ipynb"
+	if _, exists := os.Stat(notebook_path); exists != nil {
+		assert.Fail(suite.T(), "Notebook not found at: %v", notebook_path)
+	}
+	convertedText, _ := c.ConvertNotebook(jupytextExecutable, notebook_path)
+	foundSteps, _ := c.FindAllSteps(convertedText)
+	aggregatedSteps, _ := c.CombineCodeSlicesToSteps(foundSteps)
+	fullRootFile, _ := c.CreateRootFile("aml", aggregatedSteps, *sameConfigFile)
+
+	assert.Contains(suite.T(), fullRootFile, "import azureml.core", "Does not contain pre-steps import")
+	assert.Contains(suite.T(), fullRootFile, "sample_parameter='0.841'", "Does not contain default parameter")
+	assert.Contains(suite.T(), fullRootFile, "experiment = Experiment(ws, \"SampleComplicatedNotebook\")", "Does not contain the experiment name")
+	assert.Contains(suite.T(), fullRootFile, "__original_context_param,", "Does not contain the original context")
+	assert.Contains(suite.T(), fullRootFile, "inputs=[same_step_1],", "Does not contain input for third step")
+	assert.Contains(suite.T(), fullRootFile, "run_pipeline_definition = [same_step_0_step, same_step_1_step, same_step_2_step]", "Does not have the final pipeline combination")
 }
 
 func (suite *ProgramCompileSuite) TearDownAllSuite() {

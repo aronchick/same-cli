@@ -37,3 +37,9 @@ func AppendIfMissing(slice []string, s string) []string {
 	}
 	return append(slice, s)
 }
+
+func RemoveIndex(s []int, index int) []int {
+	ret := make([]int, 0)
+	ret = append(ret, s[:index]...)
+	return append(ret, s[index+1:]...)
+}

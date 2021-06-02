@@ -1,3 +1,4 @@
+{% autoescape off %}
 from typing import NamedTuple
 import azureml.core
 
@@ -32,7 +33,7 @@ def get_aml_workspace(aml_workspace_credentials):
 	)
 
 def root(
-	{{ .Root_parameter_string }},
+	{{ RootParameterString }},
 	context="",
 	metadata_url="",
 	aml_workspace_credentials={},
@@ -66,7 +67,7 @@ def root(
 		)
 
 	ws = get_aml_workspace(aml_workspace_credentials)
-	experiment = Experiment(ws, "{{.ExperimentName}}")
+	experiment = Experiment(ws, "{{ ExperimentName }}")
 
 
 	compute_name = aml_workspace_credentials.get("AML_COMPUTE_NAME")
@@ -107,7 +108,7 @@ def root(
 	aml_run_config.environment = Environment(name="AML_COMPUTE_ENVIRONMENT")
 	conda_dep = CondaDependencies()
 
-	all_packages = [{{.Global_packages_to_install}}]
+	all_packages = ["dill","azureml.pipeline","azureml.core",{{GlobalPackagesString}}]
 	for package in all_packages:
 		conda_dep.add_pip_package(package)
 
@@ -115,38 +116,39 @@ def root(
 	aml_run_config.environment.python.conda_dependencies = conda_dep
 	aml_run_config.environment.python.conda_dependencies.set_python_version("3.8")
 
-
-{{range .Steps}}
-	entry_point = "{{.Name}}.py"
 	__original_context_param = PipelineParameter(
 		name="input_context", default_value=__original_context
 	)
-	__pipelinedata_context_{{.Name}} = PipelineData(
-		"__pipelinedata_context_{{.Name}}", output_mode="mount"
+
+{% for k, step in Steps %}
+	entry_point = "{{step.Name}}.py"
+	__pipelinedata_context_{{step.Name}} = PipelineData(
+		"__pipelinedata_context_{{step.Name}}", output_mode="mount"
 	)
 
-	{{.Name}}_step = PythonScriptStep(
-		source_directory="{{.Name}}",
+	{{step.Name}}_step = PythonScriptStep(
+		source_directory="{{step.Name}}",
 		script_name=entry_point,
 		arguments=[
 			"--input_context",
-			{{.Context_variable_name}},
+			{% if step.PreviousStep %}__pipelinedata_context_{{step.PreviousStep}}{% else %}__original_context_param{% endif %},
 			"--run_info",
 			output["run_info"],
 			"--metadata_url",
 			metadata_url,
 			"--output_context",
-			__pipelinedata_context_{{.Name}},
+			__pipelinedata_context_{{step.Name}},
 		],
-		inputs=[{{with .Previous_step -}}{{.}}{{- end}}],
-		outputs=[__pipelinedata_context_{{.Name}}],
+
+		{% if step.PreviousStep %}inputs=[__pipelinedata_context_{{step.PreviousStep}}],{% endif %}
+		outputs=[__pipelinedata_context_{{step.Name}}],
 		compute_target=compute_target,
 		runconfig=aml_run_config,
 		allow_reuse=False,
 		)
-{{end}}
+{% endfor %}
 
-	run_pipeline_definition = [{{ .Step_string }}]
+	run_pipeline_definition = [{{StepString}}]
 
 	built_pipeline = Pipeline(workspace=ws, steps=[run_pipeline_definition])
 	pipeline_run = experiment.submit(built_pipeline)
@@ -166,3 +168,5 @@ if __name__ == "__main__":
 	root(
 		context="gAR9lC4=", metadata_url="", aml_workspace_credentials=credentials_dict
 	)
+
+{% endautoescape %}
