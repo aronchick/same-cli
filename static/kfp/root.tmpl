@@ -7,8 +7,8 @@ import kfp.compiler as compiler
 from kfp.dsl.types import Dict as KFPDict, List as KFPList
 from typing import NamedTuple
 
-{% for k, v in Steps %}
-import {{ k }}
+{% for step in Steps %}
+import {{ step.Name }}
 {% endfor %}
 
 def get_run_info(
@@ -69,7 +69,7 @@ def root({{ RootParameterString }}, context='', metadata_url=''):
 	'''kfp.dsl.RUN_ID_PLACEHOOLDER inside a parameter will be populated with KFP Run ID at runtime.'''
 	run_info_op = get_run_info_component(run_id=kfp.dsl.RUN_ID_PLACEHOLDER)
 
-{% for step_name, step in Steps %}
+{% for step in Steps %}
 	{{step.Name}}_op = func_to_container_op(
 		func={{step.Name}}.main,
 		base_image="python:3.9-slim-buster",

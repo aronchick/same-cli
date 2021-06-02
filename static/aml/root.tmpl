@@ -120,7 +120,7 @@ def root(
 		name="input_context", default_value=__original_context
 	)
 
-{% for k, step in Steps %}
+{% for step in Steps %}
 	entry_point = "{{step.Name}}.py"
 	__pipelinedata_context_{{step.Name}} = PipelineData(
 		"__pipelinedata_context_{{step.Name}}", output_mode="mount"
@@ -146,6 +146,7 @@ def root(
 		runconfig=aml_run_config,
 		allow_reuse=False,
 		)
+
 {% endfor %}
 
 	run_pipeline_definition = [{{StepString}}]

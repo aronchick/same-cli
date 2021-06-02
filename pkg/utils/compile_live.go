@@ -191,29 +191,29 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		rootParameterString, _ = JoinMapKeysValues(rootParameters)
 	}
 
-	previous_step := ""
-	steps_left_to_parse_map := make(map[string]string)
-	allSteps := map[string]map[string]string{}
+	previousStep := ""
+	stepsLeftToParse := make(map[string]string)
+	allSteps := []map[string]string{}
 
 	// Copying this to a new variable so that we can delete them
 	for _, thisCodeBlock := range aggregatedSteps {
-		steps_left_to_parse_map[thisCodeBlock.StepIdentifier] = thisCodeBlock.StepIdentifier
+		stepsLeftToParse[thisCodeBlock.StepIdentifier] = thisCodeBlock.StepIdentifier
 	}
 
-	steps_to_parse := make([]string, 0, len(steps_left_to_parse_map))
-	for key := range steps_left_to_parse_map {
-		steps_to_parse = append(steps_to_parse, key)
+	stepsToParse := make([]string, 0, len(stepsLeftToParse))
+	for key := range stepsLeftToParse {
+		stepsToParse = append(stepsToParse, key)
 	}
-	sort.Strings(steps_to_parse)
+	sort.Strings(stepsToParse)
 
 	// Unfortunately, every early step's package includes also need to be included in later
 	// steps. This is become some objects (like IPython.image) require module imports.
 	// There's probably a more elegant way to handle this.
 	globalPackagesSlice := make(map[string]string)
 	globalPackagesString := ""
-	for i := 0; i < len(steps_to_parse); i++ {
+	for i := 0; i < len(stepsToParse); i++ {
 		thisCodeBlock := CodeBlock{}
-		thisCodeBlock.StepIdentifier = steps_to_parse[i]
+		thisCodeBlock.StepIdentifier = stepsToParse[i]
 
 		// Another hacky work-around - we're just building every package into every container
 		// ...definitely should be more efficient (only build in what we need per container)
@@ -227,31 +227,31 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 			globalPackagesString += fmt.Sprintf("'%v',", k)
 		}
 
-		allSteps[thisCodeBlock.StepIdentifier] = map[string]string{
+		allSteps = append(allSteps, map[string]string{
 			"Name":          thisCodeBlock.StepIdentifier,
 			"PackageString": packageString,
 			"CacheValue":    thisCodeBlock.CacheValue,
-			"PreviousStep":  previous_step,
-		}
+			"PreviousStep":  previousStep,
+		})
 
-		previous_step = thisCodeBlock.StepIdentifier
+		previousStep = thisCodeBlock.StepIdentifier
 
 	}
 
 	experimentName := removeIllegalExperimentNameCharacters(sameConfigFile.Spec.Metadata.Name)
-	step_string := ""
-	for _, step := range steps_to_parse {
-		if step_string != "" {
-			step_string += ", "
+	stepString := ""
+	for _, step := range stepsToParse {
+		if stepString != "" {
+			stepString += ", "
 		}
-		step_string += fmt.Sprintf("%v_step", step)
+		stepString += fmt.Sprintf("%v_step", step)
 	}
 
 	rootFileContext := pongo2.Context{
 		"RootParameterString":  rootParameterString,
 		"GlobalPackagesString": globalPackagesString,
 		"Steps":                allSteps,
-		"StepString":           step_string,
+		"StepString":           stepString,
 		"ExperimentName":       experimentName,
 	}
 
