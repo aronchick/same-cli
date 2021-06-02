@@ -121,6 +121,7 @@ var runProgramCmd = &cobra.Command{
 			runParams[parts[0]] = parts[1]
 		}
 
+		log.Tracef("Target: %v", target)
 		if target == "kubeflow" {
 			pipelineID := ""
 			pipelineVersionID := ""
@@ -189,6 +190,8 @@ VersionID: %v
 
 			fmt.Printf("Program run created with ID %s.\n", runDetails.Run.ID)
 		} else if target == "aml" {
+			log.Tracef("Executing AML target")
+			log.Tracef("Freezing python packages")
 			pipCommand := `
 	#!/bin/bash
 	set -e
@@ -200,7 +203,7 @@ VersionID: %v
 			if err != nil {
 				log.Tracef("Error executing: %v\n", err.Error())
 			}
-			requiredLibraries := []string{"azureml.core", "azureml.pipeline"}
+			requiredLibraries := []string{"dill", "azureml", "azureml.core", "azureml.pipeline"}
 
 			missingLibraries := make([]string, 0)
 			for _, lib := range requiredLibraries {
@@ -210,10 +213,12 @@ VersionID: %v
 				}
 			}
 
+			log.Tracef("Testing for missing libraries")
 			if len(missingLibraries) > 0 {
 				err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
 pip3 install %v`, strings.Join(missingLibraries, " "))
 				fmt.Println(err.Error())
+				return err
 			}
 
 			requiredFields := []string{"AML_SP_PASSWORD_VALUE",

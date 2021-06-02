@@ -212,8 +212,7 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 	globalPackagesSlice := make(map[string]string)
 	globalPackagesString := ""
 	for i := 0; i < len(stepsToParse); i++ {
-		thisCodeBlock := CodeBlock{}
-		thisCodeBlock.StepIdentifier = stepsToParse[i]
+		thisCodeBlock := aggregatedSteps[stepsToParse[i]]
 
 		// Another hacky work-around - we're just building every package into every container
 		// ...definitely should be more efficient (only build in what we need per container)
@@ -223,8 +222,8 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		}
 
 		for k := range globalPackagesSlice {
-			packageString += fmt.Sprintf("'%v',", k)
-			globalPackagesString += fmt.Sprintf("'%v',", k)
+			packageString += fmt.Sprintf("\"%v\",", k)
+			globalPackagesString += fmt.Sprintf("\"%v\",", k)
 		}
 
 		allSteps = append(allSteps, map[string]string{
@@ -284,7 +283,7 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 		}
 
 		// Prepend an empty locals as the default
-		parameter_string = "__context='gAR9lC4=', __run_info='gAR9lC4=', __metadata_url=''" + parameter_string
+		parameter_string = `__context="gAR9lC4=", __run_info="gAR9lC4=", __metadata_url=""` + parameter_string
 
 		step_to_write := ""
 		if target == "kubeflow" {
