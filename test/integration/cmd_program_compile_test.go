@@ -190,7 +190,7 @@ func (suite *ProgramCompileSuite) Test_AMLRootCompile() {
 	assert.Contains(suite.T(), fullRootFile, "sample_parameter='0.841'", "Does not contain default parameter")
 	assert.Contains(suite.T(), fullRootFile, "experiment = Experiment(ws, \"SampleComplicatedNotebook\")", "Does not contain the experiment name")
 	assert.Contains(suite.T(), fullRootFile, "__original_context_param,", "Does not contain the original context")
-	assert.Contains(suite.T(), fullRootFile, "inputs=[same_step_1],", "Does not contain input for third step")
+	assert.Contains(suite.T(), fullRootFile, "inputs=[__pipelinedata_context_same_step_1],", "Does not contain input for third step")
 	assert.Contains(suite.T(), fullRootFile, "run_pipeline_definition = [same_step_0_step, same_step_1_step, same_step_2_step]", "Does not have the final pipeline combination")
 }
 

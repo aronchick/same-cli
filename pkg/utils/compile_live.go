@@ -192,7 +192,6 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 	}
 
 	previous_step := ""
-	contextVariable := ""
 	steps_left_to_parse_map := make(map[string]string)
 	allSteps := map[string]map[string]string{}
 
@@ -210,7 +209,7 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 	// Unfortunately, every early step's package includes also need to be included in later
 	// steps. This is become some objects (like IPython.image) require module imports.
 	// There's probably a more elegant way to handle this.
-	packages_to_install_global := make(map[string]string)
+	globalPackagesSlice := make(map[string]string)
 	globalPackagesString := ""
 	for i := 0; i < len(steps_to_parse); i++ {
 		thisCodeBlock := CodeBlock{}
@@ -220,25 +219,19 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		// ...definitely should be more efficient (only build in what we need per container)
 		packageString := ""
 		for k := range thisCodeBlock.PackagesToInstall {
-			packages_to_install_global[k] = ""
+			globalPackagesSlice[k] = ""
 		}
 
-		for k := range packages_to_install_global {
+		for k := range globalPackagesSlice {
 			packageString += fmt.Sprintf("'%v',", k)
 			globalPackagesString += fmt.Sprintf("'%v',", k)
 		}
 
-		contextVariable = fmt.Sprintf("%v_task.outputs['context']", previous_step)
-		if previous_step == "" {
-			contextVariable = "__original_context"
-		}
-
 		allSteps[thisCodeBlock.StepIdentifier] = map[string]string{
-			"Name":                thisCodeBlock.StepIdentifier,
-			"PackageString":       packageString,
-			"ContextVariableName": contextVariable,
-			"CacheValue":          thisCodeBlock.CacheValue,
-			"PreviousStep":        previous_step,
+			"Name":          thisCodeBlock.StepIdentifier,
+			"PackageString": packageString,
+			"CacheValue":    thisCodeBlock.CacheValue,
+			"PreviousStep":  previous_step,
 		}
 
 		previous_step = thisCodeBlock.StepIdentifier
