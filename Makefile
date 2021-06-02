@@ -245,7 +245,7 @@ test-apply: test-generate dockerfordesktop.apply none.apply
 
 .PHONY: generate
 generate:
-	go generate ./...
+	CGO_ENABLED=0 ${GO} generate ./...
 	echo "[OK] Files added to pipeline template directory!"
 
 .PHONY: security
