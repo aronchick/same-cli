@@ -245,7 +245,7 @@ test-apply: test-generate dockerfordesktop.apply none.apply
 
 .PHONY: generate
 generate:
-	CGO_ENABLED=0 ${GO} generate ./...
+	CGO_ENABLED=0 ${GO} generate -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" ./...
 	echo "[OK] Files added to pipeline template directory!"
 
 .PHONY: security
