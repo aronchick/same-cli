@@ -107,7 +107,7 @@ build: build-same
 ################################################################################
 .PHONY: build-same
 build-same: fmt vet generate
-	CGO_ENABLED=0 ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
+	CGO_ENABLED=0 GOOS=$(shell go env GOOS) GOARCH=$(shell go env GOARCH) ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 	cp bin/$(ARCH)/same bin/same
 
 # Release tarballs suitable for upload to GitHub release pages
