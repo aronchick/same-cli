@@ -123,6 +123,36 @@ var runProgramCmd = &cobra.Command{
 
 		log.Tracef("Target: %v", target)
 		if target == "kubeflow" {
+			requiredLibraries := []string{"dill"}
+
+			log.Tracef("Freezing python packages")
+			pipCommand := `
+#!/bin/bash
+set -e
+python3 -m pip freeze
+	`
+
+			cmdReturn, err := utils.ExecuteInlineBashScript(cmd, pipCommand, "Pip output failed", false)
+
+			if err != nil {
+				log.Tracef("Error executing: %v\n", err.Error())
+			}
+			missingLibraries := make([]string, 0)
+			for _, lib := range requiredLibraries {
+				r, _ := regexp.Compile(lib)
+				if r.FindString(cmdReturn) == "" {
+					missingLibraries = append(missingLibraries, lib)
+				}
+			}
+
+			log.Tracef("Testing for missing libraries")
+			if len(missingLibraries) > 0 {
+				err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
+pip3 install %v`, strings.Join(missingLibraries, " "))
+				fmt.Println(err.Error())
+				return err
+			}
+
 			pipelineID := ""
 			pipelineVersionID := ""
 			pipeline, err := FindPipelineByName(programName)

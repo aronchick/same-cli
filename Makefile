@@ -106,7 +106,7 @@ build: build-same
 # Target: build-same                                                           #
 ################################################################################
 .PHONY: build-same
-build-same: fmt vet generate
+build-same: fmt vet
 	CGO_ENABLED=0 GOOS=$(shell go env GOOS) GOARCH=$(shell go env GOARCH) ${GO} build -gcflags '-N -l' -ldflags "-X main.VERSION=$(TAG)" -o bin/$(ARCH)/same main.go
 	cp bin/$(ARCH)/same bin/same
 

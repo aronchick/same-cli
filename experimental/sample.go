@@ -210,7 +210,7 @@ func main() {
 	if err != nil {
 		log.Tracef("Error executing: %v\n", err.Error())
 	}
-	requiredLibraries := []string{"azureml.core", "azureml.pipeline"}
+	requiredLibraries := []string{"dill", "azureml.core", "azureml.pipeline"}
 
 	missingLibraries := make([]string, 0)
 	for _, lib := range requiredLibraries {
