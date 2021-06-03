@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -127,13 +128,43 @@ var compileProgramCmd = &cobra.Command{
 func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, error) {
 	jupytextExecutable, err := exec.LookPath("jupytext")
 	if err != nil {
-		return "", "", fmt.Errorf("could not find 'jupytext'. Please run 'python -m pip install jupytext'. You may also need to add it to your path by executing: export PATH=$PATH:$HOME/.local/bin")
+		return "", "", fmt.Errorf("could not find 'jupytext'. Please run 'python3 -m pip install jupytext'. You may also need to add it to your path by executing: export PATH=$PATH:$HOME/.local/bin")
 	}
 
 	notebookRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
 	notebookFilePath, err := utils.ResolveLocalFilePath(filepath.Join(notebookRootDir, sameConfigFile.Spec.Pipeline.Package))
 	if err != nil {
 		return "", "", fmt.Errorf("program_compile.go: could not find pipeline definition specified in SAME program: %v", notebookFilePath)
+	}
+
+	requiredLibraries := []string{"dill"}
+
+	log.Tracef("Freezing python packages")
+	pipCommand := `
+#!/bin/bash
+set -e
+python3 -m pip freeze
+	`
+
+	cmdReturn, err := utils.ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
+
+	if err != nil {
+		log.Tracef("Error executing: %v\n", err.Error())
+	}
+	missingLibraries := make([]string, 0)
+	for _, lib := range requiredLibraries {
+		r, _ := regexp.Compile(lib)
+		if r.FindString(cmdReturn) == "" {
+			missingLibraries = append(missingLibraries, lib)
+		}
+	}
+
+	log.Tracef("Testing for missing libraries")
+	if len(missingLibraries) > 0 {
+		err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
+pip3 install %v`, strings.Join(missingLibraries, " "))
+		fmt.Println(err.Error())
+		return "", "", err
 	}
 
 	// cwd, err := os.Getwd()
