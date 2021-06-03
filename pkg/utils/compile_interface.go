@@ -22,6 +22,7 @@ type CodeBlock struct {
 	PackagesToInstall map[string]string
 	Tags              map[string]string
 	CacheValue        string
+	ImageName         string
 }
 
 type FoundStep struct {
@@ -30,6 +31,7 @@ type FoundStep struct {
 	Tags       []string
 	CodeSlice  string
 	CacheValue string
+	ImageName  string
 }
 
 type RootFile struct {

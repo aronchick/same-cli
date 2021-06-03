@@ -74,6 +74,7 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 		}
 
 		cacheValue := ""
+		imageName := ""
 		genericTags := make([]string, 0)
 
 		// Drop tags into one  of three categories (should be more extensible in the future)
@@ -83,6 +84,8 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 				current_index, _ = strconv.Atoi(strings.Split(tag, "_")[2])
 			} else if strings.HasPrefix(tag, "cache=") {
 				cacheValue = strings.Split(tag, "=")[1]
+			} else if strings.HasPrefix(tag, "image=") {
+				imageName = strings.Split(tag, "=")[1]
 			} else {
 				genericTags = append(genericTags, tag)
 			}
@@ -90,6 +93,7 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 		thisFoundStep := FoundStep{}
 		thisFoundStep.StepName = current_step_name
 		thisFoundStep.CacheValue = cacheValue
+		thisFoundStep.ImageName = imageName
 		thisFoundStep.Tags = genericTags
 		thisFoundStep.Index = current_index
 		thisFoundStep.CodeSlice = code_blocks_slices[i]
@@ -139,9 +143,17 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 
 		thisCodeBlock.Code += foundStep.CodeSlice
 		thisCodeBlock.StepIdentifier = foundStep.StepName
-		thisCodeBlock.CacheValue = "P0D"
+
 		if foundStep.CacheValue != "" {
 			thisCodeBlock.CacheValue = foundStep.CacheValue
+		} else if thisCodeBlock.CacheValue == "" {
+			thisCodeBlock.CacheValue = "P0D"
+		}
+
+		if foundStep.ImageName != "" {
+			thisCodeBlock.ImageName = foundStep.ImageName
+		} else if thisCodeBlock.ImageName == "" {
+			thisCodeBlock.ImageName = "python:3.9-slim-buster"
 		}
 
 		import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
@@ -231,6 +243,7 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 			"PackageString": packageString,
 			"CacheValue":    thisCodeBlock.CacheValue,
 			"PreviousStep":  previousStep,
+			"ImageName":     thisCodeBlock.ImageName,
 		})
 
 		previousStep = thisCodeBlock.StepIdentifier

@@ -72,7 +72,7 @@ def root({{ RootParameterString }}, context='', metadata_url=''):
 {% for step in Steps %}
 	{{step.Name}}_op = func_to_container_op(
 		func={{step.Name}}.main,
-		base_image="python:3.9-slim-buster",
+		base_image="{{step.ImageName}}",
 		packages_to_install=["dill", {{step.PackageString}}],
 	)
 	{{step.Name}}_task = {{step.Name}}_op(context={% if step.PreviousStep %}{{step.PreviousStep}}_task.outputs['context']{% else %}__original_context{% endif %}, run_info=run_info_op.outputs["run_info"], metadata_url=metadata_url)
