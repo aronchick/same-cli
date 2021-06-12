@@ -16,6 +16,7 @@ type DependencyCheckers interface {
 
 	// Root method
 	CheckDependenciesInstalled() error
+	CheckForMissingPackages(string) error
 
 	// Kubernetes helpers
 	IsKubectlOnPath() (string, error)

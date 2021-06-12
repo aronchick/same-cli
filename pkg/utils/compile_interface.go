@@ -12,7 +12,7 @@ type CompileInterface interface {
 	CombineCodeSlicesToSteps([]FoundStep) (map[string]CodeBlock, error)
 	CreateRootFile(string, map[string]CodeBlock, loaders.SameConfig) (string, error)
 	ConvertNotebook(string, string) (string, error)
-	WriteStepFiles(string, string, map[string]CodeBlock) error
+	WriteStepFiles(string, string, map[string]CodeBlock) (map[string]map[string]string, error)
 }
 
 type CodeBlock struct {
@@ -22,16 +22,16 @@ type CodeBlock struct {
 	PackagesToInstall map[string]string
 	Tags              map[string]string
 	CacheValue        string
-	ImageName         string
+	EnvironmentName   string
 }
 
 type FoundStep struct {
-	Index      int
-	StepName   string
-	Tags       []string
-	CodeSlice  string
-	CacheValue string
-	ImageName  string
+	Index           int
+	StepName        string
+	Tags            []string
+	CodeSlice       string
+	CacheValue      string
+	EnvironmentName string
 }
 
 type RootFile struct {

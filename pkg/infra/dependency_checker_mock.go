@@ -98,3 +98,10 @@ func (mockDC *MockDependencyCheckers) IsKFPReady() (running bool, err error) {
 	}
 	return true, nil
 }
+
+func (mockDC *MockDependencyCheckers) CheckForMissingPackages(target string) error {
+	if utils.ContainsString(mockDC.GetCmdArgs(), mocks.DEPENDENCY_CHECKER_MISSING_PYTHON_PACKAGES_PROBE) {
+		return fmt.Errorf(mocks.DEPENDENCY_CHECKER_MISSING_PYTHON_PACKAGES_RESULT)
+	}
+	return nil
+}

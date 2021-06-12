@@ -107,9 +107,9 @@ func (suite *ProgramCompileSuite) Test_ImportsWorkingProperly() {
 
 	foundSteps, _ := c.FindAllSteps(NOTEBOOKS_WITH_IMPORT)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
-	cb := codeBlocks["same_step_0"]
-	assert.Contains(suite.T(), cb.PackagesToInstall, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.PackagesToInstall)
-
+	packagesToMerge, _ := c.WriteStepFiles("kubeflow", suite.tmpDirectory, codeBlocks)
+	_, containsKey := packagesToMerge["same_step_0"]["tensorflow==2.4.1"]
+	assert.True(suite.T(), containsKey, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", packagesToMerge["same_step_0"])
 }
 
 func (suite *ProgramCompileSuite) Test_FullNotebookExperience() {
@@ -127,8 +127,9 @@ func (suite *ProgramCompileSuite) Test_FullNotebookExperience() {
 	convertedText, _ := c.ConvertNotebook(jupytextExecutable, notebookPath)
 	foundSteps, _ := c.FindAllSteps(convertedText)
 	codeBlocks, _ := c.CombineCodeSlicesToSteps(foundSteps)
-	cb := codeBlocks["same_step_0"]
-	assert.Contains(suite.T(), cb.PackagesToInstall, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", cb.PackagesToInstall)
+	packagesToMerge, _ := c.WriteStepFiles("kubeflow", suite.tmpDirectory, codeBlocks)
+	_, containsKey := packagesToMerge["same_step_0"]["tensorflow==2.4.1"]
+	assert.True(suite.T(), containsKey, "tensorflow", "Expected to contain 'tensorflow'. Actual: %v", packagesToMerge["same_step_0"])
 }
 
 func (suite *ProgramCompileSuite) Test_KubeflowRootCompile() {
@@ -195,8 +196,7 @@ func (suite *ProgramCompileSuite) Test_AMLRootCompile() {
 }
 
 func (suite *ProgramCompileSuite) TearDownAllSuite() {
-	// os.RemoveAll(suite.tmpConfigDirectory)
-	log.Warnf("Directory: %v", suite.tmpDirectory)
+	os.RemoveAll(suite.tmpDirectory)
 }
 func (suite *ProgramCompileSuite) Test_CompilePipeline() {
 	os.Setenv("TEST_PASS", "1")

@@ -3,15 +3,7 @@
 
 package main
 
-import (
-	"fmt"
-	"regexp"
-	"strings"
-
-	"github.com/azure-octo/same-cli/cmd"
-	"github.com/azure-octo/same-cli/pkg/utils"
-	log "github.com/sirupsen/logrus"
-)
+import "strings"
 
 // // Settings default user setting
 // type Settings struct {
@@ -197,34 +189,91 @@ func main() {
 	// // fmt.Println(string(a))
 	// log.Trace("Loaded SAME")
 
-	cmd := cmd.RootCmd
+	// 	cmd := cmd.RootCmd
 
-	pipCommand := `
-	#!/bin/bash
-	set -e
-	python3 -m pip freeze
-	`
+	// 	pipCommand := `
+	// 	#!/bin/bash
+	// 	set -e
+	// 	python3 -m pip freeze
+	// 	`
 
-	cmdReturn, err := utils.ExecuteInlineBashScript(cmd, pipCommand, "Pip output failed", false)
+	// 	cmdReturn, err := utils.ExecuteInlineBashScript(cmd, pipCommand, "Pip output failed", false)
 
-	if err != nil {
-		log.Tracef("Error executing: %v\n", err.Error())
-	}
-	requiredLibraries := []string{"dill", "azureml.core", "azureml.pipeline"}
+	// 	if err != nil {
+	// 		log.Tracef("Error executing: %v\n", err.Error())
+	// 	}
+	// 	requiredLibraries := []string{"dill", "azureml.core", "azureml.pipeline"}
 
-	missingLibraries := make([]string, 0)
-	for _, lib := range requiredLibraries {
-		r, _ := regexp.Compile(lib)
-		if r.FindString(cmdReturn) == "" {
-			missingLibraries = append(missingLibraries, lib)
+	// 	missingLibraries := make([]string, 0)
+	// 	for _, lib := range requiredLibraries {
+	// 		r, _ := regexp.Compile(lib)
+	// 		if r.FindString(cmdReturn) == "" {
+	// 			missingLibraries = append(missingLibraries, lib)
+	// 		}
+	// 	}
+
+	// 	if len(missingLibraries) > 0 {
+	// 		err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
+	// pip3 install %v`, strings.Join(missingLibraries, " "))
+	// 		fmt.Println(err.Error())
+	// 	}
+	// 	a := cmdReturn
+	// 	_ = a
+	// sameConfigFile, err := loaders.V1{}.LoadSAME("../test/testdata/notebook/same_multiple_images.yaml")
+	// if err != nil {
+	// 	log.Fatalf("could not load SAME config file: %v", err)
+	// }
+	// a := sameConfigFile
+	// _ = a
+
+	// b, _ := utils.NewKFPConfig()
+	// c, _ := b.RawConfig()
+	// fmt.Printf("c: %v", c)
+
+	a := `kubernetes==11.0.0
+dill==0.3.3
+requests==2.25.1
+python-dotenv==0.17.1
+INFO: Successfully output requirements
+
+`
+	b := strings.Split(a, "\n")
+
+	newSlice := make([]string, 0)
+	for _, item := range b {
+		if item != "" && !strings.HasPrefix(item, "INFO: ") {
+			newSlice = append(newSlice, item)
 		}
 	}
-
-	if len(missingLibraries) > 0 {
-		err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
-pip3 install %v`, strings.Join(missingLibraries, " "))
-		fmt.Println(err.Error())
-	}
-	a := cmdReturn
-	_ = a
+	_ = newSlice
 }
+
+// apiVersion: projectsame.io/v1alpha1
+// metadata:
+//   name: MultipleImages
+//   version: 0.0.1
+// pipeline:
+//   name: "Multiple Images"
+//   description: "Testing multiple images including private"
+//   package: multiple_images.ipynb
+// environments:
+//   default:
+//     image_tag: python:3.9-slim-buster
+//     packages:
+//       - numpy
+//       - tornado==6.1
+//     append_current_environment: true
+//   python37:
+//     image_tag: python:3.7-slim-buster
+//     private_registry: false
+//     packages:
+//       - scipy
+//   private_environment:
+//     image_tag: sameprivateregistry.azurecr.io/sample-private-org/sample-private-image:latest
+//     private_registry: true
+// run:
+//   name: "Test Notebook - Run"
+//   parameters:
+//     sample_parameter_float: 0.2
+//     sample_parameter_int: 2
+//     sample_parameter_string: "test string"

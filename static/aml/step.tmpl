@@ -80,9 +80,8 @@ for val in __locals_keys:
 
 __b64_string = str(urlsafe_b64encode(dill.dumps(__context_export)), encoding="ascii")
 
-
-exec(__inner_code_to_execute, __variables_to_mount, __loc)
 """
+	exec(__inner_code_to_execute, __variables_to_mount, __loc)
 
 	__json_output_data = {
 		"experiment_id": __run_info_dict["experiment_id"],

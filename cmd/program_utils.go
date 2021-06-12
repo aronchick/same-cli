@@ -51,10 +51,8 @@ func UploadPipeline(target string, sameConfigFile *loaders.SameConfig, pipelineN
 		sameConfigFile.Spec.Pipeline.Package = updatedSameConfig.Spec.Pipeline.Package
 	}
 
-	sameConfigDir, _ := filepath.Split(sameConfigFile.Spec.ConfigFilePath)
-
 	log.Tracef("ConfigFilePath: %v", sameConfigFile.Spec.ConfigFilePath)
-	pipelinePath, _ := filepath.Abs(filepath.Join(sameConfigDir, sameConfigFile.Spec.Pipeline.Package))
+	pipelinePath, _ := filepath.Abs(sameConfigFile.Spec.Pipeline.Package)
 	log.Tracef("PipelinePath: %v", pipelinePath)
 	pipelineFilePath, err := utils.CompileForKFP(pipelinePath)
 	if err != nil {
@@ -106,9 +104,8 @@ func UpdatePipeline(target string, sameConfigFile *loaders.SameConfig, pipelineI
 		sameConfigFile.Spec.Pipeline.Package = updatedSameConfig.Spec.Pipeline.Package
 	}
 
-	sameConfigDir, _ := filepath.Split(sameConfigFile.Spec.ConfigFilePath)
 	log.Tracef("ConfigFilePath: %v", sameConfigFile.Spec.ConfigFilePath)
-	pipelinePath, _ := filepath.Abs(filepath.Join(sameConfigDir, sameConfigFile.Spec.Pipeline.Package))
+	pipelinePath, _ := filepath.Abs(sameConfigFile.Spec.Pipeline.Package)
 	log.Tracef("PipelinePath: %v", pipelinePath)
 	pipelineFilePath, err := utils.CompileForKFP(pipelinePath)
 	if err != nil {

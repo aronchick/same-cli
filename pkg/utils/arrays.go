@@ -43,3 +43,11 @@ func RemoveIndex(s []int, index int) []int {
 	ret = append(ret, s[:index]...)
 	return append(ret, s[index+1:]...)
 }
+
+func ValueOrDefault(s string, d string) string {
+	if s != "" {
+		return s
+	} else {
+		return d
+	}
+}

@@ -62,7 +62,7 @@ var initCmd = &cobra.Command{
 		}
 		log.Traceln("K8s cluster and context detected, proceeding to install KFP.")
 
-		log.Infof("Cmd: %v", cmd)
+		log.Tracef("Cmd: %v", cmd)
 
 		err = i.InstallKFP()
 		if err != nil {

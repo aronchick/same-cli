@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -205,6 +206,49 @@ func (dc *LiveDependencyCheckers) IsKFPReady() (running bool, err error) {
 	}
 
 	return all_ready, nil
+}
+
+func (dc *LiveDependencyCheckers) CheckForMissingPackages(target string) error {
+	requiredLibraries := []string{"dill", "pipreqs", "requests"}
+
+	switch target {
+	case "aml":
+		requiredLibraries = append(requiredLibraries, "azureml", "azureml.core", "azureml.pipeline")
+	case "kubeflow":
+		fallthrough
+	default:
+		requiredLibraries = append(requiredLibraries, "kfp")
+
+	}
+
+	log.Tracef("Freezing python packages")
+	pipCommand := `
+#!/bin/bash
+set -e
+python3 -m pip freeze
+	`
+
+	cmdReturn, err := utils.ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
+
+	if err != nil {
+		log.Tracef("Error executing: %v\n", err.Error())
+	}
+	missingLibraries := make([]string, 0)
+	for _, lib := range requiredLibraries {
+		r, _ := regexp.Compile(lib)
+		if r.FindString(cmdReturn) == "" {
+			missingLibraries = append(missingLibraries, lib)
+		}
+	}
+
+	log.Tracef("Testing for missing libraries")
+	if len(missingLibraries) > 0 {
+		err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
+pip3 install %v`, strings.Join(missingLibraries, " "))
+		fmt.Println(err.Error())
+		return err
+	}
+	return nil
 }
 
 type InitClusterMethods struct {

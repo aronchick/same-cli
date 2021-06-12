@@ -17,13 +17,15 @@ limitations under the License.
 */
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
@@ -79,6 +81,10 @@ var compileProgramCmd = &cobra.Command{
 			return fmt.Errorf("Failed during dependency checks: %v", err)
 		}
 
+		err = infra.GetDependencyCheckers(cmd, args).CheckForMissingPackages(target)
+		if err != nil {
+			return err
+		}
 		// Load config file. Explicit parameters take precedent over config file.
 		u := utils.GetUtils(cmd, args)
 		sameConfigFilePath, err := u.GetConfigFilePath(filePath)
@@ -91,6 +97,62 @@ var compileProgramCmd = &cobra.Command{
 		if err != nil {
 			log.Errorf("could not load SAME config file: %v", err)
 			return err
+		}
+
+		for env_name, env := range sameConfigFile.Spec.Environments {
+			var missing_credentials []string
+			if env.PrivateRegistry {
+				// Since we may need to create a secret, we need to pass along a Kubeconfig
+				b := bytes.Buffer{}
+				e := gob.NewEncoder(&b)
+				clientConfig, err := utils.GetKubeConfig()
+				if err != nil {
+					return fmt.Errorf("error fetching kubeconfig")
+				}
+				err = e.Encode(clientConfig)
+				if err != nil {
+					return fmt.Errorf("error encoding kubeconfig to string: %v", err)
+				}
+				sameConfigFile.Spec.KubeConfig = base64.StdEncoding.EncodeToString(b.Bytes())
+
+				if (loaders.RepositoryCredentials{} != env.Credentials) {
+					log.Warnf("The environment '%v' has the credentials hard coded in the same file. This is likely a specatularly bad decision from a security standpoint. Cowardly going ahead anyway.", env_name)
+				}
+
+				image_pull_secret_name, err := cmd.Flags().GetString("image-pull-secret-name")
+
+				image_pull_secret_server, err := cmd.Flags().GetString("image-pull-secret-server")
+				if err != nil || image_pull_secret_server == "" {
+					missing_credentials = append(missing_credentials, "image-pull-secret-server")
+				}
+
+				image_pull_secret_username, err := cmd.Flags().GetString("image-pull-secret-username")
+				if err != nil || image_pull_secret_username == "" {
+					missing_credentials = append(missing_credentials, "image-pull-secret-username")
+				}
+
+				image_pull_secret_password, err := cmd.Flags().GetString("image-pull-secret-password")
+				if err != nil || image_pull_secret_password == "" {
+					missing_credentials = append(missing_credentials, "image-pull-secret-password")
+				}
+				image_pull_secret_email, err := cmd.Flags().GetString("image-pull-secret-email")
+				if err != nil || image_pull_secret_email == "" {
+					missing_credentials = append(missing_credentials, "image-pull-secret-email")
+				}
+				if len(missing_credentials) > 0 && image_pull_secret_name == "" {
+					return fmt.Errorf("You set environment '%v' to be a private repository, but you missed the following flags during execution: %v", env_name, missing_credentials)
+				} else {
+					if image_pull_secret_name != "" {
+						log.Tracef("Using %v secret - this will override if you set any other values.", image_pull_secret_name)
+					}
+					env.Credentials.SecretName = image_pull_secret_name
+					env.Credentials.Server = image_pull_secret_server
+					env.Credentials.Username = image_pull_secret_username
+					env.Credentials.Password = image_pull_secret_password
+					env.Credentials.Email = image_pull_secret_email
+					sameConfigFile.Spec.Environments[env_name] = env
+				}
+			}
 		}
 
 		if sameConfigFile.Spec.ConfigFilePath == "" {
@@ -123,56 +185,6 @@ var compileProgramCmd = &cobra.Command{
 		}
 		return nil
 	},
-}
-
-func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, error) {
-	jupytextExecutable, err := exec.LookPath("jupytext")
-	if err != nil {
-		return "", "", fmt.Errorf("could not find 'jupytext'. Please run 'python3 -m pip install jupytext'. You may also need to add it to your path by executing: export PATH=$PATH:$HOME/.local/bin")
-	}
-
-	notebookRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
-	notebookFilePath, err := utils.ResolveLocalFilePath(filepath.Join(notebookRootDir, sameConfigFile.Spec.Pipeline.Package))
-	if err != nil {
-		return "", "", fmt.Errorf("program_compile.go: could not find pipeline definition specified in SAME program: %v", notebookFilePath)
-	}
-
-	requiredLibraries := []string{"dill"}
-
-	log.Tracef("Freezing python packages")
-	pipCommand := `
-#!/bin/bash
-set -e
-python3 -m pip freeze
-	`
-
-	cmdReturn, err := utils.ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
-
-	if err != nil {
-		log.Tracef("Error executing: %v\n", err.Error())
-	}
-	missingLibraries := make([]string, 0)
-	for _, lib := range requiredLibraries {
-		r, _ := regexp.Compile(lib)
-		if r.FindString(cmdReturn) == "" {
-			missingLibraries = append(missingLibraries, lib)
-		}
-	}
-
-	log.Tracef("Testing for missing libraries")
-	if len(missingLibraries) > 0 {
-		err = fmt.Errorf(`could not find all necessary libraries to execute. Please run:
-pip3 install %v`, strings.Join(missingLibraries, " "))
-		fmt.Println(err.Error())
-		return "", "", err
-	}
-
-	// cwd, err := os.Getwd()
-	// if err != nil {
-	// 	return "", "", fmt.Errorf("Could not get cwd: %v", err)
-	// }
-	return jupytextExecutable, notebookFilePath, nil
-
 }
 
 func getTemporaryCompileDirectory() (string, error) {
@@ -213,6 +225,22 @@ func writeRootFile(compiledDir string, rootFileContents string) error {
 	return nil
 }
 
+func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, error) {
+	jupytextExecutable, err := exec.LookPath("jupytext")
+	if err != nil {
+		return "", "", fmt.Errorf("could not find 'jupytext'. Please run 'python3 -m pip install jupytext'. You may also need to add it to your path by executing: export PATH=$PATH:$HOME/.local/bin")
+	}
+
+	notebookRootDir := filepath.Dir(sameConfigFile.Spec.ConfigFilePath)
+	notebookFilePath, err := utils.ResolveLocalFilePath(filepath.Join(notebookRootDir, sameConfigFile.Spec.Pipeline.Package))
+	if err != nil {
+		return "", "", fmt.Errorf("program_compile.go: could not find pipeline definition specified in SAME program: %v", notebookFilePath)
+	}
+
+	return jupytextExecutable, notebookFilePath, nil
+
+}
+
 func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFiles bool) (compileDirectory string, updatedSameConfig loaders.SameConfig, err error) {
 	var c = utils.GetCompileFunctions()
 	jupytextExecutablePath, notebookFilePath, err := checkExecutableAndFile(sameConfigFile)
@@ -239,12 +267,28 @@ func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFi
 		return "", loaders.SameConfig{}, err
 	}
 
-	rootFileContents, err := c.CreateRootFile(target, aggregatedSteps, sameConfigFile)
+	compiledDir, err := getTemporaryCompileDirectory()
 	if err != nil {
 		return "", loaders.SameConfig{}, err
 	}
 
-	compiledDir, err := getTemporaryCompileDirectory()
+	packagesBySteps, err := c.WriteStepFiles(target, compiledDir, aggregatedSteps)
+	if err != nil {
+		return "", loaders.SameConfig{}, err
+	}
+
+	for stepName, packageList := range packagesBySteps {
+		thisCodeBlock := aggregatedSteps[stepName]
+		if thisCodeBlock.PackagesToInstall == nil {
+			thisCodeBlock.PackagesToInstall = make(map[string]string)
+		}
+		for packageString := range packageList {
+			thisCodeBlock.PackagesToInstall[packageString] = ""
+		}
+		aggregatedSteps[stepName] = thisCodeBlock
+	}
+
+	rootFileContents, err := c.CreateRootFile(target, aggregatedSteps, sameConfigFile)
 	if err != nil {
 		return "", loaders.SameConfig{}, err
 	}
@@ -261,11 +305,6 @@ func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFi
 	}
 	updatedSameConfig = sameConfigFile
 
-	err = c.WriteStepFiles(target, compiledDir, aggregatedSteps)
-	if err != nil {
-		return "", loaders.SameConfig{}, err
-	}
-
 	fmt.Printf("Compilation complete! In order to upload, go to this directory (%v) and execute 'same program run'.\n", compiledDir)
 	return compiledDir, updatedSameConfig, err
 
@@ -277,5 +316,9 @@ func init() {
 	compileProgramCmd.Flags().StringP("file", "f", "same.yaml", "a SAME program file (defaults to 'same.yaml').")
 	compileProgramCmd.Flags().Bool("persist-temp-files", false, "Persist the temporary compilation files.")
 	compileProgramCmd.Flags().StringP("target", "t", "kubeflow", "Enter one of 'kubeflow', 'aml'. Defaults to: kubeflow")
+	compileProgramCmd.Flags().String("image-pull-secret-server", "", "Image pull server for any private repos (only one server currently supported for all private repos)")
+	compileProgramCmd.Flags().String("image-pull-secret-username", "", "Image pull username for any private repos (only one username currently supported for all private repos)")
+	compileProgramCmd.Flags().String("image-pull-secret-password", "", "Image pull password for any private repos (only one password currently supported for all private repos)")
+	compileProgramCmd.Flags().String("image-pull-secret-email", "", "Image pull email for any private repos (only one email currently supported for all private repos)")
 
 }

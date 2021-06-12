@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	pongo2 "github.com/flosch/pongo2/v4"
+	"github.com/spf13/cobra"
 
 	"github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 	"github.com/azure-octo/same-cli/internal/box"
@@ -74,7 +75,7 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 		}
 
 		cacheValue := ""
-		imageName := ""
+		environmentName := ""
 		genericTags := make([]string, 0)
 
 		// Drop tags into one  of three categories (should be more extensible in the future)
@@ -84,8 +85,8 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 				current_index, _ = strconv.Atoi(strings.Split(tag, "_")[2])
 			} else if strings.HasPrefix(tag, "cache=") {
 				cacheValue = strings.Split(tag, "=")[1]
-			} else if strings.HasPrefix(tag, "image=") {
-				imageName = strings.Split(tag, "=")[1]
+			} else if strings.HasPrefix(tag, "environment=") {
+				environmentName = strings.Split(tag, "=")[1]
 			} else {
 				genericTags = append(genericTags, tag)
 			}
@@ -93,7 +94,7 @@ func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep
 		thisFoundStep := FoundStep{}
 		thisFoundStep.StepName = current_step_name
 		thisFoundStep.CacheValue = cacheValue
-		thisFoundStep.ImageName = imageName
+		thisFoundStep.EnvironmentName = environmentName
 		thisFoundStep.Tags = genericTags
 		thisFoundStep.Index = current_index
 		thisFoundStep.CodeSlice = code_blocks_slices[i]
@@ -131,7 +132,7 @@ func ParseTagsForStep(s string) []string {
 
 func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[string]CodeBlock, error) {
 	aggregatedSteps := make(map[string]CodeBlock)
-	for i, foundStep := range foundSteps {
+	for _, foundStep := range foundSteps {
 
 		log.Tracef("Current step: %v\n", foundStep.StepName)
 		log.Tracef("Current slice: %v\n", foundStep.CodeSlice)
@@ -150,30 +151,12 @@ func (c *CompileLive) CombineCodeSlicesToSteps(foundSteps []FoundStep) (map[stri
 			thisCodeBlock.CacheValue = "P0D"
 		}
 
-		if foundStep.ImageName != "" {
-			thisCodeBlock.ImageName = foundStep.ImageName
-		} else if thisCodeBlock.ImageName == "" {
-			thisCodeBlock.ImageName = "python:3.9-slim-buster"
+		if foundStep.EnvironmentName != "" {
+			thisCodeBlock.EnvironmentName = foundStep.EnvironmentName
+		} else if thisCodeBlock.EnvironmentName == "" {
+			thisCodeBlock.EnvironmentName = "default"
 		}
 
-		import_regex := regexp.MustCompile(`(?mi)^\s*(?:from|import)\s+(\w+(?:\s*,\s*\w+)*)`)
-		all_imports := import_regex.FindAllStringSubmatch(thisCodeBlock.Code, -2)
-
-		log.Tracef("Code: %v", aggregatedSteps[foundStep.StepName].Code)
-		if len(all_imports) >= 1 {
-			log.Tracef("Packages:")
-			if thisCodeBlock.PackagesToInstall == nil {
-				thisCodeBlock.PackagesToInstall = make(map[string]string)
-			}
-			for i := range all_imports {
-				// TODO: Parse for versions eventually
-				thisCodeBlock.PackagesToInstall[all_imports[i][1]] = ""
-				log.Tracef("- \t%v\n", all_imports[i][1])
-			}
-
-		} else {
-			log.Tracef("No packages to install for found step #: %v\n", i)
-		}
 		aggregatedSteps[foundStep.StepName] = thisCodeBlock
 	}
 
@@ -203,10 +186,40 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		rootParameterString, _ = JoinMapKeysValues(rootParameters)
 	}
 
+	environments := make(map[string]loaders.Environment, 0)
+	imagePullSecretsToCreate := make([]loaders.RepositoryCredentials, 0)
+
+	defaultEnvironment := &loaders.Environment{}
+
+	// Pulling from Docker Hub through AML requires the below tag structure of library/name:tag
+	defaultEnvironment.ImageTag = "library/python:3.9-slim-buster"
+	defaultEnvironment.Packages = make([]string, 0)
+	defaultEnvironment.PrivateRegistry = false
+	environments["default"] = *defaultEnvironment
+
+	if len(sameConfigFile.Spec.Environments) > 0 {
+		for env_name, env := range sameConfigFile.Spec.Environments {
+			thisEnvironment := &loaders.Environment{}
+			thisEnvironment.ImageTag = ValueOrDefault(env.ImageTag, environments[env_name].ImageTag)
+			if len(env.Packages) > 0 {
+			}
+			thisEnvironment.PrivateRegistry = env.PrivateRegistry
+			if thisEnvironment.PrivateRegistry {
+
+				// Two options - either someone has set the secret name (implying it's already mounted, so we'll just move on), or no secret name and so we have to creaate the secret inline.
+				// Regardless, we'll just populate this struct, and let the template sort it out
+				if thisEnvironment.Credentials.SecretName == "" {
+					imagePullSecretsToCreate = append(imagePullSecretsToCreate, env.Credentials)
+				}
+				thisEnvironment.Credentials = env.Credentials
+			}
+			environments[env_name] = *thisEnvironment
+		}
+	}
+
 	previousStep := ""
 	stepsLeftToParse := make(map[string]string)
 	allSteps := []map[string]string{}
-
 	// Copying this to a new variable so that we can delete them
 	for _, thisCodeBlock := range aggregatedSteps {
 		stepsLeftToParse[thisCodeBlock.StepIdentifier] = thisCodeBlock.StepIdentifier
@@ -238,12 +251,20 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 			globalPackagesString += fmt.Sprintf("\"%v\",", k)
 		}
 
+		imagePullSecretName := ""
+		if environments[thisCodeBlock.EnvironmentName].Credentials.SecretName != "" {
+			imagePullSecretName = environments[thisCodeBlock.EnvironmentName].Credentials.SecretName
+		}
+
 		allSteps = append(allSteps, map[string]string{
-			"Name":          thisCodeBlock.StepIdentifier,
-			"PackageString": packageString,
-			"CacheValue":    thisCodeBlock.CacheValue,
-			"PreviousStep":  previousStep,
-			"ImageName":     thisCodeBlock.ImageName,
+			"Name":                thisCodeBlock.StepIdentifier,
+			"PackageString":       packageString,
+			"CacheValue":          thisCodeBlock.CacheValue,
+			"PreviousStep":        previousStep,
+			"Environment":         thisCodeBlock.EnvironmentName,
+			"ImageName":           environments[thisCodeBlock.EnvironmentName].ImageTag,
+			"PrivateRepository":   strconv.FormatBool(environments[thisCodeBlock.EnvironmentName].PrivateRegistry),
+			"ImagePullSecretName": imagePullSecretName,
 		})
 
 		previousStep = thisCodeBlock.StepIdentifier
@@ -259,12 +280,18 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		stepString += fmt.Sprintf("%v_step", step)
 	}
 
+	safeExperimentName := alphaNumericOnly(experimentName)
+
 	rootFileContext := pongo2.Context{
 		"RootParameterString":  rootParameterString,
 		"GlobalPackagesString": globalPackagesString,
 		"Steps":                allSteps,
 		"StepString":           stepString,
 		"ExperimentName":       experimentName,
+		"SafeExperimentName":   safeExperimentName,
+		"Kubeconfig":           sameConfigFile.Spec.KubeConfig,
+		"Environments":         environments,
+		"SecretsToCreate":      imagePullSecretsToCreate,
 	}
 
 	var root_file_bytes []byte
@@ -288,21 +315,32 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 
 }
 
-func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregatedSteps map[string]CodeBlock) error {
+func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregatedSteps map[string]CodeBlock) (map[string]map[string]string, error) {
+
+	tempStepHolderDir, err := ioutil.TempDir(os.TempDir(), "SAME-compile-*")
+	defer os.Remove(tempStepHolderDir)
+
+	returnedPackages := make(map[string]map[string]string, 0)
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating temporary directory to write steps to: %v", err)
+	}
+
 	for i := range aggregatedSteps {
-		parameter_string, _ := JoinMapKeysValues(aggregatedSteps[i].Parameters)
-		if parameter_string != "" {
-			parameter_string = "," + parameter_string
+		returnedPackages[aggregatedSteps[i].StepIdentifier] = make(map[string]string)
+		parameterString, _ := JoinMapKeysValues(aggregatedSteps[i].Parameters)
+		if parameterString != "" {
+			parameterString = "," + parameterString
 		}
 
 		// Prepend an empty locals as the default
-		parameter_string = `__context="gAR9lC4=", __run_info="gAR9lC4=", __metadata_url=""` + parameter_string
+		parameterString = `__context="gAR9lC4=", __run_info="gAR9lC4=", __metadata_url=""` + parameterString
 
-		step_to_write := ""
+		stepToWrite := ""
 		var step_file_bytes []byte
 		switch target {
 		case "kubeflow":
-			step_to_write = filepath.Join(compiledDir, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
+			stepToWrite = filepath.Join(compiledDir, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
 			step_file_bytes = box.Get("/kfp/step.tmpl")
 		case "aml":
 			// AML requires each step to be in its own directory, with the same name as the python file
@@ -311,43 +349,67 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 			if os.IsNotExist(err) {
 				errDir := os.MkdirAll(stepDirectoryName, 0700)
 				if errDir != nil {
-					return fmt.Errorf("error creating step directory for %v: %v", stepDirectoryName, err)
+					return nil, fmt.Errorf("error creating step directory for %v: %v", stepDirectoryName, err)
 				}
 
 			}
 
-			step_to_write = filepath.Join(stepDirectoryName, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
+			stepToWrite = filepath.Join(stepDirectoryName, fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier))
 			step_file_bytes = box.Get("/aml/step.tmpl")
 		default:
-			return fmt.Errorf("unknown target: %v", target)
+			return nil, fmt.Errorf("unknown target: %v", target)
 		}
 
-		inner_code_to_execute := ""
+		innerCodeToExecute := ""
 		scanner := bufio.NewScanner(strings.NewReader(aggregatedSteps[i].Code))
 		for scanner.Scan() {
-			inner_code_to_execute += fmt.Sprintln(scanner.Text())
+			innerCodeToExecute += fmt.Sprintln(scanner.Text())
 		}
 
 		stepFileContext := pongo2.Context{
 			"Name":             aggregatedSteps[i].StepIdentifier,
-			"Parameter_String": parameter_string,
-			"Inner_Code":       inner_code_to_execute,
+			"Parameter_String": parameterString,
+			"Inner_Code":       innerCodeToExecute,
 		}
 
 		tmpl := pongo2.Must(pongo2.FromBytes(step_file_bytes))
 		stepFileString, err := tmpl.Execute(stepFileContext)
 		if err != nil {
-			return fmt.Errorf("error writing step %v: %v", aggregatedSteps[i].StepIdentifier, err.Error())
+			return nil, fmt.Errorf("error writing step %v: %v", aggregatedSteps[i].StepIdentifier, err.Error())
 		}
 
-		err = os.WriteFile(step_to_write, []byte(stepFileString), 0400)
+		err = os.WriteFile(stepToWrite, []byte(stepFileString), 0400)
 		if err != nil {
-			return fmt.Errorf("Error writing step %v: %v", step_to_write, err.Error())
+			return nil, fmt.Errorf("Error writing step %v: %v", stepToWrite, err.Error())
+		}
+
+		tempStepFile, err := ioutil.TempFile(tempStepHolderDir, fmt.Sprintf("SAME-inner-code-file-*-%v", fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier)))
+		err = ioutil.WriteFile(tempStepFile.Name(), []byte(innerCodeToExecute), 0400)
+		if err != nil {
+			return nil, fmt.Errorf("Error writing temporary step file %v: %v", tempStepFile, err.Error())
+		}
+
+		log.Tracef("Freezing python packages")
+		pipCommand := fmt.Sprintf(`
+#!/bin/bash
+set -e
+pipreqs %v --print 
+	`, tempStepHolderDir)
+
+		cmdReturn, err := ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
+		if err != nil {
+			log.Tracef("Error executing: %v\n", err.Error())
+		}
+		allPackages := strings.Split(cmdReturn, "\n")
+
+		for _, packageString := range allPackages {
+			if packageString != "" && !strings.HasPrefix(packageString, "INFO: ") {
+				returnedPackages[aggregatedSteps[i].StepIdentifier][packageString] = ""
+			}
 		}
 	}
 
-	return nil
-
+	return returnedPackages, nil
 }
 
 func (c *CompileLive) ConvertNotebook(jupytextExecutablePath string, notebookFilePath string) (string, error) {
@@ -395,4 +457,9 @@ func removeIllegalExperimentNameCharacters(s string) string {
 		},
 		s,
 	)
+}
+
+func alphaNumericOnly(s string) string {
+	reg, _ := regexp.Compile("[^A-Za-z0-9]+")
+	return strings.ToLower(reg.ReplaceAllString(s, ""))
 }

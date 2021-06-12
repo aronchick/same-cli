@@ -666,6 +666,14 @@ ssh = ["paramiko (>=2.4.2)"]
 tls = ["pyOpenSSL (>=17.5.0)", "cryptography (>=1.3.4)", "idna (>=2.0.0)"]
 
 [[package]]
+name = "docopt"
+version = "0.6.2"
+description = "Pythonic argument parser, that will make you smile"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "docstring-parser"
 version = "0.7.3"
 description = ""
@@ -1652,6 +1660,18 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "pipreqs"
+version = "0.4.10"
+description = "Pip requirements.txt generator based on imports in project"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+docopt = "*"
+yarg = "*"
+
+[[package]]
 name = "plotly"
 version = "4.14.3"
 description = "An open-source, interactive data visualization library for Python"
@@ -1859,6 +1879,17 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 
 [package.dependencies]
 six = ">=1.5"
+
+[[package]]
+name = "python-dotenv"
+version = "0.17.1"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.extras]
+cli = ["click (>=5.0)"]
 
 [[package]]
 name = "pytz"
@@ -2328,10 +2359,21 @@ category = "main"
 optional = false
 python-versions = "*"
 
+[[package]]
+name = "yarg"
+version = "0.1.9"
+description = "A semi hard Cornish cheese, also queries PyPI (PyPI client)"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+requests = "*"
+
 [metadata]
 lock-version = "1.1"
 python-versions = "3.8.*"
-content-hash = "bbbc7202bc7d46f459d242cf6b871603ad55eba0cfa6906fe93c1793975291c1"
+content-hash = "8261879740b6effd93194c7fa880a518e6fc64d46f4d6815c44b7e748e9f6da0"
 
 [metadata.files]
 absl-py = [
@@ -2633,6 +2675,9 @@ distro = [
 docker = [
     {file = "docker-4.2.2-py2.py3-none-any.whl", hash = "sha256:03a46400c4080cb6f7aa997f881ddd84fef855499ece219d75fbdb53289c17ab"},
     {file = "docker-4.2.2.tar.gz", hash = "sha256:26eebadce7e298f55b76a88c4f8802476c5eaddbdbe38dbc6cce8781c47c9b54"},
+]
+docopt = [
+    {file = "docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"},
 ]
 docstring-parser = [
     {file = "docstring_parser-0.7.3.tar.gz", hash = "sha256:cde5fbf8b846433dfbde1e0f96b7f909336a634d5df34a38cb75050c7346734a"},
@@ -3196,6 +3241,10 @@ pillow = [
     {file = "Pillow-8.2.0-pp37-pypy37_pp73-win32.whl", hash = "sha256:e98eca29a05913e82177b3ba3d198b1728e164869c613d76d0de4bde6768a50e"},
     {file = "Pillow-8.2.0.tar.gz", hash = "sha256:a787ab10d7bb5494e5f76536ac460741788f1fbce851068d73a87ca7c35fc3e1"},
 ]
+pipreqs = [
+    {file = "pipreqs-0.4.10-py2.py3-none-any.whl", hash = "sha256:cafe42ab70628d408c147fb8944bc303355ea8f91fddca4a98d273e572e39905"},
+    {file = "pipreqs-0.4.10.tar.gz", hash = "sha256:9e351d644b28b98d7386b046a73806cbb3bb66b23a30e74feeb95ed9571db939"},
+]
 plotly = [
     {file = "plotly-4.14.3-py2.py3-none-any.whl", hash = "sha256:d68fc15fcb49f88db27ab3e0c87110943e65fee02a47f33a8590f541b3042461"},
     {file = "plotly-4.14.3.tar.gz", hash = "sha256:7d8aaeed392e82fb8e0e48899f2d3d957b12327f9d38cdd5802bc574a8a39d91"},
@@ -3332,6 +3381,10 @@ pyrsistent = [
 python-dateutil = [
     {file = "python-dateutil-2.8.1.tar.gz", hash = "sha256:73ebfe9dbf22e832286dafa60473e4cd239f8592f699aa5adaf10050e6e1823c"},
     {file = "python_dateutil-2.8.1-py2.py3-none-any.whl", hash = "sha256:75bb3f31ea686f1197762692a9ee6a7550b59fc6ca3a1f4b5d7e32fb98e2da2a"},
+]
+python-dotenv = [
+    {file = "python-dotenv-0.17.1.tar.gz", hash = "sha256:b1ae5e9643d5ed987fc57cc2583021e38db531946518130777734f9589b3141f"},
+    {file = "python_dotenv-0.17.1-py2.py3-none-any.whl", hash = "sha256:00aa34e92d992e9f8383730816359647f358f4a3be1ba45e5a5cefd27ee91544"},
 ]
 pytz = [
     {file = "pytz-2021.1-py2.py3-none-any.whl", hash = "sha256:eb10ce3e7736052ed3623d49975ce333bcd712c7bb19a58b9e2089d4057d0798"},
@@ -3726,4 +3779,8 @@ widgetsnbextension = [
 ]
 wrapt = [
     {file = "wrapt-1.12.1.tar.gz", hash = "sha256:b62ffa81fb85f4332a4f609cab4ac40709470da05643a082ec1eb88e6d9b97d7"},
+]
+yarg = [
+    {file = "yarg-0.1.9-py2.py3-none-any.whl", hash = "sha256:4f9cebdc00fac946c9bf2783d634e538a71c7d280a4d806d45fd4dc0ef441492"},
+    {file = "yarg-0.1.9.tar.gz", hash = "sha256:55695bf4d1e3e7f756496c36a69ba32c40d18f821e38f61d028f6049e5e15911"},
 ]

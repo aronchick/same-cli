@@ -23,7 +23,7 @@ func (c *CompileMock) CreateRootFile(target string, aggregatedSteps map[string]C
 	return cl.CreateRootFile(target, aggregatedSteps, sameConfigFile)
 }
 
-func (c *CompileMock) WriteStepFiles(target string, compiledDir string, aggregatedSteps map[string]CodeBlock) error {
+func (c *CompileMock) WriteStepFiles(target string, compiledDir string, aggregatedSteps map[string]CodeBlock) (map[string]map[string]string, error) {
 	// Placeholder until we mock
 	cl := &CompileLive{}
 	return cl.WriteStepFiles(target, compiledDir, aggregatedSteps)

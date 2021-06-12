@@ -22,11 +22,11 @@ import (
 	"time"
 
 	gogetter "github.com/hashicorp/go-getter"
+	"github.com/mitchellh/go-homedir"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/util/homedir"
 
 	"io/ioutil"
 
@@ -173,7 +173,7 @@ func NewKFPConfig() (clientcmd.ClientConfig, error) {
 	// Load kubeconfig
 	var kubeconfig string
 	if os.Getenv("KUBECONFIG") == "" {
-		if home := homedir.HomeDir(); home != "" {
+		if home, _ := homedir.Dir(); home != "" {
 			kubeconfig = filepath.Join(home, ".kube", "config")
 		} else {
 			panic("Could not find kube config!")
@@ -235,4 +235,36 @@ func (k *k8sClient) GetVersion() (string, error) {
 		return "", err
 	}
 	return version.String(), nil
+}
+
+func GetKubeConfig() (string, error) {
+	kubeConfigPath, err := findKubeConfig()
+	if err != nil {
+		return "", err
+	}
+
+	kubeConfig, err := clientcmd.LoadFromFile(kubeConfigPath)
+	if err != nil {
+		return "", err
+	}
+
+	kubeBytes, err := clientcmd.Write(*kubeConfig)
+	if err != nil {
+		return "", err
+	}
+
+	return string(kubeBytes), nil
+}
+
+// findKubeConfig finds path from env:KUBECONFIG or ~/.kube/config
+func findKubeConfig() (string, error) {
+	env := os.Getenv("KUBECONFIG")
+	if env != "" {
+		return env, nil
+	}
+	path, err := homedir.Expand("~/.kube/config")
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 }

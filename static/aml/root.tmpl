@@ -70,6 +70,17 @@ def root(
 	experiment = Experiment(ws, "{{ ExperimentName }}")
 
 
+	run_info_dict = {
+		"experiment_id": experiment.id,
+		"step_id": "same_step_0",
+	}
+
+	output = {}
+	output["run_info"] = str(
+		base64.urlsafe_b64encode(dill.dumps(run_info_dict)), encoding="ascii"
+	)
+
+{% for env_name, env in Environments %}
 	compute_name = aml_workspace_credentials.get("AML_COMPUTE_NAME")
 	vm_size = "STANDARD_NC6"
 	if compute_name in ws.compute_targets:
@@ -93,28 +104,32 @@ def root(
 		# For a more detailed view of current cluster status, use the 'status' property
 		print(compute_target.status.serialize())
 
-	run_info_dict = {
-		"experiment_id": experiment.id,
-		"step_id": "same_step_0",
-	}
+	config_{{ env_name }} = RunConfiguration()
+	config_{{ env_name }}.target = compute_target
+	config_{{ env_name }}.environment = Environment(name="COMPUTE_{{ env_name }}")
 
-	output = {}
-	output["run_info"] = str(
-		base64.urlsafe_b64encode(dill.dumps(run_info_dict)), encoding="ascii"
-	)
-
-	aml_run_config = RunConfiguration()
-	aml_run_config.target = compute_target
-	aml_run_config.environment = Environment(name="AML_COMPUTE_ENVIRONMENT")
 	conda_dep = CondaDependencies()
 
-	all_packages = ["dill","azureml.pipeline","azureml.core",{{GlobalPackagesString}}]
+	all_packages = ["dill","azureml.pipeline","azureml.core",{{PackageString}}]
 	for package in all_packages:
 		conda_dep.add_pip_package(package)
 
-	# Adds dependencies to PythonSection of myenv
-	aml_run_config.environment.python.conda_dependencies = conda_dep
-	aml_run_config.environment.python.conda_dependencies.set_python_version("3.8")
+{% if env.PrivateRegistry %}
+	config_{{ env_name }}.environment.docker.enabled = True
+	config_{{ env_name }}.environment.docker.base_image = "{{ env.ImageTag }}"
+	config_{{ env_name }}.environment.docker.base_image_registry.address = "{{ env.Credentials.Server }}"
+	config_{{ env_name }}.environment.docker.base_image_registry.username = "{{ env.Credentials.Username }}"
+	config_{{ env_name }}.environment.docker.base_image_registry.password = "{{ env.Credentials.Password }}"
+
+	conda_dep.add_pip_package("azureml-defaults")
+{% endif %}
+
+
+
+	config_{{ env_name }}.environment.python.conda_dependencies = conda_dep
+
+{% endfor %}
+
 
 	__original_context_param = PipelineParameter(
 		name="input_context", default_value=__original_context
@@ -143,7 +158,7 @@ def root(
 		{% if step.PreviousStep %}inputs=[__pipelinedata_context_{{step.PreviousStep}}],{% endif %}
 		outputs=[__pipelinedata_context_{{step.Name}}],
 		compute_target=compute_target,
-		runconfig=aml_run_config,
+		runconfig=config_{{step.Environment}},
 		allow_reuse=False,
 		)
 

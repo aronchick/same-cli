@@ -44,6 +44,7 @@ func (v V1) unMarshallSAME(def interface{}) (sameConfig *SameConfig, err error) 
 	sameConfig.Spec.DataSets = sameConfigFromFile.DataSets
 	sameConfig.Spec.Run = sameConfigFromFile.Run
 	sameConfig.Spec.ConfigFilePath = sameConfigFromFile.ConfigFilePath
+	sameConfig.Spec.Environments = sameConfigFromFile.Environments
 
 	// a, _ := yaml.Marshal(sameConfig)
 	// fmt.Println(string(a))

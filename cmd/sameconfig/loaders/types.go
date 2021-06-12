@@ -19,18 +19,20 @@ type SameConfig struct {
 
 // SameSpec is the spec of a SAME project
 type SameSpec struct {
-	APIVersion            string          `yaml:"apiVersion,omitempty"`
-	Version               string          `yaml:"version,omitempty"`
-	Bases                 []string        `yaml:"bases,omitempty"`
-	Metadata              Metadata        `yaml:"metadata,omitempty"`
-	EnvFiles              []string        `yaml:"envfiles,omitempty"`
-	Resources             Resource        `yaml:"resources,omitempty"`
-	Workflow              Workflow        `yaml:"workflow,omitempty"`
-	Pipeline              Pipeline        `yaml:"pipeline,omitempty"`
-	DataSets              []DataSet       `yaml:"dataSets,omitempty"`
-	Run                   Run             `yaml:"run,omitempty"`
-	DebuggingFeatureFlags map[string]bool `yaml:"debugging_features_flags,omitempty"`
-	ConfigFilePath        string          `yaml:"configfilepath,omitempty"`
+	APIVersion            string                 `yaml:"apiVersion,omitempty"`
+	Version               string                 `yaml:"version,omitempty"`
+	Bases                 []string               `yaml:"bases,omitempty"`
+	Metadata              Metadata               `yaml:"metadata,omitempty"`
+	EnvFiles              []string               `yaml:"envfiles,omitempty"`
+	Resources             Resource               `yaml:"resources,omitempty"`
+	Workflow              Workflow               `yaml:"workflow,omitempty"`
+	Pipeline              Pipeline               `yaml:"pipeline,omitempty"`
+	Environments          map[string]Environment `yaml:"environments,omitempty"`
+	DataSets              []DataSet              `yaml:"dataSets,omitempty"`
+	Run                   Run                    `yaml:"run,omitempty"`
+	DebuggingFeatureFlags map[string]bool        `yaml:"debugging_features_flags,omitempty"`
+	ConfigFilePath        string                 `yaml:"configfilepath,omitempty"`
+	KubeConfig            string                 `yaml:"kubeconfig,omitempty"`
 }
 
 // Metadata is summary data about the SAME program.
@@ -120,6 +122,22 @@ type DataSet struct {
 type Run struct {
 	Name       string                 `yaml:"name,omitempty"`
 	Parameters map[string]interface{} `yaml:"parameters,omitempty"`
+}
+
+type Environment struct {
+	ImageTag                 string                `yaml:"image_tag,omitempty"`
+	AppendCurrentEnvironment bool                  `yaml:"append_current_environment,omitempty"`
+	Packages                 []string              `yaml:"packages,omitempty,omitempty"`
+	PrivateRegistry          bool                  `yaml:"private_registry,omitempty"`
+	Credentials              RepositoryCredentials `yaml:"repository_credentials,omitempty"`
+}
+
+type RepositoryCredentials struct {
+	SecretName string `yaml:"secretname,omitempty"`
+	Server     string `yaml:"server,omitempty"`
+	Username   string `yaml:"username,omitempty"`
+	Password   string `yaml:"password,omitempty"`
+	Email      string `yaml:"email,omitempty"`
 }
 
 // type Parameter struct {

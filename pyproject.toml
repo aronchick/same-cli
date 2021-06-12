@@ -20,6 +20,8 @@ chart-studio = "^1.1.0"
 azureml-core = {version = "^1.29.0", python = ">=3.8,<3.9"}
 azureml-pipeline = {version = "^1.29.0", python = ">=3.8,<3.9p"}
 scipy = "^1.6.3"
+python-dotenv = "^0.17.1"
+pipreqs = "^0.4.10"
 
 [tool.poetry.dev-dependencies]
 black = {version = "^20.8b1", allow-prereleases = true}
