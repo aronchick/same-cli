@@ -186,7 +186,7 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		rootParameterString, _ = JoinMapKeysValues(rootParameters)
 	}
 
-	environments := make(map[string]loaders.Environment, 0)
+	environments := make(map[string]loaders.Environment)
 	imagePullSecretsToCreate := make([]loaders.RepositoryCredentials, 0)
 
 	defaultEnvironment := &loaders.Environment{}
@@ -201,8 +201,7 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		for env_name, env := range sameConfigFile.Spec.Environments {
 			thisEnvironment := &loaders.Environment{}
 			thisEnvironment.ImageTag = ValueOrDefault(env.ImageTag, environments[env_name].ImageTag)
-			if len(env.Packages) > 0 {
-			}
+			thisEnvironment.Packages = env.Packages
 			thisEnvironment.PrivateRegistry = env.PrivateRegistry
 			if thisEnvironment.PrivateRegistry {
 
@@ -243,6 +242,7 @@ func (c *CompileLive) CreateRootFile(target string, aggregatedSteps map[string]C
 		// ...definitely should be more efficient (only build in what we need per container)
 		packageString := ""
 		for k := range thisCodeBlock.PackagesToInstall {
+			// Using key mapping on a hash table to eliminate dupes
 			globalPackagesSlice[k] = ""
 		}
 
@@ -320,7 +320,7 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 	tempStepHolderDir, err := ioutil.TempDir(os.TempDir(), "SAME-compile-*")
 	defer os.Remove(tempStepHolderDir)
 
-	returnedPackages := make(map[string]map[string]string, 0)
+	returnedPackages := make(map[string]map[string]string)
 
 	if err != nil {
 		return nil, fmt.Errorf("error creating temporary directory to write steps to: %v", err)
@@ -384,6 +384,10 @@ func (c *CompileLive) WriteStepFiles(target string, compiledDir string, aggregat
 		}
 
 		tempStepFile, err := ioutil.TempFile(tempStepHolderDir, fmt.Sprintf("SAME-inner-code-file-*-%v", fmt.Sprintf("%v.py", aggregatedSteps[i].StepIdentifier)))
+		if err != nil {
+			return nil, fmt.Errorf("error creating tempfile for step %v: %v", aggregatedSteps[i].StepIdentifier, err.Error())
+		}
+
 		err = ioutil.WriteFile(tempStepFile.Name(), []byte(innerCodeToExecute), 0400)
 		if err != nil {
 			return nil, fmt.Errorf("Error writing temporary step file %v: %v", tempStepFile, err.Error())
@@ -407,6 +411,7 @@ pipreqs %v --print
 				returnedPackages[aggregatedSteps[i].StepIdentifier][packageString] = ""
 			}
 		}
+
 	}
 
 	return returnedPackages, nil

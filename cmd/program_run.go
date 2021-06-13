@@ -123,7 +123,7 @@ var runProgramCmd = &cobra.Command{
 					log.Warnf("The environment '%v' has the credentials hard coded in the same file. This is likely a specatularly bad decision from a security standpoint. Cowardly going ahead anyway.", env_name)
 				}
 
-				image_pull_secret_name, err := cmd.Flags().GetString("image-pull-secret-name")
+				image_pull_secret_name, _ := cmd.Flags().GetString("image-pull-secret-name")
 
 				image_pull_secret_server, err := cmd.Flags().GetString("image-pull-secret-server")
 				if err != nil || image_pull_secret_server == "" {
