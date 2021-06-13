@@ -231,7 +231,8 @@ python3 -m pip freeze
 	cmdReturn, err := utils.ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
 
 	if err != nil {
-		log.Tracef("Error executing: %v\n", err.Error())
+		log.Tracef("Error executing: %v\n CmdReturn: %v", err.Error(), cmdReturn)
+		return err
 	}
 	missingLibraries := make([]string, 0)
 	for _, lib := range requiredLibraries {
