@@ -401,8 +401,10 @@ pipreqs %v --print
 	`, tempStepHolderDir)
 
 		cmdReturn, err := ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
+
 		if err != nil {
-			log.Tracef("Error executing: %v\n", err.Error())
+			log.Tracef("Error executing: %v\n CmdReturn: %v", err.Error(), cmdReturn)
+			return nil, err
 		}
 		allPackages := strings.Split(cmdReturn, "\n")
 
