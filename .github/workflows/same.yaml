@@ -63,6 +63,8 @@ jobs:
       - name: Install Jupytext
         run: |
           pip3 install jupytext
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Install Docker CE for buildx
         if: matrix.target_os == 'linux' && github.event_name != 'pull_request'
         run: |
