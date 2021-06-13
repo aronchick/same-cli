@@ -400,7 +400,7 @@ set -e
 pipreqs %v --print 
 	`, tempStepHolderDir)
 
-		cmdReturn, err := ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
+		cmdReturn, err := ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pipreqs output failed", false)
 
 		if err != nil {
 			log.Tracef("Error executing: %v\n CmdReturn: %v", err.Error(), cmdReturn)

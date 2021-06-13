@@ -63,6 +63,9 @@ jobs:
       - name: Install Jupytext
         run: |
           pip3 install jupytext
+      - name: Install pipreqs
+        run: |
+          pip3 install pipreqs
       - name: Install Docker CE for buildx
         if: matrix.target_os == 'linux' && github.event_name != 'pull_request'
         run: |
@@ -109,8 +112,8 @@ jobs:
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.CORE_TEAM_CLUSTER_KUBECONFIG }}" > $HOME/.kube/config
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
+      # - name: Setup upterm session
+      #   uses: lhotari/action-upterm@v1
       - name: Run make test
         env:
           COVERAGE_OPTS: "-coverprofile=coverage.txt -covermode=atomic"
