@@ -3,7 +3,12 @@
 
 package main
 
-import "strings"
+import (
+	"fmt"
+
+	"github.com/azure-octo/same-cli/pkg/utils"
+	"github.com/spf13/cobra"
+)
 
 // // Settings default user setting
 // type Settings struct {
@@ -230,22 +235,33 @@ func main() {
 	// c, _ := b.RawConfig()
 	// fmt.Printf("c: %v", c)
 
-	a := `kubernetes==11.0.0
-dill==0.3.3
-requests==2.25.1
-python-dotenv==0.17.1
-INFO: Successfully output requirements
+	// 	a := `kubernetes==11.0.0
+	// dill==0.3.3
+	// requests==2.25.1
+	// python-dotenv==0.17.1
+	// INFO: Successfully output requirements
 
-`
-	b := strings.Split(a, "\n")
+	// `
+	// 	b := strings.Split(a, "\n")
 
-	newSlice := make([]string, 0)
-	for _, item := range b {
-		if item != "" && !strings.HasPrefix(item, "INFO: ") {
-			newSlice = append(newSlice, item)
-		}
-	}
-	_ = newSlice
+	// 	newSlice := make([]string, 0)
+	// 	for _, item := range b {
+	// 		if item != "" && !strings.HasPrefix(item, "INFO: ") {
+	// 			newSlice = append(newSlice, item)
+	// 		}
+	// 	}
+	// 	_ = newSlice
+
+	pipCommand := `
+#!/bin/bash
+set -e
+python3 -m pip freeze
+	`
+
+	cmdReturn, err := utils.ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip output failed", false)
+	_, _ = fmt.Printf("cmdReturn: %v", cmdReturn)
+	_, _ = fmt.Printf("err: %v", err)
+
 }
 
 // apiVersion: projectsame.io/v1alpha1
