@@ -119,7 +119,7 @@ var compileProgramCmd = &cobra.Command{
 					log.Warnf("The environment '%v' has the credentials hard coded in the same file. This is likely a specatularly bad decision from a security standpoint. Cowardly going ahead anyway.", env_name)
 				}
 
-				image_pull_secret_name, err := cmd.Flags().GetString("image-pull-secret-name")
+				image_pull_secret_name, _ := cmd.Flags().GetString("image-pull-secret-name")
 
 				image_pull_secret_server, err := cmd.Flags().GetString("image-pull-secret-server")
 				if err != nil || image_pull_secret_server == "" {
@@ -282,9 +282,21 @@ func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFi
 		if thisCodeBlock.PackagesToInstall == nil {
 			thisCodeBlock.PackagesToInstall = make(map[string]string)
 		}
-		for packageString := range packageList {
-			thisCodeBlock.PackagesToInstall[packageString] = ""
+		// Could be just a package name:
+		// 		numpy
+		// or a package name and a version
+		// 		numpy==0.17.4
+		for packageIdentifier := range packageList {
+			thisCodeBlock.PackagesToInstall[packageIdentifier] = ""
 		}
+
+		thisStepEnv := sameConfigFile.Spec.Environments[aggregatedSteps[stepName].EnvironmentName]
+
+		for _, packageIdentifier := range thisStepEnv.Packages {
+			// Using key mapping on a hash table to eliminate dupes
+			thisCodeBlock.PackagesToInstall[packageIdentifier] = ""
+		}
+
 		aggregatedSteps[stepName] = thisCodeBlock
 	}
 

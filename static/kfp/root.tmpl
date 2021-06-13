@@ -2,7 +2,7 @@
 
 import kfp
 import kfp.dsl as dsl
-from kfp.components import func_to_container_op, InputPath, OutputPath
+from kfp.components import create_component_from_func, InputPath, OutputPath
 import kfp.compiler as compiler
 from kfp.dsl.types import Dict as KFPDict, List as KFPList
 from typing import NamedTuple

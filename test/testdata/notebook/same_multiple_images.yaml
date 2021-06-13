@@ -11,6 +11,9 @@ environments:
   default:
     image_tag: python:3.9-slim-buster
     append_current_environment: true
+    packages:
+      - requests
+      - delorean==1.0.0
   python37:
     image_tag: python:3.7-slim-buster
     private_registry: false
