@@ -48,6 +48,7 @@ func Execute(version string) {
 
 	if err := RootCmd.Execute(); err != nil {
 		log.Error(err)
+		os.Exit(1)
 	}
 }
 
