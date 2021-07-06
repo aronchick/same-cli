@@ -8,12 +8,12 @@ import (
 )
 
 type CompileInterface interface {
-	CopyFiles(string, []string) error
 	FindAllSteps(string) ([]FoundStep, error)
 	CombineCodeSlicesToSteps([]FoundStep) (map[string]CodeBlock, error)
 	CreateRootFile(string, map[string]CodeBlock, loaders.SameConfig) (string, error)
 	ConvertNotebook(string, string) (string, error)
 	WriteStepFiles(string, string, map[string]CodeBlock) (map[string]map[string]string, error)
+	WriteSupportFiles(string, []string) error
 }
 
 type CodeBlock struct {

@@ -5,10 +5,10 @@ import "github.com/azure-octo/same-cli/cmd/sameconfig/loaders"
 type CompileMock struct {
 }
 
-func (c *CompileMock) CopyFiles(workingDirectory string, directoriesToWriteTo []string) error {
+func (c *CompileMock) WriteSupportFiles(workingDirectory string, directoriesToWriteTo []string) error {
 	// Placeholder until we mock
 	cl := &CompileLive{}
-	return cl.CopyFiles(workingDirectory, directoriesToWriteTo)
+	return cl.WriteSupportFiles(workingDirectory, directoriesToWriteTo)
 }
 
 func (c *CompileMock) FindAllSteps(convertedText string) ([]FoundStep, error) {

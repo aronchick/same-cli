@@ -80,8 +80,6 @@ github.com/emirpasic/gods/lists/arraylist
 github.com/emirpasic/gods/trees
 github.com/emirpasic/gods/trees/binaryheap
 github.com/emirpasic/gods/utils
-# github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
-## explicit
 # github.com/flosch/pongo2/v4 v4.0.2
 ## explicit
 github.com/flosch/pongo2/v4
@@ -313,6 +311,9 @@ github.com/modern-go/reflect2
 ## explicit
 github.com/onsi/gomega/format
 github.com/onsi/gomega/gbytes
+# github.com/otiai10/copy v1.6.0
+## explicit
+github.com/otiai10/copy
 # github.com/pelletier/go-toml v1.8.1
 ## explicit
 github.com/pelletier/go-toml

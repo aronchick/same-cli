@@ -24,6 +24,7 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5
+	github.com/otiai10/copy v1.6.0
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.5.1 // indirect

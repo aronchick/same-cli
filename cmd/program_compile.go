@@ -319,6 +319,16 @@ func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFi
 	}
 	updatedSameConfig = sameConfigFile
 
+	if doNotCopyFiles != true {
+		supportFileDestinationDirectories := []string{compiledDir}
+		if target == "aml" {
+			for _, step := range aggregatedSteps {
+				supportFileDestinationDirectories = append(supportFileDestinationDirectories, step.StepIdentifier)
+			}
+		}
+		err = c.WriteSupportFiles(notebookFilePath, supportFileDestinationDirectories)
+	}
+
 	fmt.Printf("Compilation complete! In order to upload, go to this directory (%v) and execute 'same program run'.\n", compiledDir)
 	return compiledDir, updatedSameConfig, err
 
