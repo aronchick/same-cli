@@ -176,7 +176,9 @@ var compileProgramCmd = &cobra.Command{
 			runParams[parts[0]] = parts[1]
 		}
 
-		compiledDir, _, err := CompileFile(target, *sameConfigFile, persistTempFiles)
+		doNotCopyFiles, _ := cmd.Flags().GetBool("do-not-copy-files")
+
+		compiledDir, _, err := CompileFile(target, *sameConfigFile, persistTempFiles, doNotCopyFiles)
 		if err != nil {
 			return err
 		}
@@ -241,7 +243,7 @@ func checkExecutableAndFile(sameConfigFile loaders.SameConfig) (string, string, 
 
 }
 
-func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFiles bool) (compileDirectory string, updatedSameConfig loaders.SameConfig, err error) {
+func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFiles bool, doNotCopyFiles bool) (compileDirectory string, updatedSameConfig loaders.SameConfig, err error) {
 	var c = utils.GetCompileFunctions()
 	jupytextExecutablePath, notebookFilePath, err := checkExecutableAndFile(sameConfigFile)
 	if err != nil {
@@ -332,5 +334,5 @@ func init() {
 	compileProgramCmd.Flags().String("image-pull-secret-username", "", "Image pull username for any private repos (only one username currently supported for all private repos)")
 	compileProgramCmd.Flags().String("image-pull-secret-password", "", "Image pull password for any private repos (only one password currently supported for all private repos)")
 	compileProgramCmd.Flags().String("image-pull-secret-email", "", "Image pull email for any private repos (only one email currently supported for all private repos)")
-
+	compileProgramCmd.Flags().Bool("do-not-copy-files", false, "Do not copy all python files in the same directory as the notebook.")
 }

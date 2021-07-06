@@ -165,7 +165,7 @@ func (suite *ProgramCompileSuite) Test_KubeflowRootCompile() {
 	assert.Contains(suite.T(), fullRootFile, "import same_step_2", "Does not contain multi-step import")
 	assert.Contains(suite.T(), fullRootFile, "def get_run_info(", "Does not contain run info import")
 	assert.Contains(suite.T(), fullRootFile, "sample_parameter='0.841'", "Does not contain default parameter")
-	assert.Contains(suite.T(), fullRootFile, "run_info_op = get_run_info_component(run_id=kfp.dsl.RUN_ID_PLACEHOLDER)\n\n\n\tsame_step_0_op", "SAME Step 0 is not the first step")
+	assert.Contains(suite.T(), fullRootFile, "create_context_file_op = create_context_file_component(context_string=__original_context)\n\n\n\tsame_step_0_op = create_component_from_func", "SAME Step 0 is not the first step")
 	assert.Contains(suite.T(), fullRootFile, "same_step_2_op = create_component_from_func(", "Does not contain the third step")
 	assert.Contains(suite.T(), fullRootFile, "same_step_2_task.after(same_step_1_task)", "Does not have the final DAG step")
 }

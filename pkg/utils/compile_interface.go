@@ -8,6 +8,7 @@ import (
 )
 
 type CompileInterface interface {
+	CopyFiles(string, []string) error
 	FindAllSteps(string) ([]FoundStep, error)
 	CombineCodeSlicesToSteps([]FoundStep) (map[string]CodeBlock, error)
 	CreateRootFile(string, map[string]CodeBlock, loaders.SameConfig) (string, error)

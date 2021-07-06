@@ -1,0 +1,49 @@
+apiVersion: projectsame.io/v1alpha1
+metadata:
+  name: NewsSummSame
+  sha: deadbeef
+  labels:
+    label1: value1
+  version: 1.0.4
+environments:
+  default:
+    image_tag: python:3.9-slim-buster
+  base_env:
+    image_tag: usa-xlos-ailab-platform-dtr.artifacts.pwc.com/kubeflow/python-minimum:news-summarization-minio
+    private_registry: true
+  steep_env:
+    image_tag: usa-xlos-ailab-platform-dtr.artifacts.pwc.com/ai-platform/aip_steep:kubeflow-pipeline
+    private_registry: true
+  sentiment_env:
+    image_tag: usa-xlos-ailab-platform-dtr.artifacts.pwc.com/ai-platform/aip_sentiment_analysis:kubeflow-pipeline
+    private_registry: true
+  summary_env:
+    image_tag: usa-xlos-ailab-platform-dtr.artifacts.pwc.com/ai-platform/aip_document_summarization:kubeflow-pipeline
+    private_registry: true
+  ner_env:
+    image_tag: usa-xlos-ailab-platform-dtr.artifacts.pwc.com/ai-platform/aip_ner_extraction:kubeflow-pipeline
+    private_registry: true
+pipeline:
+  name: news-summarization-same
+  description: sametests
+  package: news-summarization-Copy1.ipynb
+run:
+  name: My Run
+  parameters:
+    params:
+      conf:
+        sasToken: <<scrubbed>>
+        inputBlobName: 2020-12-10_AIS_News-summarization.json
+        outputBlobName: f'Kubeflow_pipeline_test/1234/response.json'
+        storageAccountName: pzigxnu2srbluzs001
+        logSchema:
+          regionAndEnv: UE-STG
+          clientId: fa34cd82-6af1-4c51-b0f3-68698688d203
+          component: ai.platform.batch.model.request
+          correlationId: '1234'
+          engagementId: 5f8e04e8-9894-4ec6-b8c4-2d2474725004
+          timestamp: '2020-09- 10T20:24:19.513000'
+        containerName: 5f8e04e8-9894-4ec6-b8c4-2d2474725004
+debugging_features_flags:
+  createStorage: false
+

@@ -25,6 +25,58 @@ import (
 type CompileLive struct {
 }
 
+func (c *CompileLive) CopyFiles(workingDirectory string, directoriesToWriteTo []string) error {
+	// Inspired by Kubeflwo - TODO: Make sure to have copyright and license here
+	// https://github.com/kubeflow/pipelines/blob/cc83e1089b573256e781ed2e4ac90f604129e769/sdk/python/kfp/containers/_build_image_api.py#L68
+
+	// This function recursively scans the working directory and captures the following files in the container image context:
+	// * :code:`requirements.txt` files
+	// * All python files
+
+	// current_dir = working_dir or os.getcwd()
+	// with tempfile.TemporaryDirectory() as context_dir:
+	//     logging.info('Creating the build context directory: {}'.format(context_dir))
+
+	//     # Copying all *.py and requirements.txt files
+	//     for dirpath, dirnames, filenames in os.walk(current_dir):
+	//         dst_dirpath = os.path.join(context_dir, os.path.relpath(dirpath, current_dir))
+	//         os.makedirs(dst_dirpath, exist_ok=True)
+	//         for file_name in filenames:
+	//             if re.match(file_filter_re, file_name) or file_name == 'requirements.txt':
+	//                 src_path = os.path.join(dirpath, file_name)
+	//                 dst_path = os.path.join(dst_dirpath, file_name)
+	//                 shutil.copy(src_path, dst_path)
+
+	//     src_dockerfile_path = os.path.join(current_dir, 'Dockerfile')
+	//     dst_dockerfile_path = os.path.join(context_dir, 'Dockerfile')
+	//     if os.path.exists(src_dockerfile_path):
+	//         if base_image:
+	//             raise ValueError('Cannot specify base_image when using custom Dockerfile (which already specifies the base image).')
+	//         shutil.copy(src_dockerfile_path, dst_dockerfile_path)
+	//     else:
+	//         dockerfile_text = _generate_dockerfile_text(context_dir, dst_dockerfile_path, base_image)
+	//         with open(dst_dockerfile_path, 'w') as f:
+	//             f.write(dockerfile_text)
+
+	//     cache_name = 'build_image_from_working_dir'
+	//     cache_key = calculate_recursive_dir_hash(context_dir)
+	//     cached_image_name = try_read_value_from_cache(cache_name, cache_key)
+	//     if cached_image_name:
+	//         return cached_image_name
+
+	//     if builder is None:
+	//         builder = default_image_builder
+	//     image_name = builder.build(
+	//         local_dir=context_dir,
+	//         target_image=image_name,
+	//         timeout=timeout,
+	//     )
+	//     if image_name:
+	//         write_value_to_cache(cache_name, cache_key, image_name)
+	//     return image_name
+	return nil
+}
+
 func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep, err error) {
 	// Need to enable multiline for beginning of the line checking - (?m)
 	// Looking for something of the format:

@@ -10,6 +10,7 @@ import kubernetes.client
 from kubernetes import client, config
 import base64
 import json
+from pathlib import Path as __Path
 
 {% for step in Steps %}
 import {{ step.Name }}
@@ -59,8 +60,28 @@ get_run_info_component = kfp.components.create_component_from_func(
 	],
 )
 
+def create_context_file(
+	context_string,
+	output_context_path: OutputPath(str),
+):
+	from pathlib import Path as __Path
+
+	__p = __Path(output_context_path)
+	with __p.open("w+") as __file_handle:
+		__file_handle.write(context_string)
+
+
+create_context_file_component = kfp.components.create_component_from_func(
+	func=create_context_file,
+	packages_to_install=[
+		"kfp",
+		"dill",
+	],
+)
+
 @dsl.pipeline(name="Compilation of pipelines",)
 def root({{ RootParameterString }}{% if RootParameterString %}, {% endif %}context='', metadata_url=''):
+
 	# The below is base64 encoding of an empty locals() output
 	__original_context = ""
 	if context == '':
@@ -133,13 +154,15 @@ def root({{ RootParameterString }}{% if RootParameterString %}, {% endif %}conte
 	'''kfp.dsl.RUN_ID_PLACEHOOLDER inside a parameter will be populated with KFP Run ID at runtime.'''
 	run_info_op = get_run_info_component(run_id=kfp.dsl.RUN_ID_PLACEHOLDER)
 
+	create_context_file_op = create_context_file_component(context_string=__original_context)
+
 {% for step in Steps %}
 	{{step.Name}}_op = create_component_from_func(
-		func={{step.Name}}.main,
+		func={{step.Name}}.generated_main,
 		base_image="{{step.ImageName}}",
 		packages_to_install=["dill", "requests", {{step.PackageString}}],
 	)
-	{{step.Name}}_task = {{step.Name}}_op(context={% if step.PreviousStep %}{{step.PreviousStep}}_task.outputs['context']{% else %}__original_context{% endif %}, run_info=run_info_op.outputs["run_info"], metadata_url=metadata_url)
+	{{step.Name}}_task = {{step.Name}}_op(input_context={% if step.PreviousStep %}{{step.PreviousStep}}_task{% else %}create_context_file_op{% endif %}.outputs["output_context"], run_info=run_info_op.outputs["run_info"], metadata_url=metadata_url)
 	{% if step.CacheValue %}{{step.Name}}_task.execution_options.caching_strategy.max_cache_staleness = "{{step.CacheValue}}"{% endif %}
 
 	{% if step.PreviousStep %}

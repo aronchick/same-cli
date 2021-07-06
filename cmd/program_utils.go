@@ -40,7 +40,7 @@ func UploadPipeline(target string, sameConfigFile *loaders.SameConfig, pipelineN
 	uploadparams.Description = &pipelineDescription
 
 	if strings.HasSuffix(strings.TrimSpace(sameConfigFile.Spec.Pipeline.Package), ".ipynb") {
-		tempCompileDir, updatedSameConfig, err := CompileFile(target, *sameConfigFile, true)
+		tempCompileDir, updatedSameConfig, err := CompileFile(target, *sameConfigFile, true, false)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +93,7 @@ func UpdatePipeline(target string, sameConfigFile *loaders.SameConfig, pipelineI
 	uploadparams.Name = &pipelineVersion
 
 	if strings.HasSuffix(strings.TrimSpace(sameConfigFile.Spec.Pipeline.Package), ".ipynb") {
-		tempCompileDir, updatedSameConfig, err := CompileFile(target, *sameConfigFile, true)
+		tempCompileDir, updatedSameConfig, err := CompileFile(target, *sameConfigFile, true, false)
 		if err != nil {
 			return nil, err
 		}

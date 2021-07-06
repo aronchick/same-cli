@@ -276,7 +276,9 @@ VersionID: %v
 				return fmt.Errorf("missing environment variables for: %v", strings.Join(missingFields, ", "))
 			}
 
-			compileDir, _, err := CompileFile("aml", *sameConfigFile, persistTemporaryFiles)
+			doNotCopyFiles, _ := cmd.Flags().GetBool("do-not-copy-files")
+
+			compileDir, _, err := CompileFile("aml", *sameConfigFile, persistTemporaryFiles, doNotCopyFiles)
 			if err != nil {
 				return err
 			}
