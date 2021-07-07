@@ -468,8 +468,19 @@ func (c CompileLive) WriteSupportFiles(workingDirectory string, directoriesToWri
 	for _, destDir := range directoriesToWriteTo {
 		opt := recurseCopy.Options{
 			Skip: func(src string) (bool, error) {
+				fi, err := os.Stat(src)
+				if err != nil {
+					return true, err
+				}
+				if fi.IsDir() {
+					return false, nil
+				}
 				return !strings.HasSuffix(src, ".py"), nil
 			},
+			OnDirExists: func(src string, dst string) recurseCopy.DirExistsAction {
+				return recurseCopy.Merge
+			},
+			Sync: true,
 		}
 		err := recurseCopy.Copy(workingDirectory, destDir, opt)
 		if err != nil {
