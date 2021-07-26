@@ -27,7 +27,7 @@ type CompileLive struct {
 }
 
 func (c *CompileLive) ConfirmPackages(sameConfigFile loaders.SameConfig) (map[string]string, error) {
-	pipCommand := fmt.Sprintf(`
+	pipCommand := fmt.Sprint(`
 	#!/bin/bash
 	pip3 list --format freeze
 		`)
