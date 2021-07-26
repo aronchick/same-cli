@@ -27,10 +27,10 @@ type CompileLive struct {
 }
 
 func (c *CompileLive) ConfirmPackages(sameConfigFile loaders.SameConfig) (map[string]string, error) {
-	pipCommand := fmt.Sprint(`
+	pipCommand := `
 	#!/bin/bash
 	pip3 list --format freeze
-		`)
+		`
 
 	cmdReturn, err := ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip Freeze failed", false)
 
