@@ -1,4 +1,4 @@
-apiVersion: projectsame.io/v1alpha1
+cd apiVersion: projectsame.io/v1alpha1
 metadata:
   name: multifile
   sha: deadbeef

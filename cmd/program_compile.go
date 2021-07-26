@@ -254,6 +254,12 @@ func CompileFile(target string, sameConfigFile loaders.SameConfig, persistTempFi
 		return "", loaders.SameConfig{}, fmt.Errorf("no experiment name detected in Metadata.Name")
 	}
 
+	missingPackages, err := c.ConfirmPackages(sameConfigFile)
+	if err != nil || len(missingPackages) > 0 {
+		return "", loaders.SameConfig{}, fmt.Errorf("It appears your default environment in your same file () does not have the following packages installed. You can update it by cutting and pasting the following text into it: %v", missingPackages)
+	}
+	_ = missingPackages
+
 	convertedText, err := c.ConvertNotebook(jupytextExecutablePath, notebookFilePath)
 	if err != nil {
 		return "", loaders.SameConfig{}, err

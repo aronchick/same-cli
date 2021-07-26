@@ -26,6 +26,33 @@ import (
 type CompileLive struct {
 }
 
+func (c *CompileLive) ConfirmPackages(sameConfigFile loaders.SameConfig) (map[string]string, error) {
+	pipCommand := fmt.Sprintf(`
+	#!/bin/bash
+	pip3 list --format freeze
+		`)
+
+	cmdReturn, err := ExecuteInlineBashScript(&cobra.Command{}, pipCommand, "Pip Freeze failed", false)
+
+	if err != nil {
+		log.Tracef("Error executing: %v\n CmdReturn: %v", err.Error(), cmdReturn)
+		return map[string]string{}, err
+	}
+	missingPackages := map[string]string{}
+	allPackages := strings.Split(cmdReturn, "\n")
+	for _, packageString := range allPackages {
+		packageAndVersion := strings.Split(packageString, "==")
+		packageName := packageAndVersion[0]
+		packageVersion := ""
+		if len(packageAndVersion) > 1 {
+			packageVersion = packageAndVersion[1]
+		}
+		missingPackages[packageName] = packageVersion
+	}
+	// returning nothing for now, figure it out later
+	return map[string]string{}, nil
+}
+
 func (c *CompileLive) FindAllSteps(convertedText string) (foundSteps []FoundStep, err error) {
 	// Need to enable multiline for beginning of the line checking - (?m)
 	// Looking for something of the format:

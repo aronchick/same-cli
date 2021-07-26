@@ -142,7 +142,7 @@ func (suite *ProgramCompileSuite) Test_KubeflowRootCompile() {
 	os.Setenv("TEST_PASS", "1")
 	c := utils.GetCompileFunctions()
 
-	sameConfigFile, err := loaders.V1{}.LoadSAME("../testdata/notebook/sample_notebook_same.yaml")
+	sameConfigFile, err := loaders.V1{}.LoadSAME("../testdata/notebook/same.yaml")
 	if err != nil {
 		assert.Fail(suite.T(), "could not load SAME config file: %v", err)
 	}
@@ -174,7 +174,7 @@ func (suite *ProgramCompileSuite) Test_AMLRootCompile() {
 	os.Setenv("TEST_PASS", "1")
 	c := utils.GetCompileFunctions()
 
-	sameConfigFile, err := loaders.V1{}.LoadSAME("../testdata/notebook/sample_notebook_same.yaml")
+	sameConfigFile, err := loaders.V1{}.LoadSAME("../testdata/notebook/same.yaml")
 	if err != nil {
 		assert.Fail(suite.T(), "could not load SAME config file: %v", err)
 	}

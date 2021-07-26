@@ -40,3 +40,9 @@ func (c *CompileMock) ConvertNotebook(jupytextExecutablePath string, notebookFil
 	cl := &CompileLive{}
 	return cl.ConvertNotebook(jupytextExecutablePath, notebookFilePath)
 }
+
+func (c *CompileMock) ConfirmPackages(sameConfigFile loaders.SameConfig) (map[string]string, error) {
+	// Placeholder until we mock
+	cl := &CompileLive{}
+	return cl.ConfirmPackages(sameConfigFile)
+}
